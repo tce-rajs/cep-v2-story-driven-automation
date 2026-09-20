@@ -1,0 +1,12 @@
+node_modules/
+.env
+test-results/
+playwright-report/
+playwright-report-archive/
+blob-report/
+playwright/.cache/
+.agents/
+
+
+# Office lock files
+~$*

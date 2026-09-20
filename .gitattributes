@@ -1,0 +1,4 @@
+# Keep line endings consistent (LF) in the repo on every platform.
+* text=auto eol=lf
+*.xlsx binary
+*.png binary

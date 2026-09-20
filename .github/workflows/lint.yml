@@ -1,0 +1,25 @@
+name: Lint
+
+# Runs ESLint + Prettier on every push/PR. This does NOT run the Playwright
+# suite itself -- that suite drives a real Windows desktop client (Tata
+# ClassEdge School.exe) against a live QA backend and needs a self-hosted
+# Windows runner with the client installed, which this repo doesn't have
+# yet. This workflow only covers what a normal
+# hosted runner safely can: static checks that don't touch the live app.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
