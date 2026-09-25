@@ -39,7 +39,12 @@ test.describe('RES-04 DropIt', () => {
     const url = await user.addResource.decodeDropitQrUrl();
     expect(url, 'the QR decodes to a real pairing URL').toBeTruthy();
 
-    const browser = await chromium.launch();
+    // DROPIT_HEADED=1 opens the simulated phone as a real, visible, slowed-down browser window instead of
+    // running it headless -- for watching the pairing/share/upload flow live, not part of normal CI runs.
+    const browser = await chromium.launch({
+      headless: !process.env.DROPIT_HEADED,
+      slowMo: process.env.DROPIT_HEADED ? 400 : 0,
+    });
     const context = await browser.newContext({ viewport: DropitCompanionPage.viewport });
     const phone = new DropitCompanionPage(await context.newPage());
     await phone.open(url);

@@ -31,6 +31,9 @@ case** belonging to that story.
 3. HDR-05-03 — To check Compass shows a "Homework" section for topics that have one
 4. HDR-05-04 — Negative: to check a topic without a Revision Test or Homework doesn't show those sections — they're conditional per topic, not always present
 5. HDR-05-05 — Regression (Plan Mode, excluded from automation): re-verify the existing Plan Mode Compass test cases still pass — a verify pass, not a discovery pass
+6. HDR-05-06 — Regression: a Revision Test card's title text doesn't overlap its info line/type icon
+7. HDR-05-07 — Regression (blocked, see spec): the Revision Test popup doesn't persist after signing out (and back in) without closing it first
+8. HDR-05-08 — Manual-only (needs Plan Mode to author the triggering content): Compass stays visible in Teach Mode alongside Magnet after a Revision Test is created in Plan Mode for that class/topic
 
 ### HDR-06 — Profile (Plan Mode)
 

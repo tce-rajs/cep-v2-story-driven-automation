@@ -19,6 +19,7 @@ each numbered line under it is a **test case** belonging to that story.
 11. LOG-01-11 — Regression (Plan Mode, excluded from automation): sign-in state and grade/subject context survive a Teach↔Plan switch
 12. LOG-01-12 — Concurrency: signing into a second, different account in a new tab doesn't corrupt the first tab's session
 13. LOG-01-13 — Interruption: a sign-out fired immediately after a real backend action (e.g. right after Add to Playlist, before its confirmation toast) doesn't corrupt that action
+14. LOG-01-14 — Regression: closing and reopening the client signs the previous user out, instead of restoring their session
 
 ### LOG-02 — All core UI components load after a valid login
 

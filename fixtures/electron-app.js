@@ -372,4 +372,7 @@ const clientTest = base.test.extend({
 // specs can be watched in a normal browser window. Default is still the desktop client.
 const test = process.env.RUN_IN_BROWSER ? base.test : clientTest;
 
-module.exports = { test, expect: base.expect, devices: base.devices };
+// Exported for tests/03-login's client-reopen regression case, which needs raw control over closing and
+// relaunching a whole separate app instance (not just reusing the worker's shared window) -- desktop-client-
+// only, so has no RUN_IN_BROWSER equivalent.
+module.exports = { test, expect: base.expect, devices: base.devices, launchWithRetry };

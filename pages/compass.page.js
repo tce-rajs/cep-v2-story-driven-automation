@@ -28,6 +28,14 @@ class CompassPage {
     this.questionToggleAnswerBtn = page.locator('[data-qa-id="compass-question-toggle-answer-btn"]');
     this.detailCancelBtn = page.locator('[data-qa-id="compass-detail-cancel-btn"]');
     this.listCancelBtn = page.locator('[data-qa-id="compass-list-cancel-btn"]');
+    // Real Revision Test list cards -- CONFIRMED LIVE (2026-09-25): listAssignment(cxId) above never matches
+    // (0 count on a topic with 3 real assignments); the actual card is `.resource-card` inside a
+    // `[data-qa-id^="player-student-test-item-"]` wrapper, with `.title`/`.image`/`.type-icon`/
+    // `.checkpoint-description` children -- no per-card data-qa-id suffix the test can predict in advance.
+    this.revisionTestCards = page.locator('[data-qa-id^="player-student-test-item-"]');
+    // Clicking a card opens an Angular Material dialog (student-test detail/results view), not the
+    // list-view's own detail panel above -- CONFIRMED LIVE via its real class, cdk-overlay-backdrop's sibling.
+    this.revisionTestDialog = page.locator('.mat-mdc-dialog-container');
     // ExploreIt's own widget tiles/Open-Widgets link have no confirmed
     // data-qa-id -- text/class based.
     this.exploreItOpenWidgetsLink = page.getByText('Open Widgets', { exact: false });
