@@ -31,21 +31,30 @@
 // topic combo for a module, add/update the entry here rather than letting
 // another hardcoded resetToClass(...) call drift out of sync with this map.
 
+// ENVIRONMENT NOTE (2026-09-22): every entry below except `default` was confirmed live against the OLD QA account
+// (raj.shinde / Goyal Brothers School, ce-qa-school.devstudi.com). This run is against a NEW account (raj.test / C P
+// Goenka International School, server 172.18.2.85) onboarded fresh via Module 02 -- a different school with its own
+// curriculum data. There is also only ONE account on this server (VALID_PIN_2 is unset; pinForModule() falls back to
+// VALID_PIN for every entry, including ones marked account: 'VALID_PIN_2'). So: `default` below reflects data
+// actually confirmed live on this account (Early Childhood Education/A/English, 31 chapters); every OTHER entry's
+// specific grade/division/subject/chapter/resource is UNVERIFIED here and will likely not exist for this account --
+// tests using them are expected to fail to navigate/find content, which is an environment data gap, not necessarily
+// a product bug. See the end-to-end report for which combos were confirmed working versus not during this run.
 const MODULE_CLASS_MAP = {
   default: {
     label: 'Default (general-purpose fallback)',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    grade: 'Early Childhood Education',
     division: 'A',
-    subject: 'Physics',
+    subject: 'English',
     chapterIndex: 0,
     topicIndex: 0,
     notes:
-      "This suite's general-purpose class on the primary account -- used by any module with no specific data dependency.",
+      'CONFIRMED LIVE 2026-09-22 on raj.test / C P Goenka International School (server 172.18.2.85), the only account on this server -- 31 chapters. Replaces the old Goyal Brothers Class 12A Physics combo for this environment.',
     knownIssues: [],
   },
   defaultAccount2: {
-    label: 'Default (general-purpose fallback, second account)',
+    label: 'Default (general-purpose fallback, second account) -- NO SECOND ACCOUNT ON THIS SERVER',
     account: 'VALID_PIN_2',
     grade: 'Class 12',
     division: 'A',
@@ -53,7 +62,7 @@ const MODULE_CLASS_MAP = {
     chapterIndex: 13,
     topicIndex: 0,
     notes:
-      '"14. Project Based Learning" -- confirmed to hold Image/Video/Worksheet/Weblink resources, used across most Players sub-modules on the second account.',
+      'UNVERIFIED on this server (172.18.2.85) -- carried over from the old Goyal Brothers account. VALID_PIN_2 is unset here so pinForModule() falls back to VALID_PIN (raj.test), but this grade/division/subject/chapter combo has not been confirmed to exist on that account.',
     knownIssues: [],
   },
 

@@ -30,6 +30,11 @@ test.describe('PL-02 Open & navigate Ebook', () => {
     'PL-02-01: opening an ebook from Playlist loads it correctly',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
+      // NOTE: on 2026-09-23 this reproducibly failed to open (no close icon, no chapters) on two separate QA
+      // servers/accounts across several attempts -- tracked at the time as a confirmed product bug. Re-tested later
+      // the same day: the ebook now opens and works reliably, repeatedly, including in isolation. Reverted the
+      // test.fail() marking since it currently works; if this recurs, it is likely QA-environment flakiness
+      // (a degraded backend/CDN at the time) rather than a stable regression -- re-confirm before re-marking.
       await openEbook(user);
       expect(await user.player.isPlayerOpen(), 'the ebook player opened').toBe(true);
       await expect(user.player.ebookChapterItems.first(), 'the ebook lists its chapters').toBeAttached({
@@ -115,7 +120,12 @@ test.describe('PL-02 Open & navigate Ebook', () => {
         await page.waitForTimeout(150);
       }
       await expect(user.player.ebookSelectedChapter, 'exactly one chapter stays selected').toHaveCount(selectedBefore);
-      expect(errors, 'no uncaught page errors').toEqual([]);
+      // "Worker was terminated" is the browser reporting a PDF worker from a previously closed worksheet being torn down
+      // (same benign noise PLR-04-04 already filters); not an ebook error.
+      expect(
+        errors.filter((e) => !/worker was terminated/i.test(e)),
+        'no uncaught page errors'
+      ).toEqual([]);
     }
   );
 });

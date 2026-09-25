@@ -1,11 +1,16 @@
 node_modules/
 .env
+config/environments/*.env
+!config/environments/example.env
 test-results/
 playwright-report/
 playwright-report-archive/
+playwright-report-*.zip
 blob-report/
 playwright/.cache/
 .agents/
+client-automation/client-automation-report/
+*.log
 
 
 # Office lock files

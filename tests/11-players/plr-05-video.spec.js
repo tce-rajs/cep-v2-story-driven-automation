@@ -21,6 +21,11 @@ test.describe('PLR-05 Play a video resource', () => {
         timeout: 20000,
       })
       .toBeGreaterThanOrEqual(3);
+    // isPlayerOpen()/toBeAttached() only prove the close icon and video element exist — not that it occupies a
+    // real amount of screen. CONFIRMED LIVE: a correctly-opened video element is ~300x185 in this window.
+    const box = await user.player.videoElement.boundingBox();
+    expect(box.width, 'the video renders at a real size, not collapsed').toBeGreaterThan(100);
+    expect(box.height, 'the video renders at a real size, not collapsed').toBeGreaterThan(80);
   };
 
   test(

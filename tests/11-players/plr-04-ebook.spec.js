@@ -37,6 +37,8 @@ test.describe('PLR-04 Navigate an ebook', () => {
     'PLR-04-01: opening a chapter-specific ebook resource and navigating to a new chapter works',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
+      // NOTE: on 2026-09-23 this reproducibly failed to open on two separate QA servers/accounts (see PL-02-01's
+      // note for the full history). Re-tested later the same day: opens and works reliably. Reverted test.fail().
       await openEbook(user);
       const chapters = user.player.ebookChapterItems;
       expect(await chapters.count(), 'the ebook has more than one chapter').toBeGreaterThan(1);

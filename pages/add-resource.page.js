@@ -194,6 +194,25 @@ class AddResourcePage {
     await this.submitBtn.click();
   }
 
+  /** Reads the DropIt pairing QR (dropitQrCanvas) and decodes it to the real pairing URL it encodes, using jsQR
+   * (a dependency-free browser QR decoder, injected directly into the page). CONFIRMED LIVE (2026-09-23): the QR
+   * decodes to https://tce-drop-it.web.app/cepweb-dropit/<token> -- a real, public web page a second browser
+   * context can open directly (see pages/dropit-companion.page.js), not something requiring an actual phone.
+   * Returns null if the canvas can't be read or decoded. */
+  async decodeDropitQrUrl() {
+    await this.dropitQrCanvas.waitFor({ state: 'visible', timeout: 15000 });
+    await this.page.addScriptTag({ path: require.resolve('jsqr/dist/jsQR.js') });
+    return this.page.evaluate(() => {
+      const canvas = document.querySelector('.qrcode canvas');
+      if (!canvas) return null;
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // eslint-disable-next-line no-undef -- jsQR is a global attached by the injected script tag above
+      const result = jsQR(imageData.data, imageData.width, imageData.height);
+      return result ? result.data : null;
+    });
+  }
+
   createTextAsset(title) {
     return this.createAsset(title, TEXT_FILE);
   }

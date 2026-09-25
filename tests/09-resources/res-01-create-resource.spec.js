@@ -229,9 +229,21 @@ test.describe('RES-01 Create Resource', () => {
 
       await user.player.openResourceCard(added);
       expect(await user.player.isPlayerOpen(), 'the added asset opened').toBe(true);
-      await expect(user.player.imageWrapper.or(user.player.imageGalleryImg).first(), 'and it rendered').toBeVisible({
-        timeout: 15000,
-      });
+      const rendered = user.player.imageWrapper.or(user.player.imageGalleryImg).first();
+      await expect(rendered, 'and it rendered').toBeVisible({ timeout: 15000 });
+      // isPlayerOpen()/toBeVisible() only prove the close icon and the wrapper exist — not that the player actually
+      // occupies a real amount of screen, not a broken sliver. CONFIRMED LIVE: this uses createImageAsset's small
+      // test PNG (same as PLR-06-02, not a full curriculum image), which the OR can resolve to the bare <img>
+      // (imageGalleryImg) rather than the full ~980x620 wrapper — matching PLR-06-02's own confirmed-live threshold
+      // (>50) for this exact path, not the larger wrapper's threshold.
+      await expect
+        .poll(async () => (await rendered.boundingBox())?.width || 0, {
+          message: 'the image player finishes rendering to a real size',
+          timeout: 10000,
+        })
+        .toBeGreaterThan(50);
+      const box = await rendered.boundingBox();
+      expect(box.height, 'the image player renders at a real size, not collapsed').toBeGreaterThan(50);
 
       await user.player.closePlayer();
       // CONFIRMED LIVE: closing the player leaves the Playlist drawer lowered (the card sits ~20px lower, under the

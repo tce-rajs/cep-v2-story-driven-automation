@@ -14,15 +14,26 @@ test.describe('PL-03 Resource List', () => {
       { tag: ['@regression'] },
       async ({ user }) => {
         const { player, playlist, addResource } = user;
-        for (const [name, cards] of [
-          ['PDF', player.worksheetCards],
-          ['video', player.videoCards],
-          ['image', player.imageCards],
-          ['weblink', player.weblinkCards],
+        for (const [name, cards, rendered] of [
+          ['PDF', player.worksheetCards, player.worksheetHeader.or(user.page.locator('canvas').first())],
+          ['video', player.videoCards, player.videoElement],
+          ['image', player.imageCards, player.imageWrapper.or(player.imageGalleryImg).first()],
+          ['weblink', player.weblinkCards, player.weblinkWrapper],
         ]) {
           await expect(cards.first(), `${name} card present`).toBeAttached({ timeout: 10000 });
           await player.openResourceCard(cards);
           expect(await player.isPlayerOpen(), `${name} opened`).toBe(true);
+          // isPlayerOpen() only proves the close icon exists, not that the player occupies a real amount of
+          // screen. CONFIRMED LIVE elsewhere in this suite: each of these types renders at ~150px+ in both
+          // dimensions when working correctly.
+          await expect
+            .poll(async () => (await rendered.boundingBox())?.width || 0, {
+              message: `the ${name} finishes rendering to a real size`,
+              timeout: 20000,
+            })
+            .toBeGreaterThan(100);
+          const box = await rendered.boundingBox();
+          expect(box.height, `the ${name} renders at a real size, not collapsed`).toBeGreaterThan(80);
           await player.closePlayer();
 
           await expect(playlist.contentsTile, `Contents visible after closing the ${name}`).toBeVisible();

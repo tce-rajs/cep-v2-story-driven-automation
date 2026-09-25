@@ -86,14 +86,28 @@ test.describe('RES-02 Library', () => {
       await openFirstResult(user);
 
       // Whatever the type, a preview opened over the results with its own content and a way out.
+      // CONFIRMED LIVE: a plain `canvas` selector can match a small decorative `.minimap-canvas` (250x150,
+      // scaled to ~75x46 on screen) instead of the actual content — excluded here so the size check below means
+      // something.
       const typeSpecific = user.page
         .locator(
-          '.vjs-play-control, .pdf-header, .worksheet-header, .player.image-player, .image-gallery, iframe, canvas'
+          '.vjs-play-control, .pdf-header, .worksheet-header, .player.image-player, .image-gallery, iframe, canvas:not(.minimap-canvas)'
         )
         .first();
       await expect(typeSpecific, 'a type-specific preview (video / PDF / image / web) is showing').toBeVisible({
         timeout: 15000,
       });
+      // toBeVisible() only proves SOME matching element exists, not that the preview occupies a real amount of
+      // screen. CONFIRMED LIVE: a genuine content match can still be mid-layout (a narrow sliver) right after
+      // becoming visible, then settle to its real size — poll rather than measure once.
+      await expect
+        .poll(async () => (await typeSpecific.boundingBox())?.width || 0, {
+          message: 'the preview finishes rendering to a real size',
+          timeout: 20000,
+        })
+        .toBeGreaterThan(100);
+      const box = await typeSpecific.boundingBox();
+      expect(box.height, 'the preview renders at a real size, not collapsed').toBeGreaterThan(80);
     }
   );
 

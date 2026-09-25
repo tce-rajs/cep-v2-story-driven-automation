@@ -13,6 +13,16 @@ test.describe('PLR-07 Annotate on Playlist assets', () => {
     await expect(user.player.worksheetCards.first()).toBeAttached({ timeout: 10000 });
     await user.player.openResourceCard(user.player.worksheetCards);
     expect(await user.player.isPlayerOpen(), 'the asset opened').toBe(true);
+    // isPlayerOpen() only proves the close icon exists — not that the PDF occupies a real amount of screen. A
+    // collapsed player would otherwise surface here only as a confusing stroke-count/geometry mismatch further
+    // down. CONFIRMED LIVE elsewhere in this suite: a correctly-opened worksheet canvas is 1200+px tall.
+    const rendered = user.player.worksheetHeader.or(user.page.locator('canvas').first());
+    await expect
+      .poll(async () => (await rendered.first().boundingBox())?.width || 0, {
+        message: 'the worksheet finishes rendering to a real size',
+        timeout: 20000,
+      })
+      .toBeGreaterThan(150);
     await user.page.waitForTimeout(2500);
     await clearAnnotations(user);
   };

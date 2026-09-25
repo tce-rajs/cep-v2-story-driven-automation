@@ -1,9 +1,26 @@
 // RES-04 — DropIt
 // Source: CEPV2_Stories/09_Resources.md
-// DropIt pairs a phone with the classroom screen via a QR code. Everything after the pairing step needs a real second
-// device scanning that code, which an automated run does not have — those cases are written as fixme with the reason.
+// DropIt pairs a phone with the classroom screen via a QR code.
+//
+// RES-04-03..06 were originally fixme'd as needing a real second device to scan the code -- CONFIRMED LIVE
+// (2026-09-23/24) that this is no longer true. The QR decodes (via jsQR, injected into the page -- see
+// AddResourcePage.decodeDropitQrUrl()) to a real, public URL: https://tce-drop-it.web.app/cepweb-dropit/<token>.
+// That page is what a phone's camera app would open after scanning, and it is a normal (if Flutter-rendered)
+// web page a second Playwright browser context can open directly, exactly like this suite's existing
+// two-session tests (see wb-06-annotation.spec.js's openSecondSession). No hardware needed.
+//
+// The companion page is Flutter Web (canvas-rendered, no real DOM for its visible UI), so pages/dropit-
+// companion.page.js drives it by fixed coordinates within a fixed viewport, not locators -- see that file's own
+// header for the full explanation. Every assertion here reads the CLASSROOM side's real DOM status instead of
+// trying to read anything back from the phone page.
 
+const { chromium } = require('@playwright/test');
 const { test, expect } = require('../../fixtures');
+const { DropitCompanionPage } = require('../../pages/dropit-companion.page');
+const { PNG_FILE } = require('../../pages/add-resource.page');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 test.describe('RES-04 DropIt', () => {
   test.use({ classMap: 'default' });
@@ -11,6 +28,27 @@ test.describe('RES-04 DropIt', () => {
   const openDropIt = async (user) => {
     await user.addResource.openAction('dropit');
     await expect(user.addResource.dropitQrCanvas).toBeVisible({ timeout: 15000 });
+  };
+
+  /** Opens DropIt, decodes its QR, and "scans" it from a genuinely separate browser context (own process, own
+   * storage -- the same isolation a real second device would have). Resolves once the classroom side's own
+   * status locator confirms pairing, so every caller starts from a proven-connected state. Returns
+   * { browser, phone } -- the caller must `await browser.close()` when done. */
+  const pairDropit = async (user) => {
+    await openDropIt(user);
+    const url = await user.addResource.decodeDropitQrUrl();
+    expect(url, 'the QR decodes to a real pairing URL').toBeTruthy();
+
+    const browser = await chromium.launch();
+    const context = await browser.newContext({ viewport: DropitCompanionPage.viewport });
+    const phone = new DropitCompanionPage(await context.newPage());
+    await phone.open(url);
+
+    await expect(user.addResource.dropitConnectionStatus, 'the classroom side confirms pairing').toHaveText(
+      /connected/i,
+      { timeout: 15000 }
+    );
+    return { browser, phone };
   };
 
   test('RES-04-01: opening DropIt displays a QR code', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
@@ -36,25 +74,142 @@ test.describe('RES-04 DropIt', () => {
     }
   );
 
-  test.fixme('RES-04-03: scanning the QR code successfully pairs the device', async () => {
-    // BLOCKED: needs a second device (a phone running the DropIt companion) to scan the on-screen code. There is
-    // none in an automated run. To automate: give the run a second browser context that opens the pairing URL the
-    // QR encodes, and expose that URL (or a test hook) so the suite can read it.
-    // TRIED 2026-09-20 (v 0.0.223): the QR is a plain 200x200 <canvas> with no data attribute carrying its content, the
-    // client's Chromium has no BarcodeDetector, and no QR-decoder library is installed (none could be fetched here), so the
-    // pairing URL could not be read. Pairing runs over Firestore, so the phone side is not a page this suite can open either.
-  });
+  test(
+    'RES-04-03: scanning the QR code successfully pairs the device',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      const { browser } = await pairDropit(user);
+      // pairDropit()'s own assertion IS the pairing check (dropitConnectionStatus reads "Connected") -- this
+      // test exists as its own case per the story, so the assertion is restated explicitly here too.
+      await expect(user.addResource.dropitConnectionStatus).toHaveText(/connected/i);
+      await browser.close();
+    }
+  );
 
-  test.fixme('RES-04-04: a paired session allows sharing a link, and the shared link opens correctly when accessed', async () => {
-    // BLOCKED: needs a paired device (see RES-04-03).
-  });
+  test(
+    'RES-04-04: a paired session allows sharing a link, and the shared link opens correctly when accessed',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      test.setTimeout(60000);
+      const { browser, phone } = await pairDropit(user);
+      const sharedUrl = 'https://example.com/';
+      try {
+        const before = await user.playlist.resourceCards.count();
+        await phone.shareLink(sharedUrl);
 
-  test.fixme('RES-04-05: a paired session allows sharing a file, and the shared file opens correctly when accessed', async () => {
-    // BLOCKED: needs a paired device (see RES-04-03).
-  });
+        // The classroom side closes DropIt and the new card appears in the Playlist -- not just a "success"
+        // indicator on the phone (that phone-side text is unreadable anyway; see the file header).
+        await user.addResource.dropitCloseBtn.click({ force: true, timeout: 5000 }).catch(() => {});
+        await user.playlist.ensureDrawerVisible();
+        await expect(user.playlist.resourceCards, 'a new card was added for the shared link').toHaveCount(before + 1, {
+          timeout: 15000,
+        });
 
-  test.fixme('RES-04-06: DropIt’s "success shown but resource missing" failure mode does not recur', async () => {
-    // BLOCKED: needs a paired device (see RES-04-03). When automated, it must assert the shared link/file actually
-    // OPENS, not merely that a success message appeared.
-  });
+        const added = user.playlist.resourceCards.last();
+        const title = ((await added.innerText()) || '').trim();
+        test.info().annotations.push({ type: 'note', description: `Shared-link card title: "${title}"` });
+
+        // "Opens correctly when accessed": open it and confirm a real weblink player renders, not an error.
+        await user.player.openResourceCard(added);
+        expect(await user.player.isPlayerOpen(), 'the shared link opened').toBe(true);
+        await expect(user.player.weblinkWrapper, 'a weblink player rendered').toBeVisible({ timeout: 15000 });
+        const box = await user.player.weblinkWrapper.boundingBox();
+        expect(box.width, 'it renders at a real size, not collapsed').toBeGreaterThan(150);
+        expect(box.height).toBeGreaterThan(150);
+
+        await user.player.closePlayer();
+        await user.playlist.ensureDrawerVisible();
+        await user.playlist.removeOwnedAsset(added);
+      } finally {
+        await browser.close();
+      }
+    }
+  );
+
+  test(
+    'RES-04-05: a paired session allows sharing a file, and the shared file opens correctly when accessed',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      test.setTimeout(60000);
+      const { browser, phone } = await pairDropit(user);
+      // CONFIRMED LIVE: DropIt only accepts png|jpg|jpeg|gif|bmp|pdf|doc|docx -- a .txt is rejected outright,
+      // no upload attempted, so this deliberately reuses the suite's existing valid PNG fixture.
+      const tmpFile = path.join(os.tmpdir(), PNG_FILE.name);
+      fs.writeFileSync(tmpFile, PNG_FILE.buffer);
+      try {
+        const before = await user.playlist.resourceCards.count();
+        await phone.uploadFile(tmpFile);
+
+        // CONFIRMED LIVE: a successful upload auto-closes DropIt and auto-opens the image player on the
+        // classroom side (more automatic than the link-share case, which only adds a Playlist card).
+        expect(await user.player.isPlayerOpen(), 'the uploaded file auto-opened').toBe(true);
+        const rendered = user.player.imageWrapper.or(user.player.imageGalleryImg).first();
+        await expect(rendered, 'an image player rendered').toBeVisible({ timeout: 15000 });
+        const box = await rendered.boundingBox();
+        expect(box.width, 'it renders at a real size, not collapsed').toBeGreaterThan(50);
+        expect(box.height).toBeGreaterThan(50);
+
+        await user.player.closePlayer();
+        await user.playlist.ensureDrawerVisible();
+        await expect(user.playlist.resourceCards, 'a new card was added for the uploaded file').toHaveCount(
+          before + 1,
+          { timeout: 15000 }
+        );
+        // Closing a player leaves the drawer lowered until re-expanded (see PlaylistPage's own notes); the wait
+        // above is long enough for it to have re-collapsed, so re-confirm right before the hover-sensitive
+        // removal rather than trusting the earlier call to still hold.
+        await user.playlist.ensureDrawerVisible();
+        await user.playlist.removeOwnedAsset(user.playlist.resourceCards.last());
+      } finally {
+        fs.unlinkSync(tmpFile);
+        await browser.close();
+      }
+    }
+  );
+
+  test(
+    'RES-04-06: DropIt’s "success shown but resource missing" failure mode does not recur',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      test.setTimeout(90000);
+      // Exercises both share paths in one regression case, checking the one thing the original bug report was
+      // about: the Playlist's own COUNT genuinely increasing, not just a "success"/"Resource Created" indicator
+      // appearing somewhere. RES-04-04/05 already verify each resource also OPENS correctly; this test is
+      // specifically about presence, the exact dimension the bug was in.
+      const { browser: linkBrowser, phone: linkPhone } = await pairDropit(user);
+      const beforeLink = await user.playlist.resourceCards.count();
+      try {
+        await linkPhone.shareLink('https://example.org/');
+        await user.addResource.dropitCloseBtn.click({ force: true, timeout: 5000 }).catch(() => {});
+        await user.playlist.ensureDrawerVisible();
+        await expect(
+          user.playlist.resourceCards,
+          'the shared link genuinely created a Playlist resource, not just a success message'
+        ).toHaveCount(beforeLink + 1, { timeout: 15000 });
+        await user.playlist.ensureDrawerVisible(); // re-confirm: the wait above is long enough to have re-collapsed it
+        await user.playlist.removeOwnedAsset(user.playlist.resourceCards.last());
+      } finally {
+        await linkBrowser.close();
+      }
+
+      const { browser: fileBrowser, phone: filePhone } = await pairDropit(user);
+      const tmpFile = path.join(os.tmpdir(), PNG_FILE.name);
+      fs.writeFileSync(tmpFile, PNG_FILE.buffer);
+      const beforeFile = await user.playlist.resourceCards.count();
+      try {
+        await filePhone.uploadFile(tmpFile);
+        await user.player.closePlayer().catch(() => {});
+        await user.playlist.ensureDrawerVisible();
+        await expect(
+          user.playlist.resourceCards,
+          'the uploaded file genuinely created a Playlist resource, not just a success message'
+        ).toHaveCount(beforeFile + 1, { timeout: 15000 });
+        await user.playlist.ensureDrawerVisible(); // re-confirm: the wait above is long enough to have re-collapsed it
+        await user.playlist.removeOwnedAsset(user.playlist.resourceCards.last());
+      } finally {
+        fs.unlinkSync(tmpFile);
+        await fileBrowser.close();
+      }
+    }
+  );
 });

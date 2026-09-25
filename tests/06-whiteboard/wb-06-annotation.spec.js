@@ -81,9 +81,20 @@ test.describe('WB-06 Annotation', () => {
         expect(saved.paths + saved.images + saved.texts.length, 'content was added').toBeGreaterThan(
           before.paths + before.images + before.texts.length
         );
+        const savedGeometry = await user.content.pathGeometry();
+        const savedImages = await user.content.imageFingerprint();
 
         await reloadApp(user);
         expect(await user.content.snapshot(), 'still there after a refresh').toEqual(saved);
+        // snapshot() only counts paths/images; these catch a refresh that keeps the right COUNT but corrupts the
+        // exact shape/position (geometry) or swaps in the wrong image (identity).
+        expect(await user.content.pathGeometry(), 'exact stroke/shape geometry survived the refresh').toEqual(
+          savedGeometry
+        );
+        expect(
+          await user.content.imageFingerprint(),
+          'exact images (identity, position, size) survived the refresh'
+        ).toEqual(savedImages);
       });
     }
   });
@@ -95,11 +106,15 @@ test.describe('WB-06 Annotation', () => {
       await user.content.addAll(`topicswitch${Date.now()}`);
       await user.content.waitForSaved();
       const before = await user.content.snapshot();
+      const beforeGeometry = await user.content.pathGeometry();
+      const beforeImages = await user.content.imageFingerprint();
 
       await goTo(user, TOPIC_B);
       await goTo(user, TOPIC_A);
 
       expect(await user.content.snapshot()).toEqual(before);
+      expect(await user.content.pathGeometry(), 'exact geometry survived the topic switch').toEqual(beforeGeometry);
+      expect(await user.content.imageFingerprint(), 'exact images survived the topic switch').toEqual(beforeImages);
     }
   );
 
@@ -107,24 +122,36 @@ test.describe('WB-06 Annotation', () => {
     await user.content.addAll(`relogin${Date.now()}`);
     await user.content.waitForSaved();
     const before = await user.content.snapshot();
+    const beforeGeometry = await user.content.pathGeometry();
+    const beforeImages = await user.content.imageFingerprint();
 
     await user.userMenu.signOut();
     await user.signIn();
     await goTo(user, TOPIC_A); // whether login itself returns here is NAV-05, not this case
 
     expect(await user.content.snapshot()).toEqual(before);
+    expect(await user.content.pathGeometry(), 'exact geometry survived the logout/login round-trip').toEqual(
+      beforeGeometry
+    );
+    expect(await user.content.imageFingerprint(), 'exact images survived the logout/login round-trip').toEqual(
+      beforeImages
+    );
   });
 
   test('WB-06-05: class switch round-trip keeps the added content', { tag: ['@functional'] }, async ({ user }) => {
     await user.content.addAll(`classswitch${Date.now()}`);
     await user.content.waitForSaved();
     const before = await user.content.snapshot();
+    const beforeGeometry = await user.content.pathGeometry();
+    const beforeImages = await user.content.imageFingerprint();
 
     await user.nav.resetToClass('Class 9', 'A', 'Hindi Language');
     await user.nav.applyClassMap('toolbarGeneral'); // back to Class 12A Physics, chapter 0 topic 0
     await user.toolbar.waitForBoardToSettle();
 
     expect(await user.content.snapshot()).toEqual(before);
+    expect(await user.content.pathGeometry(), 'exact geometry survived the class switch').toEqual(beforeGeometry);
+    expect(await user.content.imageFingerprint(), 'exact images survived the class switch').toEqual(beforeImages);
   });
 
   test(

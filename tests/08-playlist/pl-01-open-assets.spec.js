@@ -20,7 +20,21 @@ test.describe('PL-01 Open assets from Playlist', () => {
         await player.openResourceCard(player.worksheetCards);
 
         expect(await player.isPlayerOpen(), 'the PDF player opened').toBe(true);
-        await expect(player.worksheetHeader.or(user.page.locator('canvas').first())).toBeVisible({ timeout: 15000 });
+        const rendered = player.worksheetHeader.or(user.page.locator('canvas').first());
+        await expect(rendered).toBeVisible({ timeout: 15000 });
+        // isPlayerOpen()/toBeVisible() only prove the close icon and a header/canvas exist — not that the PDF
+        // occupies a real amount of screen. CONFIRMED LIVE: the canvas can still be mid-layout (a narrow sliver)
+        // right after becoming visible, then settle to its real ~1200px-tall size — poll rather than measure once.
+        // CONFIRMED LIVE on a second server: a real multi-page curriculum PDF can take longer than 10s to settle
+        // (a synthetic single-page test PDF settled well within that); 20s covers both.
+        await expect
+          .poll(async () => (await rendered.first().boundingBox())?.width || 0, {
+            message: 'the PDF finishes rendering to a real size',
+            timeout: 20000,
+          })
+          .toBeGreaterThan(150);
+        const box = await rendered.first().boundingBox();
+        expect(box.height, 'the PDF renders at a real size, not collapsed').toBeGreaterThan(150);
         await player.closePlayer();
       }
     );
@@ -35,6 +49,17 @@ test.describe('PL-01 Open assets from Playlist', () => {
 
         expect(await player.isPlayerOpen(), 'the video player opened').toBe(true);
         await expect(player.videoFrame.or(player.videoPlayToggle)).toBeVisible({ timeout: 15000 });
+        // isPlayerOpen()/toBeVisible() only prove the close icon and frame/toggle exist — not that the video
+        // occupies a real amount of screen. CONFIRMED LIVE: a correctly-opened video element is ~300x185.
+        await expect(player.videoElement).toBeAttached({ timeout: 15000 });
+        await expect
+          .poll(async () => (await player.videoElement.boundingBox())?.width || 0, {
+            message: 'the video finishes rendering to a real size',
+            timeout: 10000,
+          })
+          .toBeGreaterThan(100);
+        const box = await player.videoElement.boundingBox();
+        expect(box.height, 'the video renders at a real size, not collapsed').toBeGreaterThan(80);
         await player.closePlayer();
       }
     );
@@ -63,15 +88,26 @@ test.describe('PL-01 Open assets from Playlist', () => {
       { tag: ['@functional'] },
       async ({ user }) => {
         const { player } = user;
-        for (const [name, cards] of [
-          ['video', player.videoCards],
-          ['PDF', player.worksheetCards],
-          ['image', player.imageCards],
-          ['video again', player.videoCards],
+        for (const [name, cards, rendered] of [
+          ['video', player.videoCards, player.videoElement],
+          ['PDF', player.worksheetCards, player.worksheetHeader.or(user.page.locator('canvas').first())],
+          ['image', player.imageCards, player.imageWrapper.or(player.imageGalleryImg).first()],
+          ['video again', player.videoCards, player.videoElement],
         ]) {
           await expect(cards.first(), `${name} card present`).toBeAttached({ timeout: 10000 });
           await player.openResourceCard(cards);
           expect(await player.isPlayerOpen(), `${name} opened`).toBe(true);
+          // isPlayerOpen() only proves the close icon exists, not that a leftover from the PREVIOUS player didn't
+          // leave this one rendering broken/collapsed. CONFIRMED LIVE elsewhere in this suite: each of these types
+          // renders at 100px+/80px+ when working correctly.
+          await expect
+            .poll(async () => (await rendered.boundingBox())?.width || 0, {
+              message: `the ${name} finishes rendering to a real size`,
+              timeout: 20000,
+            })
+            .toBeGreaterThan(100);
+          const box = await rendered.boundingBox();
+          expect(box.height, `the ${name} renders at a real size, not collapsed`).toBeGreaterThan(80);
           await player.closePlayer();
           expect(await player.isPlayerOpen(3000), `${name} closed before opening the next`).toBe(false);
         }
@@ -80,12 +116,11 @@ test.describe('PL-01 Open assets from Playlist', () => {
 
     test(
       'PL-01-06: an asset that failed to load or is corrupted shows an error, not a silent failure',
-      { tag: ['@negative', '@bug'] },
+      { tag: ['@negative'] },
       async ({ user, page }) => {
-        // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223, screenshot-verified): when the PDF's file request fails
-        // (net::ERR_FAILED) the app shows a dark screen with a spinner and nothing else -- no error message and no
-        // visible close button, so the teacher is stuck on a loader. Tracked as expected-to-fail so it isn't masked.
-        test.fail(true, 'A PDF that fails to load leaves a blank loader with no error message');
+        // NOTE: v0.0.223 showed a blank loader with no error message here (tracked at the time as a confirmed
+        // product bug). Re-tested 2026-09-23: a real error message now appears reliably, including in isolation.
+        // Reverted the test.fail() marking since it currently works correctly.
         // Make every media/document file request fail, then open the PDF asset.
         const blockFiles = (route) => route.abort();
         await page.route(/\.(pdf|mp4|m3u8|webm|jpe?g|png)(\?|$)/i, blockFiles);
@@ -120,7 +155,21 @@ test.describe('PL-01 Open assets from Playlist', () => {
         await player.openResourceCard(player.quizCards);
 
         // The quiz opens on its launch screen first (then the class-strength step, then the questions).
-        await expect(player.quizLaunchScreenBtn.or(player.quizRenderer)).toBeVisible({ timeout: 15000 });
+        const rendered = player.quizLaunchScreenBtn.or(player.quizRenderer);
+        await expect(rendered).toBeVisible({ timeout: 15000 });
+        // Being visible only proves an element exists, not that the quiz occupies a real amount of screen, not a
+        // broken sliver. CONFIRMED LIVE: the "Launch AIR Card" button is a small button by design (~50px tall), so
+        // only size-check once past it, when the full renderer (~980x740 in this window) is what's showing.
+        if (await player.quizRenderer.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await expect
+            .poll(async () => (await player.quizRenderer.boundingBox())?.width || 0, {
+              message: 'the quiz finishes rendering to a real size',
+              timeout: 10000,
+            })
+            .toBeGreaterThan(150);
+          const box = await player.quizRenderer.boundingBox();
+          expect(box.height, 'the quiz renders at a real size, not collapsed').toBeGreaterThan(150);
+        }
       }
     );
   });

@@ -33,8 +33,22 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       await openWorksheet(user);
-      await expect(user.player.worksheetHeader.or(user.page.locator('canvas').first())).toBeVisible({ timeout: 15000 });
+      const rendered = user.player.worksheetHeader.or(user.page.locator('canvas').first());
+      await expect(rendered).toBeVisible({ timeout: 15000 });
       expect(await currentPage(user), 'it opens on a numbered page').not.toBeNull();
+      // isPlayerOpen()/toBeVisible() only prove the close icon and a header/canvas exist — not that the PDF
+      // occupies a real amount of screen. CONFIRMED LIVE: the canvas can still be mid-layout (a narrow sliver)
+      // right after becoming visible, then settle to its real ~1200px-tall size — poll rather than measure once.
+      // CONFIRMED LIVE on a second server: a real multi-page curriculum PDF can take longer than 10s to settle;
+      // 20s covers both.
+      await expect
+        .poll(async () => (await rendered.first().boundingBox())?.width || 0, {
+          message: 'the PDF finishes rendering to a real size',
+          timeout: 20000,
+        })
+        .toBeGreaterThan(150);
+      const box = await rendered.first().boundingBox();
+      expect(box.height, 'the PDF renders at a real size, not collapsed').toBeGreaterThan(150);
     }
   );
 
@@ -193,6 +207,11 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
       await user.player.openResourceCard(user.player.weblinkCards);
       await page.waitForTimeout(2500);
       await expect(user.player.weblinkWrapper, 'the weblink opened').toBeVisible({ timeout: 15000 });
+      // toBeVisible() only proves the wrapper exists, not that it occupies a real amount of screen alongside the
+      // worksheet. CONFIRMED LIVE: a correctly-opened weblink wrapper is ~980x760 in this window.
+      const weblinkBox = await user.player.weblinkWrapper.boundingBox();
+      expect(weblinkBox.width, 'the weblink renders at a real size, not collapsed').toBeGreaterThan(150);
+      expect(weblinkBox.height, 'the weblink renders at a real size, not collapsed').toBeGreaterThan(150);
 
       // Neither broke the other: the PDF is still there and still turns pages.
       const before = await currentPage(user);

@@ -29,6 +29,7 @@ const { BASE_URL } = require('../config/env');
 const CLIENT_EXE_PATH =
   process.env.CLASSEDGE_CLIENT_EXE ||
   'C:\\Users\\v_crystalQA3\\AppData\\Local\\Programs\\tceclient\\Tata ClassEdge School.exe';
+const TCE_SETTINGS_PATH = process.env.TCE_SETTINGS_PATH || 'C:\\Users\\Public\\tce_settings.json';
 
 // Every spec was written against a plain browser `page`, where Playwright's
 // own `baseURL` config option lets `page.goto('./')` resolve automatically.
@@ -99,6 +100,15 @@ async function findTeachWindow(app, timeout = 30000) {
 // if the content is STILL missing after that -- per explicit user decision,
 // don't silently ignore a real empty/broken page just because the overlay
 // itself is known to be a tooling artifact.
+//
+// UPDATE (screenshot from the owner, 2026-09-24): this same overlay was seen
+// mid-session -- real class/topic content visible underneath, well past
+// launch -- not just in the launch-time race described above. That means it
+// isn't safe to assume "launch-only, cosmetic, ignore if content recovers"
+// in every case. So this is also checked between tests (isWindowHealthy,
+// below) and reported explicitly (not just silently retried/relaunched
+// around) whenever it's caught at the end of a failed test, so a run where
+// this happened is never mistaken for an ordinary app/locator failure.
 async function isConnectionErrorShowing(app) {
   const shell = app.windows().find((w) => w.url().includes('app.asar'));
   if (!shell) return false;
@@ -170,11 +180,37 @@ function assertClientInstalled() {
   }
 }
 
+// CONFIRMED LIVE in client-automation/tests/04-multi-profile.spec.js: with 2+ profiles saved in
+// tce_settings.json, cold launch shows a "SELECT PROFILE" chooser screen instead of connecting directly --
+// this fixture has no code path for that screen, so every test would otherwise hang until Playwright's own
+// timeout, with no indication of why. Fail fast with a message that says what's actually wrong and how to fix
+// it (npm run set-server), instead of a confusing generic timeout on every single test.
+function assertSingleProfile() {
+  if (!fs.existsSync(TCE_SETTINGS_PATH)) return; // missing entirely is a different, pre-existing failure mode
+  let settings;
+  try {
+    settings = JSON.parse(fs.readFileSync(TCE_SETTINGS_PATH, 'utf8'));
+  } catch {
+    return; // unreadable/invalid JSON is also a different failure mode -- let the launch itself surface it
+  }
+  const count = Array.isArray(settings.profiles) ? settings.profiles.length : 0;
+  if (count > 1) {
+    const titles = settings.profiles.map((p) => p.title).join(', ');
+    throw new Error(
+      `BLOCKER: ${TCE_SETTINGS_PATH} has ${count} saved profiles (${titles}), not 1. With 2+ profiles the ` +
+        `client shows a "SELECT PROFILE" picker on launch instead of connecting directly, which this suite's ` +
+        `launch fixture has no code path for -- every test would hang until timeout instead of failing clearly. ` +
+        `Fix: run "npm run set-server -- <url>" to collapse back down to a single profile before running tests.`
+    );
+  }
+}
+
 // Same launch-and-recover loop the fixture always used, extracted so both
 // the worker's initial launch and a mid-worker recovery relaunch (see the
 // `page` fixture below) share one implementation.
 async function launchWithRetry() {
   assertClientInstalled();
+  assertSingleProfile();
 
   let app, teachWindow;
   for (let attempt = 1; attempt <= MAX_LAUNCH_ATTEMPTS; attempt++) {
@@ -265,9 +301,12 @@ async function resetSession(teachWindow) {
 /** Cheap health check before reusing a window for the next test -- reuses
  * the same hasRealContent() signal the initial launch already trusts, plus
  * an explicit isClosed() check (a crashed webview can close its own window
- * without the whole Electron app going down). */
-async function isWindowHealthy(teachWindow) {
+ * without the whole Electron app going down), plus the connection-error
+ * overlay check (confirmed live 2026-09-24: it can also latch mid-session,
+ * not just at launch -- see isConnectionErrorShowing's own comment). */
+async function isWindowHealthy(teachWindow, app) {
   if (teachWindow.isClosed()) return false;
+  if (await isConnectionErrorShowing(app)) return false;
   return hasRealContent(teachWindow);
 }
 
@@ -287,11 +326,11 @@ const clientTest = base.test.extend({
   ],
 
   page: [
-    async ({ workerApp }, use) => {
+    async ({ workerApp }, use, testInfo) => {
       let healthy = false;
       try {
         await resetSession(workerApp.teachWindow);
-        healthy = await isWindowHealthy(workerApp.teachWindow);
+        healthy = await isWindowHealthy(workerApp.teachWindow, workerApp.app);
       } catch {
         healthy = false;
       }
@@ -304,6 +343,25 @@ const clientTest = base.test.extend({
       }
 
       await use(workerApp.teachWindow);
+
+      // A failed test's own error (a timed-out locator, an unexpected URL, ...) doesn't say WHY --
+      // if the real cause was this overlay covering the screen mid-test, say so explicitly instead
+      // of leaving the report looking like an ordinary app/locator bug. Checked after use(), not
+      // before: the overlay latching is itself the failure signal here, so this only fires on a
+      // test that already failed.
+      if (testInfo.status !== testInfo.expectedStatus && (await isConnectionErrorShowing(workerApp.app))) {
+        testInfo.annotations.push({
+          type: 'BLOCKER',
+          description:
+            'The "ERROR #404 -- Unable to connect ClassEdge server" overlay was covering the app when this ' +
+            "test failed. Treat this run's result as a connectivity blocker, not a real test/product bug, " +
+            'until this is confirmed clear on a rerun.',
+        });
+        console.error(
+          `BLOCKER: "${testInfo.title}" failed with the connection-error overlay showing -- ` +
+            `see the test's annotations. Rerun after confirming the QA server is reachable.`
+        );
+      }
     },
     { timeout: 100000 }, // covers the rare mid-worker recovery relaunch, same as workerApp's own launch
   ],

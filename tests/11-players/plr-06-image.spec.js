@@ -36,6 +36,16 @@ test.describe('PLR-06 View an image resource', () => {
     await openImage(user);
     expect(await user.player.isPlayerOpen(), 'the image player opened').toBe(true);
     await expect(user.player.imageWrapper).toBeVisible({ timeout: 15000 });
+    // isPlayerOpen()/toBeVisible() only prove the close icon and wrapper exist — not that the player occupies a
+    // real amount of screen, not a broken sliver. CONFIRMED LIVE: a correctly-opened image player is ~980x620.
+    await expect
+      .poll(async () => (await user.player.imageWrapper.boundingBox())?.width || 0, {
+        message: 'the image player finishes rendering to a real size',
+        timeout: 15000,
+      })
+      .toBeGreaterThan(150);
+    const box = await user.player.imageWrapper.boundingBox();
+    expect(box.height, 'the image player renders at a real size, not collapsed').toBeGreaterThan(150);
   });
 
   test('PLR-06-02: the image renders correctly', { tag: ['@functional'] }, async ({ user }) => {

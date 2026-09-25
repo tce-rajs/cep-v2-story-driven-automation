@@ -82,6 +82,24 @@ class WhiteboardContent {
     return this.toolbar.paths.evaluateAll((els) => els.map((e) => e.getAttribute('d')));
   }
 
+  /** The identity, position and size of every image on the board. `snapshot()` only counts images, so a reload that
+   * restores the right COUNT but the WRONG image (or shifts/resizes it) passes snapshot() unnoticed — this catches
+   * that. CONFIRMED LIVE: the SVG <image> element carries its href as `xlink:href`, not `href`. */
+  async imageFingerprint() {
+    return this.page.evaluate(() => {
+      const svg = document.querySelector('[data-qa-id="wb-drawing-container"] svg');
+      return [...svg.querySelectorAll('image')]
+        .map((img) => ({
+          href: img.getAttribute('xlink:href') || img.getAttribute('href'),
+          x: img.getAttribute('x'),
+          y: img.getAttribute('y'),
+          width: img.getAttribute('width'),
+          height: img.getAttribute('height'),
+        }))
+        .sort((a, b) => (a.href || '').localeCompare(b.href || ''));
+    });
+  }
+
   /** A pen stroke with no settling waits at all, for volume tests. */
   async rapidStroke(from, to) {
     const box = await this.toolbar.wbSvg.boundingBox();

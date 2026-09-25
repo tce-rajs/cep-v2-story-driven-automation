@@ -27,6 +27,7 @@ module.exports = [
       'fixtures/**/*.js',
       'config/**/*.js',
       'scripts/**/*.js',
+      'client-automation/**/*.js',
     ],
     languageOptions: {
       sourceType: 'commonjs',
@@ -53,7 +54,7 @@ module.exports = [
     },
   },
   {
-    files: ['tests/**/*.spec.js'],
+    files: ['tests/**/*.spec.js', 'client-automation/tests/**/*.spec.js'],
     ...playwright.configs['flat/recommended'],
     rules: {
       ...playwright.configs['flat/recommended'].rules,

@@ -37,7 +37,21 @@ test.describe('PLR-01 Attempt a quiz', () => {
     async ({ user }) => {
       await expect(user.player.quizCards.first()).toBeAttached({ timeout: 10000 });
       await user.player.openResourceCard(user.player.quizCards);
-      await expect(user.player.quizLaunchScreenBtn.or(user.player.quizRenderer)).toBeVisible({ timeout: 15000 });
+      const rendered = user.player.quizLaunchScreenBtn.or(user.player.quizRenderer);
+      await expect(rendered).toBeVisible({ timeout: 15000 });
+      // Being visible only proves an element exists, not that the quiz occupies a real amount of screen, not a
+      // broken sliver. CONFIRMED LIVE: the "Launch AIR Card" button is a small button by design (~50px tall), so
+      // only size-check once past it, when the full renderer (~980x740 in this window) is what's showing.
+      if (await user.player.quizRenderer.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect
+          .poll(async () => (await user.player.quizRenderer.boundingBox())?.width || 0, {
+            message: 'the quiz finishes rendering to a real size',
+            timeout: 10000,
+          })
+          .toBeGreaterThan(150);
+        const box = await user.player.quizRenderer.boundingBox();
+        expect(box.height, 'the quiz renders at a real size, not collapsed').toBeGreaterThan(150);
+      }
     }
   );
 
