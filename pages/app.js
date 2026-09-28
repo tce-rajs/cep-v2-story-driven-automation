@@ -15,6 +15,12 @@ const { CompassPage } = require('./compass.page');
 const { WithoutLoginPage } = require('./without-login.page');
 const { WhiteboardContent } = require('./whiteboard-content.page');
 const { NewUserPage } = require('./new-user.page');
+const { MinimapPage } = require('./minimap.page');
+const { ProfilePage } = require('./profile.page');
+const { AttendancePage } = require('./attendance.page');
+const { AiHomeworkPage } = require('./ai-homework.page');
+const { LearningShortsPage } = require('./learning-shorts.page');
+const { AiNoticesPage } = require('./ai-notices.page');
 
 const PAGES = {
   login: LoginPage,
@@ -31,6 +37,12 @@ const PAGES = {
   guest: WithoutLoginPage,
   content: WhiteboardContent,
   newUser: NewUserPage,
+  minimap: MinimapPage,
+  profile: ProfilePage,
+  attendance: AttendancePage,
+  aiHomework: AiHomeworkPage,
+  learningShorts: LearningShortsPage,
+  aiNotices: AiNoticesPage,
 };
 
 class App {

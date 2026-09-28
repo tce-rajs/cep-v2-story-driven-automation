@@ -320,6 +320,21 @@ class PlayerPage {
     await this.openResourceCard(this.quizCards);
     await this.quizLaunchScreenBtn.waitFor({ state: 'visible', timeout: 10000 });
     await this.quizLaunchScreenBtn.click({ force: true });
+    // Seen on video (2026-09-26): AIR card mode can first ask for the class strength ("Enter the class strength to kick
+    // off the quiz adventure!") with a Start button; keep the default strength and start.
+    const strengthStart = this.page
+      .locator('button')
+      .filter({ hasText: /^\W*Start\s*$/ })
+      .filter({ visible: true })
+      .first();
+    if (
+      await this.page
+        .getByText(/enter the class strength/i)
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => true)
+        .catch(() => false)
+    )
+      await strengthStart.click({ timeout: 5000 });
     return this.airQuestion
       .waitFor({ state: 'visible', timeout: 20000 })
       .then(() => true)

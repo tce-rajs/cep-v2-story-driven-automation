@@ -14,17 +14,69 @@ This repo is the story-driven suite (stories, then test cases, then automation).
 automated directly from the test-case workbooks, lives in the old repo (`tce-rajs/client-playwright-automation`, branch
 `main`) and is not part of this repo.
 
-## Where things stand (2026-09-20)
+## Where things stand (2026-09-27)
 
-**Every automatable module is written and has been verified live**, including Module 02 (against a fresh user) and a
-complete end-to-end run of all 249 tests. Result of that run: 209 passed, 18 known product bugs (recorded as expected
-failures, counted green), 20 skipped or not run, 2 failed. The two failures were then fixed or turned into a documented
-skip, and two skipped tests were enabled, so the expected state is **212 passed, 18 known bugs, 19 skipped, 0 failed**.
-That was confirmed test by test, not in one further full run: do a full run to confirm.
+**IN PROGRESS as this is written** -- a second gap-fill pass, still on branch `improve/reference-driven-coverage`
+(not yet committed), adding real touch/stylus input and long-session whiteboard-writing coverage on top of the
+2026-09-26 pass below. New this pass:
 
-Module 10 (Sidebar) and every Plan Mode / Cross-Mode case are **manual-only by design** (`PROCESS.md`, "Automation
-scope"). The 19 skipped tests need data, devices or product changes the suite does not have; each has its reason in the
-spec, and [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) section 9 lists them with what would unblock each.
+- **Real touch, stylus and mouse input** via Chrome DevTools Protocol (`pages/touch-input.js`), not `page.mouse` --
+  finger taps/drags, two-finger pan, pinch-zoom, a stylus with pen pressure, and a palm resting on the screen while
+  writing. `pages/lib/handwriting.js` turns a word count into human-like pen strokes (one joined stroke per word plus
+  dots/crosses, lines that slope a little) for realistic writing tests instead of straight test lines.
+- **New whiteboard modules:** WB-08 (a long session, ~800 words, autosave/offline/closing-mid-save), WB-09 (data
+  integrity: Clear+Undo, erase, zoom/pan persistence, class-switch bleed, a long text box), WB-10 (touch/stylus,
+  including 150-word finger and stylus writing sessions), WB-11 (a teacher's day across sign-out/relaunch on a board
+  that is **never cleared** -- the `longSession` class-map key, owner's explicit request 2026-09-27: a real
+  classroom board is never empty).
+- **PLR-13** (multi-click on every asset type) and **PLR-14** (annotating on every asset type: write, zoom+write+pan,
+  every tool, close/reopen persistence, video play/seek/pause, two assets at once) -- both requested directly.
+- **PL-10** (Playlist multi-click), **NAV-07** (fast/mid-upload class switching), **AIN-05/AIH-05/ATT-06** (each
+  feature's own send/submit request failing over the network, then retried).
+- **RES-08**: the upload test-data kit (`scripts/make-test-data.js` builds `test-data/`, gitignored -- 29 real-teacher
+  files and 21 broken/wrong/oversized/unsupported ones) run through Add Resource -> Create, one case per file.
+- **RES-09**: the same kit sent through DropIt (representative cases; a full 50-file DropIt run was done once by hand,
+  ~2.4 h, since DropIt needs its own QR pairing per file -- see `TEST_DATA_ADDED.md`).
+- Fast pen/finger input matters: sending a whole stroke as one CDP burst makes the app draw a jagged, simplified
+  line and drops most points -- points must go one at a time (see `touch-input.js`'s own comments; this cost a
+  wasted ~1 h run on 2026-09-27 before being caught).
+- Full before/after video evidence for every new bug this pass, converted to MP4 (`scripts/to-mp4.js`, the bundled
+  ffmpeg only writes WebM) plus a picture-strip PNG (`scripts/frame-strip.js`) so it opens on any device.
+
+New bugs found this pass (video evidence in `test-evidence/`) include: closing the app during the autosave countdown
+loses everything written since the last save; autosave does not resume after a network drop; a pen stroke with the
+palm resting on the screen also draws a line from the palm; a two-finger drag draws instead of panning, and a pinch
+draws instead of zooming; the stylus eraser does not erase; a finger tap does not always open a Playlist card; the
+web link player can be left open after fast open/close; dragging to mark attendance present does nothing (mouse or
+finger); a preferred resource type cannot be removed and "Interactivity" is listed twice; DropIt has no file-size
+limit at all (Create's 10 MB limit is not enforced); several upload-kit findings shared between Create and DropIt
+(a broken/mislabelled file is accepted as a success; a Hindi or very long file name is silently rejected with no
+message; Word/PowerPoint/`.xlsx`/ODF/`.txt` are accepted but show "UNSUPPORTED FILE" when opened). The full list with
+video for each is the deliverable at the end of this pass -- see the chat/task history for the final tally once the
+live reruns below have finished; do not treat the numbers in this note as final.
+
+## Where things stood (2026-09-26)
+
+**Gap-fill pass on branch `improve/reference-driven-coverage` (not yet committed).** The stories were compared with the
+reference suite (`D:\Projects\new approch playwright`: 20 module workbooks + the Zoho Teach Mode bug list) and every gap
+was filled: **six new modules** (12 Minimap, 13 AI Notices, 14 Learning Shorts, 15 AI Homework, 16 Attendance,
+17 Profile) and new stories/cases in every existing module. **582 cases** in `CEPV2_Stories/` (was 273); every
+automatable case has a spec, each module was verified live, then the whole suite was run end to end.
+
+**Full run (2026-09-26, Module 02 and `tests/_probe` excluded, 550 tests, 5 h):** 511 passed (known product bugs recorded
+with `test.fail` count as passed), 29 skipped with reasons, 10 failed. Of the 10: 6 were fixed or passed on rerun (timing/data),
+1 became a recorded bug (PLR-12-02); still open: RES-05-15 and RES-05-01 (AI Assist was not loading at all on the QA server
+at the end of the session -- rerun), ATT-03-01 (intermittent: Submit Attendance sometimes leaves the panel open), RES-02-17
+(intermittent Library search race, left asserting the correct result). Details, bugs and mismatches: PROJECT_OVERVIEW.md
+section 9.
+
+Module 02 was not rerun: it needs a brand-new user (`raj.test` was onboarded 2026-09-22). Module 10 (Sidebar) and every
+Plan Mode / Cross-Mode case stay **manual-only by design** (`PROCESS.md`, "Automation scope").
+
+**Owner decisions for this pass (2026-09-26):** real actions allowed on QA (send notices / homework / shorts, submit
+attendance); Change Password / PIN only on the spare account (`DISPOSABLE_*` in `.env`); no security/abuse tests.
+`config/moduleClassMap.js` was restored to its QA values (the previous commit had left it on the 172.18.2.85 server's
+school).
 
 ## How the owner wants to work (carry these over)
 

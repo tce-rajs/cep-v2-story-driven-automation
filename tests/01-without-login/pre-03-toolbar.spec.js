@@ -10,7 +10,9 @@ test.describe('PRE-03 Toolbar is available, except Magnet', () => {
   });
 
   test(
-    'PRE-03-01: the toolbar (Select, Pan, Background, Pen, Eraser, Shapes, Undo/Redo) is visible and functional without logging in',
+    // Split from the story's own PRE-03-01 (which also covers the User menu, see PRE-03-01 below) so the two halves
+    // -- the working toolbar, and the User-menu mismatch -- aren't both reported under one ID.
+    'PRE-03-01a: the toolbar (Select, Pan, Background, Pen, Eraser, Shapes, Undo/Redo) is visible and functional without logging in',
     { tag: ['@smoke', '@functional'] },
     async ({ page }) => {
       const app = new WithoutLoginPage(page);

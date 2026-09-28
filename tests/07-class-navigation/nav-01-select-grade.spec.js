@@ -97,4 +97,141 @@ test.describe('NAV-01 Select Grade', () => {
       expect(class12, 'subjects differ between classes — the list follows the selection').not.toEqual(class5);
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Grade/Subject/Division workbook) ---
+
+  const isOn = (locator) =>
+    locator.evaluate((el) =>
+      /active|selected|mdc-chip-selected|checked/i.test(
+        el.className + ' ' + (el.getAttribute('aria-selected') || '') + ' ' + (el.getAttribute('aria-pressed') || '')
+      )
+    );
+
+  test(
+    'NAV-01-07: choosing a class from Recent Classes switches to it and moves it to the top of the list',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await user.nav.ensureRecentClasses(3);
+      await user.nav.openClassPopup();
+      await user.nav.recentClassesTab.click({ timeout: 5000 });
+      const second = user.nav.recentClassButtons.nth(1);
+      const label = (await second.innerText()).replace(/\s+/g, ' ').trim();
+      const subject = label.split('|').pop().trim();
+      await second.click();
+      await expect(user.nav.currentClassBtn, 'switched to the chosen class').toContainText(subject, { timeout: 10000 });
+      await user.nav.openClassPopup();
+      await user.nav.recentClassesTab.click({ timeout: 5000 });
+      const top = user.nav.recentClassButtons.first();
+      await expect(top, 'moved to the top').toContainText(subject);
+      await expect(top).toContainText(label.split('|')[0].trim());
+    }
+  );
+
+  test(
+    'NAV-01-08: a grade with only one division selects that division automatically',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await user.nav.openClassPopup();
+      await user.nav.allMyClassesTab.click({ timeout: 10000 });
+      await user.nav.gradeButton('Class 5').click({ timeout: 10000 });
+      await expect(user.nav.divisionButtons).toHaveCount(1);
+      expect(await isOn(user.nav.divisionButtons.first()), 'the only division is already selected').toBe(true);
+      await expect(user.nav.subjectButtons.first(), 'subjects shown without choosing a division').toBeVisible({
+        timeout: 5000,
+      });
+    }
+  );
+
+  test(
+    'NAV-01-09: choosing a subject switches class straight away, with no separate confirm step',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await user.nav.resetToClass('Class 12', 'A', 'Physics');
+      await user.nav.openClassPopup();
+      await user.nav.allMyClassesTab.click({ timeout: 10000 });
+      await user.nav.gradeButton('Class 9').click();
+      await user.nav.divisionButton('A').click();
+      await user.nav.subjectButton('Hindi Language').click();
+      await expect(user.nav.currentClassBtn).toContainText('Hindi Language', { timeout: 10000 });
+      await expect(user.nav.allMyClassesTab, 'popup closed by itself').toBeHidden({ timeout: 5000 });
+    }
+  );
+
+  test(
+    'NAV-01-10: changing the grade after a subject is chosen clears the subject choice',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await user.nav.resetToClass('Class 12', 'A', 'Physics');
+      await user.nav.openClassPopup();
+      await user.nav.allMyClassesTab.click({ timeout: 10000 });
+      await user.nav.gradeButton('Class 12').click();
+      await user.nav.divisionButton('A').click();
+      await user.nav.gradeButton('Class 9').click();
+      await user.nav.page.waitForTimeout(800);
+      const selected = await user.nav.subjectButtons.evaluateAll((els) =>
+        els.filter((el) => /active|selected/i.test(el.className)).map((el) => el.innerText.trim())
+      );
+      expect(selected, 'no subject still selected from the previous grade').toEqual([]);
+    }
+  );
+
+  test(
+    'NAV-01-11: closing the class window without choosing anything leaves the current class unchanged',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const before = await classText(user);
+      await user.nav.openClassPopup();
+      await user.nav.allMyClassesTab.click({ timeout: 10000 });
+      await user.nav.gradeButton('Class 9').click();
+      await user.nav.currentClassBtn.click(); // toggles the popup closed
+      await expect(user.nav.allMyClassesTab).toBeHidden({ timeout: 5000 });
+      expect(await classText(user)).toBe(before);
+    }
+  );
+
+  test(
+    'NAV-01-12: clicking several grades quickly ends on the last grade clicked',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      await user.nav.openClassPopup();
+      await user.nav.allMyClassesTab.click({ timeout: 10000 });
+      for (const grade of ['Class 12', 'Class 9', 'Class 11', 'Class 5'])
+        await user.nav.gradeButton(grade).click({ force: true });
+      await expect
+        .poll(() => isOn(user.nav.gradeButton('Class 5').first()), { message: 'Class 5 selected' })
+        .toBe(true);
+      for (const other of ['Class 12', 'Class 9', 'Class 11'])
+        expect(await isOn(user.nav.gradeButton(other).first()), `${other} not selected`).toBe(false);
+      await expect(user.nav.subjectButton('Mathematics')).toBeVisible({ timeout: 5000 });
+    }
+  );
+
+  test(
+    "NAV-01-13: switching quickly between Recent Classes and All My Classes always shows the selected tab's list",
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      await user.nav.openClassPopup();
+      for (let i = 0; i < 5; i++) {
+        await user.nav.allMyClassesTab.click({ force: true });
+        await user.nav.recentClassesTab.click({ force: true });
+      }
+      await expect(user.nav.recentClassButtons.first(), 'Recent list shown').toBeVisible();
+      await expect(user.nav.gradeButtons.first(), 'All My Classes list not shown').toBeHidden();
+      await user.nav.allMyClassesTab.click();
+      await expect(user.nav.gradeButtons.first()).toBeVisible();
+    }
+  );
+
+  test(
+    'NAV-01-14: opening the class window and then the chapter window at once never leaves both open',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      await user.nav.currentClassBtn.click();
+      await user.nav.currentChapterTopicBtn.click({ force: true });
+      await page.waitForTimeout(1500);
+      const classOpen = await user.nav.allMyClassesTab.isVisible().catch(() => false);
+      const chapterOpen = await user.nav.chapterTpPopup.isVisible().catch(() => false);
+      expect(classOpen && chapterOpen, 'not both windows open').toBe(false);
+    }
+  );
 });

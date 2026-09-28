@@ -31,30 +31,21 @@
 // topic combo for a module, add/update the entry here rather than letting
 // another hardcoded resetToClass(...) call drift out of sync with this map.
 
-// ENVIRONMENT NOTE (2026-09-22): every entry below except `default` was confirmed live against the OLD QA account
-// (raj.shinde / Goyal Brothers School, ce-qa-school.devstudi.com). This run is against a NEW account (raj.test / C P
-// Goenka International School, server 172.18.2.85) onboarded fresh via Module 02 -- a different school with its own
-// curriculum data. There is also only ONE account on this server (VALID_PIN_2 is unset; pinForModule() falls back to
-// VALID_PIN for every entry, including ones marked account: 'VALID_PIN_2'). So: `default` below reflects data
-// actually confirmed live on this account (Early Childhood Education/A/English, 31 chapters); every OTHER entry's
-// specific grade/division/subject/chapter/resource is UNVERIFIED here and will likely not exist for this account --
-// tests using them are expected to fail to navigate/find content, which is an environment data gap, not necessarily
-// a product bug. See the end-to-end report for which combos were confirmed working versus not during this run.
 const MODULE_CLASS_MAP = {
   default: {
     label: 'Default (general-purpose fallback)',
     account: 'VALID_PIN',
-    grade: 'Early Childhood Education',
+    grade: 'Class 12',
     division: 'A',
-    subject: 'English',
+    subject: 'Physics',
     chapterIndex: 0,
     topicIndex: 0,
     notes:
-      'CONFIRMED LIVE 2026-09-22 on raj.test / C P Goenka International School (server 172.18.2.85), the only account on this server -- 31 chapters. Replaces the old Goyal Brothers Class 12A Physics combo for this environment.',
+      "This suite's general-purpose class on the primary account -- used by any module with no specific data dependency.",
     knownIssues: [],
   },
   defaultAccount2: {
-    label: 'Default (general-purpose fallback, second account) -- NO SECOND ACCOUNT ON THIS SERVER',
+    label: 'Default (general-purpose fallback, second account)',
     account: 'VALID_PIN_2',
     grade: 'Class 12',
     division: 'A',
@@ -62,7 +53,7 @@ const MODULE_CLASS_MAP = {
     chapterIndex: 13,
     topicIndex: 0,
     notes:
-      'UNVERIFIED on this server (172.18.2.85) -- carried over from the old Goyal Brothers account. VALID_PIN_2 is unset here so pinForModule() falls back to VALID_PIN (raj.test), but this grade/division/subject/chapter combo has not been confirmed to exist on that account.',
+      '"14. Project Based Learning" -- confirmed to hold Image/Video/Worksheet/Weblink resources, used across most Players sub-modules on the second account.',
     knownIssues: [],
   },
 
@@ -112,14 +103,15 @@ const MODULE_CLASS_MAP = {
     account: 'VALID_PIN',
     grade: 'Class 12',
     division: 'A',
-    subject: 'Physics or Mathematics',
+    subject: 'Physics',
     chapterIndex: 0,
     topicIndex: 0,
     notes:
       "Magnet tool (toolbar-tool-gtMagnet) is per-account+class-teacher-assignment gated, not universal -- confirmed available on this account's Class 12A.",
-    knownIssues: [
-      'CRITICAL, reproduced across multiple subjects: the Attendance panel hangs indefinitely on its own loading spinner and never renders the roster -- no known workaround, no way to exit from inside the panel.',
-    ],
+    knownIssues: [],
+    // CONFIRMED LIVE 2026-09-26 (v 0.0.232): the old 'panel hangs on its loading spinner' issue no longer reproduces --
+    // Attendance opens on Play Attendance / Mark Attendance, with a 150-student roster (85 boys, 65 girls). Marks and
+    // submits are real (owner-approved 2026-09-26) and create today's attendance record for this class.
   },
 
   // --- Compass ---
@@ -282,6 +274,21 @@ const MODULE_CLASS_MAP = {
   },
 
   // --- Toolbar / Whiteboard drawing surface ---
+  // A teacher's board that is NEVER cleared (owner's request, 2026-09-27): long multi-session writing tests add to it
+  // day after day, the way a real classroom board fills up, and verify everything written before is still there.
+  longSession: {
+    label: 'Whiteboard -- long multi-session teaching (never cleared)',
+    account: 'VALID_PIN',
+    grade: 'Class 12',
+    division: 'A',
+    subject: 'Physics',
+    chapterIndex: 2,
+    topicIndex: 0,
+    notes:
+      'Only WB-11 writes here. Content accumulates on purpose; do not add cleanBoard or Clear Whiteboard to any test using this key.',
+    knownIssues: [],
+  },
+
   toolbarGeneral: {
     label: 'Toolbar / Whiteboard drawing',
     account: 'VALID_PIN',
@@ -318,7 +325,7 @@ const MODULE_CLASS_MAP = {
     notes:
       'Magnet-gated. The Objective counter\'s real floor is 0, not 1 -- a generate-and-wait helper assuming "at least 1" will hang on a genuine 0-question request.',
     knownIssues: [
-      '"Ready to Send" is a REAL send action -- never click it in automation (documented via test.fail(), not executed).',
+      '"Ready to Send" is a REAL send action. Owner-approved 2026-09-26: AIH-04-06 really sends (assigns real homework to Class 11A).',
     ],
   },
   aiNotices: {

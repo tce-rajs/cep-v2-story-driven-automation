@@ -50,6 +50,17 @@ class LoginPage {
     await this.toggleButton.click();
   }
 
+  /** CONFIRMED LIVE (2026-09-26, v 0.0.232): the Sign In window never leaves the DOM or stops being "visible" -- closing
+   * it (its X is the same login-auth-toggle-button) slides it down, mostly off-screen, and drops the
+   * `login-modal-outer--active` class. That class is the real open/closed signal. */
+  async isSignInOpen() {
+    return /login-modal-outer--active/.test((await this.modal.getAttribute('class')) || '');
+  }
+
+  async closeSignIn() {
+    await this.toggleButton.click();
+  }
+
   /**
    * Call right after loading the app. CONFIRMED LIVE (v 0.0.223): reloading while a first-time account is mid-setup
    * (PIN-setup screen showing) drops it into a signed-in "Choose a class" screen that has no Sign In button, so the

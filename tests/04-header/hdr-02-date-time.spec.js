@@ -43,4 +43,36 @@ test.describe('HDR-02 Date & Time', () => {
       expect(HeaderPage.minuteGap(after.shownMinutes, before.shownMinutes)).toBeGreaterThanOrEqual(idleMinutes - 2);
     }
   );
+
+  test(
+    'HDR-02-03: the time in the header moves forward on its own, without reloading',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      test.setTimeout(150000);
+      const start = await user.header.readDateTime();
+      expect(start.shownMinutes).not.toBeNull();
+      // Wait (at most ~70 s) for the displayed minute to tick over, with no reload in between.
+      await expect
+        .poll(async () => (await user.header.readDateTime()).shownMinutes, { timeout: 75000, intervals: [5000] })
+        .not.toBe(start.shownMinutes);
+      const later = await user.header.readDateTime();
+      expect(
+        HeaderPage.minuteGap(later.shownMinutes, start.shownMinutes),
+        'moved forward by about a minute'
+      ).toBeLessThanOrEqual(2);
+      await expect(page).toHaveURL(/teach/);
+    }
+  );
+
+  test('HDR-02-04: the date and time shown match the computer clock', { tag: ['@functional'] }, async ({ user }) => {
+    const shown = await user.header.readDateTime();
+    const now = new Date(); // the test machine's own clock, not the app's
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const nowDate = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    expect(
+      HeaderPage.minuteGap(shown.shownMinutes, nowMinutes),
+      `"${shown.shown}" vs the computer's time`
+    ).toBeLessThanOrEqual(1);
+    expect(shown.shownDate, "matches the computer's date").toBe(nowDate);
+  });
 });

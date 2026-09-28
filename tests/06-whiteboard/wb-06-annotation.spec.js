@@ -369,4 +369,45 @@ test.describe('WB-06 Annotation', () => {
       }
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Whiteboard workbook: WB-BREAK-01/03) ---
+
+  test(
+    'WB-06-14: a stroke drawn just before switching class and back is still there (regression)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      await tb.penStroke({ x: 450, y: 600 }, { x: 700, y: 640 });
+      const geometry = await user.content.pathGeometry();
+      // No wait for the save message: switch straight away.
+      await user.nav.resetToClass('Class 9', 'A', 'Hindi Language');
+      await user.nav.applyClassMap('toolbarGeneral');
+      await goTo(user, TOPIC_A);
+      expect(await user.content.pathGeometry(), 'the last stroke survived').toEqual(geometry);
+    }
+  );
+
+  test(
+    'WB-06-15: reloading part-way through drawing a stroke leaves no broken half-stroke behind (regression)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      await user.content.waitForSaved().catch(() => {});
+      const before = await user.content.pathGeometry();
+      await tb.selectTool('gtPen');
+      const box = await tb.wbSvg.boundingBox();
+      await page.mouse.move(box.x + 400, box.y + 650);
+      await page.mouse.down();
+      for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + 400 + i * 20, box.y + 650);
+      await reloadApp(user);
+      await page.mouse.up().catch(() => {});
+      const after = await user.content.pathGeometry();
+      const added = after.filter((d) => !before.includes(d));
+      expect(added.length, 'at most the one interrupted stroke').toBeLessThanOrEqual(1);
+      for (const d of added) expect(d, 'no empty or broken path data').toMatch(/^M[\d.\-\s,]+[LCQ]/i);
+      // The board still works after the reload.
+      await tb.penStroke({ x: 400, y: 700 }, { x: 600, y: 710 });
+      expect((await user.content.pathGeometry()).length).toBeGreaterThan(after.length);
+    }
+  );
 });

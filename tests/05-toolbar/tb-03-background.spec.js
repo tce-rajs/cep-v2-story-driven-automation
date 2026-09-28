@@ -86,4 +86,24 @@ test.describe('TB-03 Background', () => {
       expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
+
+  test('TB-03-04: "No Background" puts back a plain background', { tag: ['@functional'] }, async ({ user }) => {
+    const tb = user.toolbar;
+    await tb.chooseBackground('gtGraphCms');
+    await tb.openToolPanel('gtBackground');
+    await expect(tb.backgroundActive).toHaveAttribute('data-qa-id', 'toolbar-background-gtGraphCms');
+    await tb.noBackgroundOption.click({ force: true });
+    await expect(tb.backgroundActive, 'No Background is the active choice').toHaveAttribute(
+      'data-qa-id',
+      'toolbar-background-gtBlankPage'
+    );
+    await tb.closePanelByTappingOutside();
+    // Plain: no background pattern drawn behind the content.
+    const pattern = await tb.wbContainer.evaluate((el) => {
+      const bg = getComputedStyle(el).backgroundImage;
+      const svgPattern = el.querySelector('pattern, [class*="background-pattern"], [class*="bg-pattern"]');
+      return (bg && bg !== 'none' ? bg : '') + (svgPattern ? ' pattern-element' : '');
+    });
+    expect(pattern, 'no grid/ruled pattern left behind').toBe('');
+  });
 });

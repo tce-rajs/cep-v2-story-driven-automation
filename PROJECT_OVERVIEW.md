@@ -125,8 +125,112 @@ Do not probe the PIN screen by hand on that account: typing five characters twic
 4. Added extra cases the team asked for (for example Virtual Keyboard across input boxes, TB-09-11 to 13).
 5. Ran the complete suite end to end (2026-09-20, 2 h 11 min, 249 tests) and fixed what it showed.
 6. Exported the reviewer list (`CEPV2_TestCases.xlsx`) and moved the work into this fresh repo.
+7. 2026-09-26: gap-fill pass against the reference suite -- six new modules (12-17), new cases in every module, each
+   module verified live, then a full end-to-end run (section 9).
 
-## 9. Current status (2026-09-20)
+## 9. Current status (2026-09-26, gap-fill pass)
+
+Branch `improve/reference-driven-coverage`, not yet committed. The stories were compared with the reference suite
+(`D:\Projects\new approch playwright`: 20 module workbooks and the Zoho Teach Mode bug list) and every gap was filled:
+six new modules (12-17) and new stories/cases in every existing module (each marked "Added 2026-09-26"). 582 cases in
+the stories (was 273); every automatable one has a spec. Each module was verified live, then the suite was run end to end.
+
+**Full run, 2026-09-26** (550 tests, 5 h; Module 02 and `tests/_probe` excluded): 511 passed (this includes the known
+product bugs, recorded with `test.fail` and counted green), 29 skipped with a reason, 10 failed. After reruns: 6 of the 10
+pass (timing/data), PLR-12-02 became a recorded bug, and three remain open:
+
+- **RES-05-01 / RES-05-15** -- AI Assist stopped loading at all on the QA server at the end of the session (it passed in the
+  full run). Rerun when AI Assist is back.
+- **ATT-03-01** -- intermittent: Submit Attendance sometimes leaves the panel open instead of submitting and closing.
+- **RES-02-17** -- intermittent Library search race (see the bug list); left asserting the correct outcome.
+
+| Module                   | Tests | Passed | Known bugs | Skipped | Failed in the full run |
+| ------------------------ | ----- | ------ | ---------- | ------- | ---------------------- |
+| 01 Without Login         | 18    | 17     | 1          | 0       | 0                      |
+| 03 Login                 | 42    | 34     | 4          | 4       | 0                      |
+| 04 Header                | 26    | 21     | 3          | 2       | 0                      |
+| 05 Toolbar               | 73    | 64     | 8          | 0       | 1 (fixed: timeout)     |
+| 06 Whiteboard            | 30    | 29     | 0          | 0       | 1 (passed on rerun)    |
+| 07 Class Navigation      | 30    | 27     | 2          | 1       | 0                      |
+| 08 Playlist              | 42    | 40     | 1          | 1       | 0                      |
+| 09 Resources             | 83    | 66     | 13         | 3       | 2 (see above)          |
+| 11 Players               | 78    | 64     | 5          | 8       | 1 (now a known bug)    |
+| 12 Minimap (new)         | 18    | 16     | 2          | 0       | 0                      |
+| 13 AI Notices (new)      | 20    | 15     | 4          | 0       | 1 (passed on rerun)    |
+| 14 Learning Shorts (new) | 19    | 15     | 2          | 2       | 0                      |
+| 15 AI Homework (new)     | 24    | 19     | 3          | 1       | 1 (fixed)              |
+| 16 Attendance (new)      | 21    | 11     | 3          | 4       | 3 (2 fixed, ATT-03-01) |
+| 17 Profile (new)         | 26    | 19     | 4          | 3       | 0                      |
+
+Module 02 was not rerun (it needs a brand-new user). Attendance's Play tests (ATT-05) only run before the day's
+attendance is first submitted, so they skip once the module has submitted; the file is named `att-00-play` so it runs first.
+
+### New product bugs found in this pass (each recorded with `test.fail` and `@bug` in its spec)
+
+| Test                 | What is wrong                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| LOG-03-04, LOG-03-05 | PIN screen: the on-screen keyboard opens below the window, so it cannot be used                   |
+| LOG-03-06            | Pasting a 5-digit PIN fills only the first box                                                    |
+| LOG-04-08            | Double-clicking Sign In sends two sign-in requests                                                |
+| TB-07-07             | Undo does not undo a move                                                                         |
+| TB-10-04             | An empty text box is kept on the board                                                            |
+| TB-10-06             | Committed text cannot be reopened for editing                                                     |
+| NAV-06-02            | Current Class cannot be clicked while a Magnet panel is open                                      |
+| PL-08-05             | A Contents search with no matches shows a blank panel (same defect as NAV-02-02)                  |
+| RES-01-15            | A long file name with emoji is rejected (HTTP 400) with no message; the resource is silently lost |
+| RES-03-09            | An empty Gallery search shows no message                                                          |
+| RES-03-10            | Double-clicking a Gallery image inserts it twice                                                  |
+| RES-04-09            | DropIt stays open over the new class after a class switch                                         |
+| RES-04-10            | DropIt's Close button covers the Add Resource button                                              |
+| RES-04-11            | Text shared through DropIt never arrives (Zoho TCN-I16701)                                        |
+| RES-06-04            | "+" while an Add Resource option is open stacks a second menu                                     |
+| PLR-05-06            | Pen strokes over a playing video are not drawn (Zoho TCN-I15547)                                  |
+| PLR-10-06            | Code Editor button misspelt "Collpase All"                                                        |
+| PLR-12-02            | Closing a worksheet the moment it opens leaves a leftover player                                  |
+| MM-01-05             | The Minimap stays open over the new class after a class switch                                    |
+| MM-02-03             | The Minimap rectangle does not follow a pan made with the Pan tool                                |
+| AIN-03-04            | Double-clicking Ready to Send sends the notice twice                                              |
+| AIN-04-01, AIN-04-02 | The notice composer's Close is covered by the capture overlay and cannot be clicked               |
+| AIN-04-04, AIH-01-05 | Two Magnet panels (Notice and Homework) can be open at once (Zoho TCN-I15361)                     |
+| LS-02-03             | After one recording is discarded, the recorder cannot record again in the same session            |
+| LS-03-09             | Leaving the Learning Shorts composer discards the recording with no warning                       |
+| AIH-03-05            | Double-clicking Generate starts two AI generations                                                |
+| AIH-04-04            | Previous then Next resets the edited homework title                                               |
+| ATT-01-04, ATT-04-05 | The Attendance register stays over the new class after a class switch                             |
+| ATT-03-03            | Double-clicking Submit Attendance submits twice                                                   |
+| PRF-04-02            | No inline error for a too-short new password                                                      |
+| PRF-04-04, PRF-04-07 | Change Password Save does nothing (no request, no message)                                        |
+| PRF-05-05            | Saving a PIN identical to the current one shows no message                                        |
+
+**Intermittent (left asserting the correct outcome, so they go red when they recur):** MM-03-01 (first click in a newly
+opened Minimap sometimes ignored), LS-02-04 (a near-empty recording sometimes saved as a 0-second video), RES-02-17
+(a typed Library search sometimes replaced by the automatic topic search), ATT-03-01 (Submit sometimes leaves the panel
+open).
+
+Also observed, not a test failure: the Attendance "Resume" prompt keeps returning until a draft is submitted (Cancel
+closes the panel but keeps the draft), and resuming always continues in Play Attendance even if Mark Attendance was used;
+a checkpoint's Playlist card keeps reading STARTED after it is paused until the app reloads.
+
+### Stories that do not match the app (owner to decide: change the story, or raise a product gap)
+
+| Case      | Story says                                | App does (v 0.0.232)                                                   |
+| --------- | ----------------------------------------- | ---------------------------------------------------------------------- |
+| TB-11-05  | a dragged widget lands where dropped      | widget tiles cannot be dragged; only a click inserts one (`test.fail`) |
+| PLR-01-20 | reopening a quiz restarts from question 1 | it resumes where it was closed (`test.fail`)                           |
+| PLR-03-09 | worksheet zoom buttons                    | the worksheet player has no zoom control (`fixme`)                     |
+| PLR-06-05 | zoom / pan an open image                  | the image player has no zoom or pan control (`fixme`)                  |
+| LS-03-02  | delete the attachment / recapture         | no attachment controls in either composer (`fixme`)                    |
+| AIH-03-04 | remove a generated question               | no way to remove a single question (`fixme`)                           |
+| AIN-03-02 | untick every class                        | the current class cannot be unticked (test asserts the intent)         |
+| PLR-12-01 | only the last player stays open           | several players open at once by design (story corrected 2026-09-26)    |
+
+### Needs a check by hand (automation cannot decide)
+
+ATT-02-03 (drag to mark present: mouse drag does nothing, probably touch-only), PRF-02-02 / PRF-02-03 (a preferred type
+cannot be taken out of the list with a mouse), LS-02-05 (camera permission refusal), RES-02-18 (Library previews are not
+inspectable; the Zoho ticket is Plan Mode).
+
+## 9b. Earlier status (2026-09-20, before the gap-fill pass)
 
 **Full end-to-end run:** 249 tests. 209 passed, 18 known product bugs (expected failures, counted green), 20 skipped or not
 run, 2 failed. Both failures were then dealt with: `RES-03-02` was a test defect (fixed, passes) and `NEW-03-01` needed a
@@ -187,6 +291,19 @@ PIN (only a disabled Next button), and five letters typed into the PIN boxes wer
 | PLR-01-04, 06     | No quiz with image questions or options found                         | A quiz that has them                                    |
 | PLR-01-12         | No class-strength / Student Test launch in this build                 | Product change                                          |
 | PLR-04-03         | The ebook used has no linked resources                                | An ebook that has them                                  |
+
+## 9c. Current status (2026-09-27, second gap-fill pass -- IN PROGRESS as this is written)
+
+Started from owner requests made directly in this pass: real touch/stylus/finger input (not just the mouse), a long
+whiteboard-writing session with autosave verification, multiple-click coverage per asset type, annotating on every
+asset type (not just the Worksheet), the same upload test-data kit tried through DropIt as through Create, and more
+meaningful negative/edge bugs generally. See `CLAUDE.md`'s "Where things stand (2026-09-27)" for the full list of
+what was added (WB-08/09/10/11, PLR-13/14, PL-10, NAV-07, AIN-05/AIH-05/ATT-06, RES-08/09) and the bugs confirmed so
+far, with video evidence in `test-evidence/`.
+
+**This section is a placeholder.** Full live reruns (of both the new specs and everything they touch) were still
+running when this was last edited. Once they finish, replace this section with the final tallies, bug table and
+story mismatches, the same way section 9 replaced 9b -- do not treat the bug list above as final until then.
 
 ## 10. What a new agent or engineer should do next
 

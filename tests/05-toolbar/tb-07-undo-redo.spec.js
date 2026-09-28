@@ -3,7 +3,6 @@
 
 const { test, expect } = require('../../fixtures');
 
-// Counts and "last path" lookups need a blank board, not the persisted content earlier tests left behind.
 test.use({ cleanBoard: true });
 
 test.describe('TB-07 Undo / Redo', () => {
@@ -86,6 +85,103 @@ test.describe('TB-07 Undo / Redo', () => {
       expect(settled).toBeGreaterThanOrEqual(before);
       expect(settled).toBeLessThanOrEqual(before + 5);
       expect(errors, 'no uncaught page errors').toEqual([]);
+    }
+  );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Toolbar workbook) ---
+
+  test(
+    'TB-07-04: Undo and Redo step through 3 actions in the exact order they were made',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      const undo = () => tb.tool('gtUndo').click({ force: true });
+      const redo = () => tb.tool('gtRedo').click({ force: true });
+      const base = await tb.pathData();
+      await tb.penStroke({ x: 300, y: 300 }, { x: 450, y: 320 });
+      const one = await tb.pathData();
+      await tb.penStroke({ x: 300, y: 400 }, { x: 450, y: 420 });
+      const two = await tb.pathData();
+      await tb.penStroke({ x: 300, y: 500 }, { x: 450, y: 520 });
+      const three = await tb.pathData();
+
+      await undo();
+      await expect.poll(() => tb.pathData()).toEqual(two);
+      await undo();
+      await expect.poll(() => tb.pathData()).toEqual(one);
+      await undo();
+      await expect.poll(() => tb.pathData()).toEqual(base);
+      await redo();
+      await expect.poll(() => tb.pathData()).toEqual(one);
+      await redo();
+      await expect.poll(() => tb.pathData()).toEqual(two);
+      await redo();
+      await expect.poll(() => tb.pathData()).toEqual(three);
+    }
+  );
+
+  test(
+    'TB-07-05: Redo with nothing to redo does nothing and causes no error',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      const errors = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      const tb = user.toolbar;
+      await tb.penStroke({ x: 300, y: 300 }, { x: 450, y: 320 });
+      const before = await tb.pathData();
+      for (let i = 0; i < 3; i++) await tb.tool('gtRedo').click({ force: true });
+      await page.waitForTimeout(800);
+      expect(await tb.pathData()).toEqual(before);
+      expect(errors).toEqual([]);
+    }
+  );
+
+  test('TB-07-06: 20 actions in a row can all be undone', { tag: ['@edge'] }, async ({ user }) => {
+    test.setTimeout(180000);
+    const tb = user.toolbar;
+    const before = await tb.pathCount();
+    for (let i = 0; i < 20; i++)
+      await tb.penStroke(
+        { x: 200 + (i % 10) * 70, y: 300 + Math.floor(i / 10) * 150 },
+        { x: 240 + (i % 10) * 70, y: 360 + Math.floor(i / 10) * 150 }
+      );
+    expect(await tb.pathCount()).toBe(before + 20);
+    for (let i = 0; i < 20; i++) await tb.tool('gtUndo').click({ force: true });
+    await expect.poll(() => tb.pathCount(), { message: 'all 20 undone' }).toBe(before);
+  });
+
+  test(
+    'TB-07-07: Undo after moving an object puts the object back (regression)',
+    { tag: ['@regression', '@bug'] },
+    async ({ user, page }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; same as the reference suite's TB-CYP-07): moving an object
+      // adds no undo step -- Undo right after a move leaves the object where it was moved to.
+      test.fail(true, 'Undo does not undo a move: the moved object stays at its new position');
+      const tb = user.toolbar;
+      await tb.chooseShape('gtDrawRect');
+      await tb.drawStroke({ x: 500, y: 400 }, { x: 700, y: 520 }, 10);
+      const home = await tb.lastPathBox();
+      await tb.selectTool('gtSelect');
+      const cx = home.x + home.width / 2,
+        cy = home.y + 2; // on the rectangle's top edge
+      await page.mouse.move(cx, cy);
+      await page.mouse.down();
+      await page.mouse.move(cx + 200, cy + 120, { steps: 12 });
+      await page.mouse.up();
+      await page.waitForTimeout(800);
+      const moved = await tb.lastPathBox();
+      expect(Math.abs(moved.x - home.x) + Math.abs(moved.y - home.y), 'the shape moved').toBeGreaterThan(50);
+      await tb.closePanelByTappingOutside();
+      await tb.tool('gtUndo').click({ force: true });
+      await expect
+        .poll(
+          async () => {
+            const b = await tb.lastPathBox();
+            return Math.abs(b.x - home.x) + Math.abs(b.y - home.y);
+          },
+          { message: 'Undo moved the shape back' }
+        )
+        .toBeLessThan(5);
     }
   );
 });

@@ -264,4 +264,127 @@ test.describe('PLR-01 Attempt a quiz', () => {
       expect(await shown(), 'and question 1 is what is shown').toBe(q1);
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Players workbook and Zoho bugs) ---
+
+  const selectedOptions = (user) =>
+    user.player.quizOptions
+      .filter({ has: user.page.locator('input:checked') })
+      .or(user.page.locator('.quiz-options-group .option-content.selected'));
+
+  test(
+    'PLR-01-15: Submit Answer stays disabled until an option is chosen',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await started(user);
+      await expect(user.player.quizSubmitBtn).toBeDisabled();
+      await user.player.quizOptions.first().click({ force: true });
+      await expect(user.player.quizSubmitBtn).toBeEnabled();
+    }
+  );
+
+  test(
+    'PLR-01-16: choosing a second option clears the first (one answer per question)',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await started(user);
+      // Each option holds a checkbox-style input; only the chosen one may be ticked (confirmed live 2026-09-26).
+      const ticked = (i) => user.player.quizOptions.nth(i).locator('input:checked').count();
+      await user.player.quizOptions.nth(0).click({ force: true });
+      await expect.poll(() => ticked(0)).toBe(1);
+      await user.player.quizOptions.nth(1).click({ force: true });
+      await expect.poll(() => ticked(1), { message: 'second option ticked' }).toBe(1);
+      expect(await ticked(0), 'first option cleared').toBe(0);
+      await expect(user.player.quizOptions.locator('input:checked'), 'one answer only').toHaveCount(1);
+    }
+  );
+
+  test(
+    'PLR-01-17: a wrong answer is marked wrong and the correct answer is shown',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await started(user);
+      const found = await findQuestion(user, async (u) => {
+        await u.player.answerCurrentQuestion(0);
+        return (await u.player.quizIncorrectOptions.count()) > 0;
+      });
+      expect(found, 'a question where the first option is wrong').not.toBeNull();
+      await expect(user.player.quizIncorrectOptions.first(), 'marked wrong').toBeVisible();
+      await expect(user.player.quizCorrectOptions.first(), 'correct answer shown').toBeVisible();
+    }
+  );
+
+  test('PLR-01-18: Show Answer reveals the correct option', { tag: ['@functional'] }, async ({ user }) => {
+    await started(user);
+    await expect(user.player.quizCorrectOptions).toHaveCount(0);
+    await user.player.quizShowAnswerBtn.click();
+    await expect(user.player.quizCorrectOptions.first(), 'correct option revealed').toBeVisible({ timeout: 5000 });
+  });
+
+  test(
+    'PLR-01-19: the numbered dots jump straight to that question, every time (regression, Zoho TCN-I15835)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      await started(user);
+      const total = await user.player.quizQuestionNumbers.count();
+      expect(total, 'a multi-question quiz').toBeGreaterThan(2);
+      for (const target of [3, 1, total, 2]) {
+        await user.player.quizQuestionNumbers.nth(target - 1).click({ force: true });
+        await expect.poll(() => user.player.currentQuestionNumber(), { message: `on question ${target}` }).toBe(target);
+      }
+    }
+  );
+
+  test(
+    'PLR-01-20: closing and reopening the quiz starts again from question 1',
+    { tag: ['@bug', '@functional'] },
+    async ({ user }) => {
+      // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): closing the quiz on question 3 and opening it again resumes on
+      // question 3; the story (from the reference suite's PLR-QZ-13) expects a restart from question 1. Owner to decide which
+      // is intended; resuming may well be the better behaviour.
+      test.fail(true, 'Reopening the quiz resumes where it was closed instead of restarting from question 1');
+      await started(user);
+      await user.player.quizQuestionNumbers.nth(2).click({ force: true });
+      await expect.poll(() => user.player.currentQuestionNumber()).toBe(3);
+      await user.player.closePlayer();
+      await started(user);
+      expect(await user.player.currentQuestionNumber()).toBe(1);
+    }
+  );
+
+  test(
+    'PLR-01-21: double-clicking a quiz card opens only one quiz (regression)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      await expect(user.player.quizCards.first()).toBeAttached({ timeout: 10000 });
+      await user.player.quizCards.first().evaluate((el) => {
+        el.scrollIntoView({ block: 'center' });
+        el.click();
+        el.click();
+      });
+      await page.waitForTimeout(8000);
+      expect(
+        await page.locator('lib-quiz-renderer').filter({ visible: true }).count(),
+        'one quiz open'
+      ).toBeLessThanOrEqual(1);
+      expect(await user.player.closeIcon.count(), 'one player').toBeLessThanOrEqual(2);
+    }
+  );
+
+  test(
+    'PLR-01-22: no question appears more than once in the quiz (regression, Zoho TCN-I16397)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      await started(user);
+      const total = await user.player.quizQuestionNumbers.count();
+      const seen = [];
+      for (let i = 0; i < total; i++) {
+        await user.player.quizQuestionNumbers.nth(i).click({ force: true });
+        await user.page.waitForTimeout(600);
+        seen.push((await user.player.quizQuestion.innerText()).replace(/\s+/g, ' ').trim());
+      }
+      const dupes = seen.filter((q, i) => seen.indexOf(q) !== i);
+      expect(dupes, 'every question is different').toEqual([]);
+    }
+  );
 });

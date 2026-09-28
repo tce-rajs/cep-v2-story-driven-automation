@@ -62,10 +62,17 @@ class DropitCompanionPage {
    * upload button is backed by a genuine <input type="file">, so Playwright's filechooser event fires
    * normally). `file` is a local path. */
   async uploadFile(filePath) {
-    const [chooser] = await Promise.all([
-      this.page.waitForEvent('filechooser', { timeout: 8000 }),
-      this.page.mouse.click(COORDS.uploadFileBtn.x, COORDS.uploadFileBtn.y),
-    ]);
+    // CONFIRMED LIVE (2026-09-27, 50-file run): the first tap on "Upload File" often does not open the file chooser
+    // while the Flutter page is still settling -- 29 of 32 attempts timed out. Retry the tap a few times.
+    let chooser;
+    for (let attempt = 0; attempt < 5 && !chooser; attempt++) {
+      [chooser] = await Promise.all([
+        this.page.waitForEvent('filechooser', { timeout: 6000 }).catch(() => null),
+        this.page.mouse.click(COORDS.uploadFileBtn.x, COORDS.uploadFileBtn.y),
+      ]);
+      if (!chooser) await this.page.waitForTimeout(1500);
+    }
+    if (!chooser) throw new Error('DropIt phone page: "Upload File" never opened a file chooser');
     await chooser.setFiles(filePath);
     await this.page.waitForTimeout(1500);
   }

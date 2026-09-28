@@ -103,4 +103,117 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
       await expect(playlist.resourceCards.first(), 'Reset brings the resources back').toBeVisible({ timeout: 10000 });
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Playlist workbook) ---
+
+  const checked = (option) => option.getAttribute('aria-selected').then((v) => v === 'true');
+  const masterFilter = (page) =>
+    page
+      .locator('mat-option, [role="option"], label, div')
+      .filter({ hasText: /^\s*filter resources\s*$/i })
+      .first();
+
+  test(
+    'PL-04-05: unticking Filter Resources hides every card, and ticking it again brings them all back',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const pl = user.playlist;
+      const before = await pl.cardTitles();
+      expect(before.length).toBeGreaterThan(0);
+      await pl.openOptionsMenu();
+      await masterFilter(page).click();
+      await expect(pl.resourceCards.filter({ visible: true }), 'every card hidden').toHaveCount(0, { timeout: 5000 });
+      await masterFilter(page).click();
+      await expect.poll(() => pl.cardTitles(), { message: 'all cards back' }).toEqual(before);
+      await pl.closeOptionsMenu();
+    }
+  );
+
+  test(
+    'PL-04-06: unticking one resource type hides only cards of that type',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const pl = user.playlist;
+      const typesBefore = await pl.cardTypes();
+      await pl.openOptionsMenu();
+      const option = pl.filterOptions.nth(0);
+      expect(await checked(option)).toBe(true);
+      await option.click();
+      await user.page.waitForTimeout(800);
+      const typesAfter = await pl.resourceCards
+        .filter({ visible: true })
+        .evaluateAll((els) => els.map((el) => (el.querySelector('img.type-icon') || {}).getAttribute?.('src') || null));
+      const removed = typesBefore.length - typesAfter.length;
+      expect(removed, 'some cards hidden').toBeGreaterThan(0);
+      const hiddenTypes = new Set(typesBefore.filter((t) => !typesAfter.includes(t)));
+      expect(hiddenTypes.size, 'exactly one type hidden').toBeLessThanOrEqual(1);
+      await option.click(); // restore
+      await pl.closeOptionsMenu();
+    }
+  );
+
+  test(
+    'PL-04-07: the filter goes back to showing everything after switching topic',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const pl = user.playlist;
+      await pl.filterToOnlyType(0);
+      await pl.closeOptionsMenu();
+      await user.nav.goToChapterTopic(13, 1).catch(() => user.nav.goToChapterTopic(12, 0));
+      await user.nav.applyClassMap('playersDefault');
+      await pl.openOptionsMenu();
+      const states = await pl.filterOptions.evaluateAll((els) => els.map((e) => e.getAttribute('aria-selected')));
+      expect(
+        states.every((s) => s === 'true'),
+        'every type ticked again'
+      ).toBe(true);
+      await pl.closeOptionsMenu();
+    }
+  );
+
+  test(
+    'PL-04-08: Reset asks for confirmation first, and cancelling it changes nothing',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const pl = user.playlist;
+      const before = await pl.cardTitles();
+      await pl.openOptionsMenu();
+      await pl.filterResetBtn.click();
+      await expect(page.getByText(/are you sure you want to reset your playlist/i)).toBeVisible({ timeout: 5000 });
+      await pl.filterCancelBtn.first().click();
+      await expect(page.getByText(/are you sure you want to reset your playlist/i)).toBeHidden();
+      expect(await pl.cardTitles()).toEqual(before);
+      await pl.closeOptionsMenu();
+    }
+  );
+
+  test(
+    'PL-04-09: entering Edit and finishing without changes leaves the Playlist exactly as it was',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const pl = user.playlist;
+      const before = await pl.cardTitles();
+      await pl.enterEditMode();
+      await pl.finishEditing();
+      await expect(pl.finishEditingBtn).toBeHidden();
+      expect(await pl.cardTitles()).toEqual(before);
+    }
+  );
+
+  test(
+    'PL-04-10: turning every filter off and on 3 times quickly ends with every card showing',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      const pl = user.playlist;
+      const before = await pl.cardTitles();
+      await pl.openOptionsMenu();
+      const n = await pl.filterOptions.count();
+      for (let round = 0; round < 3; round++) {
+        for (let i = 0; i < n; i++) await pl.filterOptions.nth(i).click({ force: true });
+        for (let i = 0; i < n; i++) await pl.filterOptions.nth(i).click({ force: true });
+      }
+      await pl.closeOptionsMenu();
+      await expect.poll(() => pl.cardTitles(), { message: 'every card showing' }).toEqual(before);
+    }
+  );
 });

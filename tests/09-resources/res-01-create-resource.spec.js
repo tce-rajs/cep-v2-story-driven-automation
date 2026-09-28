@@ -252,4 +252,175 @@ test.describe('RES-01 Create Resource', () => {
       await user.playlist.removeOwnedAsset(added);
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Add Resource workbook) ---
+
+  const openCreate = async (user) => {
+    await user.addResource.openAction('create');
+    await user.addResource.createForm.waitFor({ state: 'visible', timeout: 10000 });
+  };
+  const fieldError = (user) =>
+    user.addResource.createForm.locator('.invalid-file, mat-error, .error').filter({ visible: true });
+
+  test(
+    'RES-01-09: a title shorter than 3 characters shows an error while typing, and 3 or more clears it',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      await openCreate(user);
+      await user.addResource.titleInput.pressSequentially('ab');
+      await user.addResource.titleInput.blur();
+      await expect(fieldError(user).first(), 'error for a 2-character title').toBeVisible({ timeout: 5000 });
+      await user.addResource.titleInput.pressSequentially('c');
+      await expect(fieldError(user).filter({ hasText: /title|character/i }), 'error gone at 3 characters').toHaveCount(
+        0
+      );
+      await user.addResource.cancelBtn.click();
+    }
+  );
+
+  test(
+    'RES-01-10: Grade & Subject and Chapter & Topic are filled in from the current topic and cannot be changed',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const cls = (await user.whiteboard.currentClassBtn.innerText()).replace(/\s+/g, ' ');
+      const topic = (await user.whiteboard.currentChapterTopicBtn.innerText()).replace(/\s+/g, ' ');
+      await openCreate(user);
+      const ar = user.addResource;
+      expect(await ar.gradeSubjectInput.inputValue(), 'Grade & Subject filled').toMatch(
+        new RegExp(cls.split('|').pop().trim().split(' ')[0], 'i')
+      );
+      expect(await ar.chapterTopicInput.inputValue(), 'Chapter & Topic filled').toContain(
+        topic.match(/\d+\.\d+/)?.[0] || ''
+      );
+      for (const field of [ar.gradeSubjectInput, ar.chapterTopicInput]) {
+        const locked = await field.evaluate((el) => el.disabled || el.readOnly);
+        expect(locked, 'cannot be changed').toBe(true);
+      }
+      await ar.cancelBtn.click();
+    }
+  );
+
+  test(
+    'RES-01-11: Share is on by default, and a resource created with Share off is saved with Share off',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const ar = user.addResource;
+      await openCreate(user);
+      await expect(ar.shareToggleButton, 'Share on by default').toHaveAttribute('aria-checked', 'true');
+      await ar.shareToggleButton.click();
+      await expect(ar.shareToggleButton).toHaveAttribute('aria-checked', 'false');
+      const title = unique();
+      await ar.titleInput.fill(title);
+      await ar.fileInput.setInputFiles({
+        name: 'share-off.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from('share off'),
+      });
+      const sent = page
+        .waitForRequest(
+          (r) =>
+            r.method() === 'POST' && /asset|resource|upload/i.test(r.url()) && /isShared/i.test(r.postData() || ''),
+          { timeout: 15000 }
+        )
+        .catch(() => null);
+      await ar.submitBtn.click();
+      const req = await sent;
+      try {
+        await expect(user.playlist.resourceCards.filter({ hasText: title })).toBeVisible({ timeout: 15000 });
+        if (req) expect(req.postData(), 'saved with Share off').toMatch(/"isShared"\s*:\s*"?(false|0)/i);
+      } finally {
+        await removeIfCreated(user, title);
+      }
+      expect(req, 'the create request carried the Share setting').not.toBeNull();
+    }
+  );
+
+  test('RES-01-12: Cancel closes the form without creating anything', { tag: ['@functional'] }, async ({ user }) => {
+    const before = await user.playlist.resourceCards.count();
+    await openCreate(user);
+    await user.addResource.titleInput.fill(unique());
+    await user.addResource.cancelBtn.click();
+    await expect(user.addResource.createForm).toBeHidden();
+    await user.page.waitForTimeout(2000);
+    await expect(user.playlist.resourceCards).toHaveCount(before);
+  });
+
+  test(
+    'RES-01-13: a file of an unsupported type is rejected with a message',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const exe = { name: 'setup.exe', mimeType: 'application/x-msdownload', buffer: Buffer.from('MZ fake binary') };
+      const r = await submitAndObserve(user, exe);
+      try {
+        expect(r.after, 'nothing created').toBe(r.before);
+        await expect(
+          fieldError(user).or(user.page.locator('mat-snack-bar-container, [role="alert"]')).first(),
+          'a message says the type is not allowed'
+        ).toBeVisible({ timeout: 5000 });
+      } finally {
+        await removeIfCreated(user, r.title);
+        await user.addResource.cancelBtn.click({ timeout: 3000 }).catch(() => {});
+      }
+    }
+  );
+
+  test(
+    'RES-01-14: double-clicking Submit creates the resource only once (regression)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      test.setTimeout(180000);
+      const ar = user.addResource;
+      const title = unique();
+      await openCreate(user);
+      await ar.titleInput.fill(title);
+      await ar.fileInput.setInputFiles({ name: 'double.txt', mimeType: 'text/plain', buffer: Buffer.from('double') });
+      await ar.submitBtn.dblclick();
+      const cards = user.playlist.resourceCards.filter({ hasText: title });
+      try {
+        await expect(cards.first()).toBeVisible({ timeout: 15000 });
+        await user.page.waitForTimeout(3000);
+        await expect(cards, 'exactly one card').toHaveCount(1);
+      } finally {
+        for (let i = 0; i < 3 && (await cards.count()) > 0; i++)
+          await user.playlist.removeOwnedAsset(cards.first()).catch(() => {});
+      }
+    }
+  );
+
+  test(
+    "RES-01-15: a file whose name has emoji and 150 characters doesn't break the form",
+    { tag: ['@edge', '@bug'] },
+    async ({ user }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): with a 150-character file name containing emoji, the
+      // upload (POST .../tce-repo-api/1/res/v1/content/package) is rejected with HTTP 400, the form closes anyway, and no
+      // message is shown -- the resource is silently not created.
+      test.fail(
+        true,
+        'A long file name with emoji is rejected by the server (400) with no message; the resource silently is not created'
+      );
+      const name = 'Lesson-notes-📚🔬-' + 'x'.repeat(150 - 22) + '.txt';
+      const r = await submitAndObserve(user, { name, mimeType: 'text/plain', buffer: Buffer.from('emoji name') });
+      try {
+        expect(r.clientBlocked, 'the form accepts the file').toBe(false);
+        await expect(user.playlist.resourceCards.filter({ hasText: r.title })).toBeVisible({ timeout: 15000 });
+      } finally {
+        await removeIfCreated(user, r.title);
+      }
+    }
+  );
+
+  test('RES-01-16: a file of exactly 10MB is accepted', { tag: ['@edge'] }, async ({ user }) => {
+    test.setTimeout(180000);
+    const r = await submitAndObserve(user, {
+      name: 'exactly-10mb.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.alloc(10 * 1024 * 1024, 65),
+    });
+    try {
+      expect(r.clientBlocked, 'not blocked by the form').toBe(false);
+      await expect(user.playlist.resourceCards.filter({ hasText: r.title }), 'created').toBeVisible({ timeout: 60000 });
+    } finally {
+      await removeIfCreated(user, r.title);
+    }
+  });
 });

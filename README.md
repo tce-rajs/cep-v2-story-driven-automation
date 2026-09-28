@@ -17,11 +17,17 @@ config/
 fixtures/
   electron-app.js           launches the desktop client; supplies `page`
   index.js                  the `test` every spec imports: adds `app` (signed out) and `user` (signed in)
+  lib/handwriting.js         human-like handwriting layout (words -> pen strokes) for whiteboard writing tests
+  touch-input.js             real finger/stylus/mouse input via CDP (Input.dispatchTouchEvent/MouseEvent), no page.mouse
 pages/                      page objects: locators + actions, no assertions; pages/app.js exposes them all
 tests/                      one folder per CEP v2 module, one spec file per story
   01-without-login/  02-new-user-flow/  03-login/  04-header/  05-toolbar/
   06-whiteboard/  07-class-navigation/  08-playlist/  09-resources/  11-players/
-scripts/                    Playwright reporter helper
+  12-minimap/  13-ai-notices/  14-learning-shorts/  15-ai-homework/  16-attendance/  17-profile/
+scripts/
+  build-workbook.js          rebuilds CEPV2_Stories/CEPV2_TestCases.xlsx from the story files
+  make-test-data.js          builds the upload test-data kit (test-data/, gitignored) used by RES-08/RES-09
+  to-mp4.js / frame-strip.js  turn a recorded .webm into a shareable MP4 and a picture-strip PNG
 ```
 
 Specs import `test`/`expect` from `fixtures` (Module 01: `fixtures/electron-app`) and reach the app only through

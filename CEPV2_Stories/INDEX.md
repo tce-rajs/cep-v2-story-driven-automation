@@ -24,6 +24,16 @@ level and the ID pattern are what tell them apart, not just position on the page
 | 09  | Resources (Add Resource)                                                                  | [09_Resources.md](09_Resources.md)               |
 | 10  | Sidebar (Plan Mode — excluded from automation)                                            | [10_Sidebar_PlanMode.md](10_Sidebar_PlanMode.md) |
 | 11  | Players                                                                                   | [11_Players.md](11_Players.md)                   |
+| 12  | Minimap                                                                                   | [12_Minimap.md](12_Minimap.md)                   |
+| 13  | AI Notices                                                                                | [13_AINotices.md](13_AINotices.md)               |
+| 14  | Learning Shorts                                                                           | [14_LearningShorts.md](14_LearningShorts.md)     |
+| 15  | AI Homework                                                                               | [15_AIHomework.md](15_AIHomework.md)             |
+| 16  | Attendance                                                                                | [16_Attendance.md](16_Attendance.md)             |
+| 17  | Profile (Account settings, Change Password, Change PIN)                                   | [17_Profile.md](17_Profile.md)                   |
+
+**Modules 12-17 and every story or case marked "Added 2026-09-26"** come from a gap analysis against the
+reference suite (`D:\Projects\new approch playwright`: its 20 module workbooks and its Zoho Teach Mode bug list).
+Security and abuse cases were left out on the owner's instruction.
 
 Modules 01, 04-10 come straight from the client's checklist (their single "Without
 Login" section is split three ways here — Without Login, New User Flow, and Login are

@@ -15,3 +15,12 @@ client-automation/client-automation-report/
 
 # Office lock files
 ~$*
+
+# Generated upload test files (rebuild with: node scripts/make-test-data.js)
+test-data/
+
+# Local-only evidence (videos/screenshots) -- too large for git, transfer separately if needed
+bug-evidence/
+test-evidence/
+bug-evidence.zip
+test-evidence.zip

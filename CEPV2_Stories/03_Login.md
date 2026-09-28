@@ -37,3 +37,40 @@ independently verified instead of assumed from the others working.
 
 _(Whether login returns the user to their last-accessed topic is a separate check —
 see `07_ClassNavigation.md`, NAV-05.)_
+
+### LOG-03 — Sign in with a PIN
+
+Added 2026-09-26 from the reference suite (Authentication workbook, PIN-01..23, AUTH-GAP-03/04).
+
+1. LOG-03-01 — To check the PIN view shows the Sign In heading, the welcome and instruction text, and five PIN boxes
+2. LOG-03-02 — Negative: to check a partly filled PIN (fewer than five digits) does not sign in
+3. LOG-03-03 — Negative: to check the PIN boxes accept digits only
+4. LOG-03-04 — To check the on-screen keypad's digit, Backspace and Enter keys work in the PIN boxes
+5. LOG-03-05 — To check "Disable Virtual Keyboard" hides the on-screen keypad
+6. LOG-03-06 — To check pasting a five-digit PIN fills the boxes
+7. LOG-03-07 — Edge: to check switching to the password view and back part-way through typing leaves both forms usable
+8. LOG-03-08 — Regression: tapping the fifth PIN box twice quickly signs in once, without an error
+
+### LOG-04 — Sign in with a password
+
+Added 2026-09-26 from the reference suite (Authentication workbook, PWD-01..20). Uses the spare account
+(`DISPOSABLE_*` in `.env`) for the successful sign-in, since the main account's stored password is currently rejected.
+
+1. LOG-04-01 — To check "Sign in with Password" shows the School, User ID and Password fields in that order
+2. LOG-04-02 — To check typing part of a school name lists matching schools
+3. LOG-04-03 — Negative: to check a school name that matches nothing shows "No items found"
+4. LOG-04-04 — To check the clear (x) button empties the School field
+5. LOG-04-05 — To check Sign In stays disabled until every field is filled
+6. LOG-04-06 — To check signing in with a valid school, User ID and password succeeds
+7. LOG-04-07 — Edge: to check a User ID typed in a different letter case signs in the same way
+8. LOG-04-08 — Regression: double-clicking Sign In submits only once
+9. LOG-04-09 — To check "Sign in with Pin" switches back to the PIN view
+
+### LOG-05 — Stay signed in
+
+Added 2026-09-26 from the reference suite (Authentication workbook, SESS-01, AUTH-GAP-01, NET-01/02).
+
+1. LOG-05-01 — To check the user is still signed in after the app reloads
+2. LOG-05-02 — To check the inactivity warning shows a countdown, and "Stay Signed In" keeps the session going
+3. LOG-05-03 — Negative: to check signing in with no network shows a clear error, not a hang
+4. LOG-05-04 — Negative: to check a server error during sign-in shows a clear message and the user can try again

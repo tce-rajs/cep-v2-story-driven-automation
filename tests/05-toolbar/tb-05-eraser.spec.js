@@ -161,4 +161,45 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
       await expect.poll(() => tb.pathCount(), 'one pass fully clears it — no fragments').toBe(before);
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Toolbar workbook and Zoho bugs) ---
+
+  test(
+    'TB-05-08: the eraser removes a long stroke (over about 700 pixels) completely (regression)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      const before = await tb.pathCount();
+      await tb.penStroke({ x: 150, y: 420 }, { x: 1050, y: 420 });
+      expect(await tb.pathCount()).toBe(before + 1);
+      await tb.eraseDrag({ x: 130, y: 420 }, { x: 1070, y: 420 }, 60);
+      await expect
+        .poll(
+          async () => {
+            const count = await tb.pathCount();
+            if (count === before) return 0;
+            return tb.paths.evaluateAll((els) => els.slice(-1)[0].getTotalLength());
+          },
+          { message: 'no part of the long stroke left' }
+        )
+        .toBeLessThan(5);
+    }
+  );
+
+  test(
+    'TB-05-09: cleared content stays cleared after the app reloads (regression, Zoho TCN-I16689)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      await tb.drawLetters(3, { x: 400, y: 400, gap: 100 });
+      await user.content.waitForSaved();
+      await tb.clearBoard(user.whiteboard);
+      expect(await tb.pathCount()).toBe(0);
+      await user.content.waitForSaved().catch(() => {});
+      await page.reload();
+      await tb.wbSvg.waitFor({ state: 'visible', timeout: 30000 });
+      await page.waitForTimeout(3000);
+      expect(await tb.waitForBoardToSettle(), 'still empty after reload').toBe(0);
+    }
+  );
 });

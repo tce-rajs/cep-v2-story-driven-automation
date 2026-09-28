@@ -60,4 +60,22 @@ test.describe('TB-08 Magnet menu', () => {
       expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
+
+  test(
+    'TB-08-07: opening and closing Magnet 6 times quickly never leaves its menu stuck open or duplicated',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      // CONFIRMED LIVE (2026-09-26): the Magnet icon only opens its menu (a second click leaves it open); tapping outside closes it.
+      for (let i = 0; i < 6; i++) {
+        await user.magnet.tool.click({ force: true });
+        await expect(user.magnet.noticeItem).toBeVisible({ timeout: 5000 });
+        await user.toolbar.closePanelByTappingOutside();
+      }
+      await expect(user.magnet.noticeItem, 'menu closed, not stuck open').toBeHidden({ timeout: 5000 });
+      await user.magnet.open();
+      await expect(user.magnet.noticeItem, 'exactly one menu').toHaveCount(1);
+      await expect(user.magnet.noticeItem).toBeVisible();
+      await user.toolbar.closePanelByTappingOutside();
+    }
+  );
 });

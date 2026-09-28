@@ -79,4 +79,30 @@ test.describe('NAV-02 Search Chapter', () => {
       expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Grade/Subject/Division workbook) ---
+
+  test(
+    'NAV-02-04: clearing the search brings the full chapter list back (regression)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const word = (chapterName.replace(/^Chapter\s*\d+\.?\s*/i, '').match(/\p{L}{4,}/u) || ['a'])[0];
+      await user.nav.searchContents(word);
+      expect(await user.nav.topicItems.count()).toBeGreaterThan(0);
+      await user.nav.searchContents('');
+      await user.nav.chapterTpSearchCancel.click({ force: true }).catch(() => {});
+      await expect
+        .poll(() => user.nav.chapterItems.count(), { message: 'chapter list back', timeout: 10000 })
+        .toBeGreaterThan(1);
+    }
+  );
+
+  test(
+    'NAV-02-05: a search of only spaces is treated as no match, not ignored',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      await user.nav.searchContents('     ');
+      await expect(user.nav.topicItems.filter({ visible: true }), 'no topics listed for a blank search').toHaveCount(0);
+    }
+  );
 });

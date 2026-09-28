@@ -30,3 +30,12 @@ belonging to that story.
 4. PRE-04-04 — To check the user can add a text box
 5. PRE-04-05 — To check the user can open and use a widget
 6. PRE-04-06 — Negative: to check none of these actions trigger an unexpected login prompt
+
+### PRE-05 — Open Sign In from Guest Mode
+
+Added 2026-09-26 from the reference suite (Authentication workbook, ENT-01..06).
+
+1. PRE-05-01 — To check the Guest Mode message is visible before signing in
+2. PRE-05-02 — To check clicking Sign in opens the PIN sign-in view by default
+3. PRE-05-03 — To check the Sign In window can be closed and opened again
+4. PRE-05-04 — Edge: to check content drawn on the whiteboard in Guest Mode is unchanged after opening and closing the Sign In window

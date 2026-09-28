@@ -4,7 +4,6 @@
 
 const { test, expect } = require('../../fixtures');
 
-// Counts and "last path" lookups need a blank board, not the persisted content earlier tests left behind.
 test.use({ cleanBoard: true });
 
 test.describe('WB-05 Theme', () => {

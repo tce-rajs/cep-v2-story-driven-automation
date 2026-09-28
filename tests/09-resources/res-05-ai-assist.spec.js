@@ -211,4 +211,113 @@ test.describe('RES-05 AI Assist', () => {
       await expect(flashcards, 'a second, separate FlashCard after the second add').toHaveCount(2, { timeout: 10000 });
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's AI Assist workbook) ---
+
+  test(
+    "RES-05-08: one click on a tab switches to that tab's content (regression)",
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const ar = user.addResource;
+      await openAiAssist(user);
+      await expect(ar.aiAssistExerciseCheckboxes.first()).toBeVisible({ timeout: 20000 });
+      await ar.aiAssistTabVideos.click();
+      await expect(ar.aiAssistVideoThumbs.first(), 'Videos content after ONE click').toBeVisible({ timeout: 10000 });
+      await expect(ar.aiAssistExerciseCheckboxes.first()).toBeHidden();
+    }
+  );
+
+  test('RES-05-09: the Videos tab shows videos for the current topic', { tag: ['@functional'] }, async ({ user }) => {
+    const ar = user.addResource;
+    const topic = (await user.whiteboard.currentChapterTopicBtn.innerText()).split('|').pop().trim();
+    await openAiAssist(user);
+    await ar.aiAssistTabVideos.click();
+    await ar.aiAssistTabVideos.click().catch(() => {});
+    await expect(ar.aiAssistVideoThumbs.first()).toBeVisible({ timeout: 20000 });
+    const titles = (await ar.aiAssistVideoThumbs.allInnerTexts()).join(' ');
+    const words = topic.split(/\W+/).filter((w) => w.length > 4);
+    expect(
+      words.some((w) => new RegExp(w, 'i').test(titles)),
+      `videos relate to "${topic}"`
+    ).toBe(true);
+  });
+
+  test(
+    'RES-05-10: Teaching Tips shows Activities, Explanation and Real Life Example',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      await openAiAssist(user);
+      await user.addResource.aiAssistTabTeachingTips.click();
+      await user.addResource.aiAssistTabTeachingTips.click().catch(() => {});
+      for (const section of [/activit/i, /explanation/i, /real life example/i])
+        await expect(page.getByText(section).filter({ visible: true }).first()).toBeVisible({ timeout: 20000 });
+    }
+  );
+
+  test('RES-05-11: Minimize and Maximize work', { tag: ['@functional'] }, async ({ user }) => {
+    // CONFIRMED LIVE (2026-09-26): Minimize slides the panel down to a bar at the bottom of the window (the close button
+    // moved from y~795 to y~945); the second click brings it back.
+    const ar = user.addResource;
+    await openAiAssist(user);
+    await expect(ar.aiAssistExerciseCheckboxes.first()).toBeVisible({ timeout: 20000 });
+    await expect(ar.aiAssistExerciseCheckboxes.first()).toBeInViewport();
+    const openY = (await ar.aiAssistCloseBtn.boundingBox()).y;
+    await ar.aiAssistMinimizeBtn.click();
+    await expect
+      .poll(async () => (await ar.aiAssistCloseBtn.boundingBox()).y, { message: 'panel slid down' })
+      .toBeGreaterThan(openY + 50);
+    await expect(ar.aiAssistExerciseCheckboxes.first(), 'questions out of view when minimized').not.toBeInViewport();
+    await ar.aiAssistMinimizeBtn.click();
+    await expect
+      .poll(async () => (await ar.aiAssistCloseBtn.boundingBox()).y, { message: 'panel back up' })
+      .toBeLessThan(openY + 5);
+    await expect(ar.aiAssistExerciseCheckboxes.first(), 'questions back in view').toBeInViewport();
+  });
+
+  test('RES-05-12: Close exits AI Assist cleanly', { tag: ['@functional'] }, async ({ user }) => {
+    await openAiAssist(user);
+    await user.addResource.aiAssistCloseBtn.click();
+    await expect(user.addResource.aiAssistTabExercise).toBeHidden({ timeout: 5000 });
+  });
+
+  test(
+    'RES-05-13: double-clicking "Add to Playlist" adds the exercise only once (regression)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const ar = user.addResource;
+      await openAiAssist(user);
+      await ar.selectExercise(0);
+      await ar.aiAssistAddToPlaylistBtn.dblclick({ force: true });
+      await user.page.waitForTimeout(4000);
+      await ar.aiAssistCloseBtn.click({ force: true }).catch(() => {});
+      await user.page.waitForTimeout(2000);
+      await user.playlist.ensureDrawerVisible();
+      // One add creates one "<topic> FlashCard" asset in this build (RES-05-03 records that it is not "My Exercise"), so a
+      // double click must still leave exactly one.
+      await expect(createdByAiAssist(user), 'one card, not two, from a double click').toHaveCount(1, {
+        timeout: 15000,
+      });
+    }
+  );
+
+  test(
+    'RES-05-14: opening and closing AI Assist 5 times leaves exactly one AI Assist window',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      for (let i = 0; i < 5; i++) {
+        await openAiAssist(user);
+        await user.addResource.aiAssistCloseBtn.click();
+        await expect(user.addResource.aiAssistTabExercise).toBeHidden({ timeout: 5000 });
+      }
+      await openAiAssist(user);
+      await expect(user.addResource.aiAssistCloseBtn, 'one window').toHaveCount(1);
+    }
+  );
+
+  test('RES-05-15: switching class while AI Assist is open closes it cleanly', { tag: ['@edge'] }, async ({ user }) => {
+    await openAiAssist(user);
+    await user.nav.applyClassMap('navigationGeneral');
+    await expect(user.whiteboard.currentClassBtn).toContainText('Class 5');
+    await expect(user.addResource.aiAssistTabExercise, 'AI Assist closed').toBeHidden({ timeout: 10000 });
+  });
 });

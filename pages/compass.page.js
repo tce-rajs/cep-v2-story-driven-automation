@@ -36,11 +36,17 @@ class CompassPage {
     // Clicking a card opens an Angular Material dialog (student-test detail/results view), not the
     // list-view's own detail panel above -- CONFIRMED LIVE via its real class, cdk-overlay-backdrop's sibling.
     this.revisionTestDialog = page.locator('.mat-mdc-dialog-container');
-    // ExploreIt's own widget tiles/Open-Widgets link have no confirmed
-    // data-qa-id -- text/class based.
-    this.exploreItOpenWidgetsLink = page.getByText('Open Widgets', { exact: false });
-    this.noHomeworkMessage = page.getByText(/no homework available to analyse/i);
-    this.noHomeworkCreateLink = page.getByText(/create a new homework/i);
+    // CONFIRMED LIVE (2026-09-26, v 0.0.232): Explore It lists each widget as compass-exploreit-widget-tool-<uuid>
+    // (label in .widget-label) with a separate "Open Widgets" link (compass-exploreit-open-widgets). The "no homework"
+    // message sits at the top of the menu as compass-no-homework-create, split over several <p> ("Currently, there is no
+    // Homework available / to analyse. Would you like to create a new / Homework ?"), so it is matched by id, not text;
+    // its "Homework ?" <b> is the create link.
+    this.exploreItWidgets = page.locator('[data-qa-id^="compass-exploreit-widget-tool-"]');
+    this.exploreItOpenWidgetsLink = page.locator('[data-qa-id="compass-exploreit-open-widgets"]');
+    this.noHomeworkMessage = page.locator('[data-qa-id="compass-no-homework-create"]');
+    this.noHomeworkCreateLink = this.noHomeworkMessage.locator('b');
+    // The menu keeps its `open` class after a reload while not shown -- judge it by visibility, not by the class.
+    this.menu = page.locator('.compass-menu');
 
     // --- Planning mode (profile popover -> Classroom Mode -> Planning) ---
     this.profileAvatar = page.locator('[data-qa-id="toolbar-user-avatar"]');

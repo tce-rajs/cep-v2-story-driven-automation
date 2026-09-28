@@ -95,4 +95,26 @@ test.describe('TB-06 Shapes (Choose / Draw / Symbols)', () => {
       await expect(tb.container).toBeVisible();
     }
   );
+
+  test(
+    "TB-06-04: clicking with the Shapes tool without dragging doesn't add an invisible, zero-size shape",
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      const before = await tb.pathCount();
+      await tb.chooseShape('gtDrawRect');
+      const box = await tb.wbSvg.boundingBox();
+      await page.mouse.click(box.x + 600, box.y + 450);
+      await page.waitForTimeout(800);
+      const tiny = await tb.paths.evaluateAll(
+        (els) =>
+          els.filter((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width < 3 && r.height < 3;
+          }).length
+      );
+      expect(tiny, 'no zero-size shape on the board').toBe(0);
+      expect(await tb.pathCount()).toBeLessThanOrEqual(before + 1);
+    }
+  );
 });

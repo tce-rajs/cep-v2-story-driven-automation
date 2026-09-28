@@ -121,4 +121,112 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     // may mean this was already fixed at the point of entry rather than the exit this ticket describes.
     // Worth a manual re-check against the original repro before writing this off.
   });
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Compass workbook and Zoho bugs) ---
+
+  test(
+    "HDR-05-09: Explore It shows the chapter's widgets, and opening one shows that widget",
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      await user.nav.applyClassMap('compassExploreIt');
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'Compass menu opened').toBe(true);
+      await expect(user.compass.exploreItWidgets.first(), 'Explore It lists widgets').toBeVisible();
+      const label = (await user.compass.exploreItWidgets.first().locator('.widget-label').innerText()).trim();
+      expect(label.length, 'each widget is named').toBeGreaterThan(3);
+      const shown = () =>
+        page
+          .locator('iframe, [class*="widget-container"], [class*="widget-player"], [class*="widget-wrapper"]')
+          .filter({ visible: true })
+          .count();
+      const before = await shown();
+      await user.compass.exploreItWidgets.first().click();
+      await expect.poll(shown, { message: `the "${label}" widget opened`, timeout: 20000 }).toBeGreaterThan(before);
+      await user.player.closePlayer().catch(() => {});
+    }
+  );
+
+  test(
+    'HDR-05-10: Explore It\'s "Open Widgets" link opens the full widget browser',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      await user.nav.applyClassMap('compassExploreIt');
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'Compass menu opened').toBe(true);
+      await user.compass.exploreItOpenWidgetsLink.click();
+      await expect(user.toolbar.widgetDisciplineSelect, 'widget browser shown').toBeVisible({ timeout: 15000 });
+      expect(
+        await page.locator('[data-qa-id^="toolbar-widget-tool-"]').filter({ visible: true }).count(),
+        'widgets listed'
+      ).toBeGreaterThan(0);
+      await user.toolbar.widgetCloseBtn.click({ force: true }).catch(() => page.keyboard.press('Escape'));
+    }
+  );
+
+  test(
+    'HDR-05-11: Analyse It shows a "no homework" message with a link to create homework when the topic has none',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'Compass menu opened').toBe(true);
+      await expect(user.compass.analyseItItem).toContainText(/no homework/i);
+      await expect(user.compass.noHomeworkMessage).toBeVisible({ timeout: 15000 });
+      await expect(user.compass.noHomeworkMessage).toContainText(/no homework available/i);
+      await expect(user.compass.noHomeworkCreateLink, 'a link to create homework').toContainText(/homework/i);
+    }
+  );
+
+  test(
+    'HDR-05-12: in Analyse It, "View Questions" and "View Last 5 Homework" open their views (regression, Zoho TCN-I16623)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'Compass menu opened').toBe(true);
+      // The Analyse It entry itself reads "No Homework" when the topic has none (confirmed live 2026-09-26).
+      const noHomework = /no homework/i.test(await user.compass.analyseItItem.innerText());
+      test.skip(
+        noHomework,
+        'Needs a topic whose Analyse It lists homework; this class/topic has none (see HDR-05-11).'
+      );
+      await user.compass.analyseItItem.click({ force: true });
+      await user.compass.detailViewQuestionsBtn.click();
+      await expect(user.compass.questionToggleAnswerBtn.first(), 'questions view opened').toBeVisible({
+        timeout: 15000,
+      });
+      await user.compass.detailCancelBtn.click({ force: true }).catch(() => {});
+      await user.compass.detailViewListBtn.click();
+      await expect(user.compass.listCancelBtn, 'last-5-homework list opened').toBeVisible({ timeout: 15000 });
+    }
+  );
+
+  test(
+    'HDR-05-13: clicking the Compass button 6 times quickly never opens more than one Compass window',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      await expect(user.compass.triggerBtn).toBeVisible({ timeout: 15000 });
+      for (let i = 0; i < 6; i++) await user.compass.triggerBtn.click({ force: true });
+      await page.waitForTimeout(1500);
+      expect(
+        await user.compass.menu.filter({ visible: true }).count(),
+        'at most one Compass window'
+      ).toBeLessThanOrEqual(1);
+    }
+  );
+
+  test(
+    'HDR-05-14: Compass opens normally again after the app reloads with its details view open',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'Compass menu opened').toBe(true);
+      await user.compass.analyseItItem.click({ force: true });
+      await page.waitForTimeout(2000);
+      await page.reload();
+      await expect(user.login.avatar).toBeVisible({ timeout: 30000 });
+      await expect(user.compass.menu, 'no stale Compass window after reload').toBeHidden();
+      const again = await user.compass.openTrigger();
+      expect(again.opened, 'Compass opens again').toBe(true);
+      await expect(user.compass.analyseItItem).toBeVisible();
+    }
+  );
 });

@@ -30,6 +30,18 @@ const CLIENT_EXE_PATH =
   process.env.CLASSEDGE_CLIENT_EXE ||
   'C:\\Users\\v_crystalQA3\\AppData\\Local\\Programs\\tceclient\\Tata ClassEdge School.exe';
 const TCE_SETTINGS_PATH = process.env.TCE_SETTINGS_PATH || 'C:\\Users\\Public\\tce_settings.json';
+const RECORD_VIDEO_DIR = process.env.RECORD_VIDEO_DIR;
+
+/** Closes the app; when recording, logs the teach window's video path and the close time to videos.jsonl, so a
+ * long per-worker video can be cut into per-test clips afterwards (video start = close time - video duration). */
+async function closeAndLogVideo(app, teachWindow) {
+  const video = RECORD_VIDEO_DIR && teachWindow && teachWindow.video();
+  await app.close().catch(() => {});
+  if (!video) return;
+  const file = await video.path().catch(() => null);
+  const line = JSON.stringify({ file, closedAt: Date.now() });
+  fs.appendFileSync(require('path').join(RECORD_VIDEO_DIR, 'videos.jsonl'), line + '\n');
+}
 
 // Every spec was written against a plain browser `page`, where Playwright's
 // own `baseURL` config option lets `page.goto('./')` resolve automatically.
@@ -144,6 +156,9 @@ async function launchClient() {
     // hardware. They affect getUserMedia only. Remove them if they ever interfere with a launch.
     args: ['--env=qa', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
     env,
+    // Opt-in (RECORD_VIDEO_DIR): the browser-only `video` config option does nothing for Electron, but the launch
+    // option does record the client's windows. One video per launch; see closeAndLogVideo() below.
+    ...(RECORD_VIDEO_DIR && { recordVideo: { dir: RECORD_VIDEO_DIR, size: { width: 1280, height: 720 } } }),
   });
 
   // Make sure the shell window has come up before we look for the webview.
@@ -320,7 +335,7 @@ const clientTest = base.test.extend({
       // every test in this worker reads through the same reference.
       const state = { app: initial.app, teachWindow: initial.teachWindow };
       await use(state);
-      await state.app.close().catch(() => {});
+      await closeAndLogVideo(state.app, state.teachWindow);
     },
     { scope: 'worker', timeout: 100000 },
   ],
@@ -336,7 +351,7 @@ const clientTest = base.test.extend({
       }
 
       if (!healthy) {
-        await workerApp.app.close().catch(() => {});
+        await closeAndLogVideo(workerApp.app, workerApp.teachWindow);
         const recovered = await launchWithRetry();
         workerApp.app = recovered.app;
         workerApp.teachWindow = recovered.teachWindow;

@@ -43,4 +43,25 @@ test.describe('PL-05 Navigation', () => {
       expect(await playlist.cardTitles(), 'topic B Playlist intact').toEqual(titlesB);
     }
   );
+
+  test(
+    'PL-05-03: the Playlist shows the same resources after the app reloads',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const before = await user.playlist.cardTitles();
+      expect(before.length).toBeGreaterThan(0);
+      await page.reload();
+      await expect(user.login.avatar).toBeVisible({ timeout: 30000 });
+      await user.playlist.ensureDrawerVisible();
+      // Same resources, compared as a set: CONFIRMED LIVE (2026-09-26) two same-titled cards can swap places on reload,
+      // and card order is PL-09-02's concern.
+      const sorted = (a) => [...a].sort();
+      await expect
+        .poll(async () => sorted(await user.playlist.cardTitles()), {
+          message: 'same cards after reload',
+          timeout: 20000,
+        })
+        .toEqual(sorted(before));
+    }
+  );
 });

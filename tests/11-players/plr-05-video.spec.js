@@ -89,4 +89,71 @@ test.describe('PLR-05 Play a video resource', () => {
       ).toEqual([]);
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Players workbook and Zoho bugs) ---
+
+  test('PLR-05-05: seeking and volume work', { tag: ['@functional'] }, async ({ user }) => {
+    await openVideo(user);
+    const v = user.player.videoElement;
+    const duration = (await user.player.videoState()).duration;
+    await v.evaluate((el, t) => (el.currentTime = t), duration / 2);
+    await expect
+      .poll(async () => Math.round((await user.player.videoState()).currentTime), { message: 'seeked to the middle' })
+      .toBeGreaterThanOrEqual(Math.floor(duration / 2) - 1);
+    await v.evaluate((el) => (el.volume = 0.3));
+    expect(await v.evaluate((el) => el.volume)).toBeCloseTo(0.3, 1);
+    await v.evaluate((el) => (el.muted = true));
+    expect(await v.evaluate((el) => el.muted)).toBe(true);
+    await user.player.closePlayer();
+  });
+
+  test(
+    'PLR-05-06: the teacher can annotate over a playing video (regression, Zoho TCN-I15547)',
+    { tag: ['@bug', '@regression'] },
+    async ({ user, page }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; Zoho TCN-I15547): the video plays in an iframe above the
+      // whiteboard drawing layer, so a Pen stroke over a playing video is not drawn at all.
+      test.fail(true, 'Pen strokes over a playing video are not drawn');
+      await openVideo(user);
+      await user.player.toggleVideoPlayback();
+      const paths = () => page.locator('svg path').count();
+      const before = await paths();
+      await user.toolbar.selectTool('gtPen');
+      const box = await user.player.videoElement.boundingBox();
+      await page.mouse.move(box.x + 30, box.y + 30);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width - 30, box.y + box.height - 30, { steps: 15 });
+      await page.mouse.up();
+      await expect.poll(paths, { message: 'a stroke was drawn over the video' }).toBeGreaterThan(before);
+      await user.player.closePlayer();
+    }
+  );
+
+  test('PLR-05-07: opening something else stops the video', { tag: ['@functional'] }, async ({ user }) => {
+    await openVideo(user);
+    await user.player.toggleVideoPlayback();
+    await expect.poll(async () => (await user.player.videoState()).paused).toBe(false);
+    await user.player.openResourceCard(user.player.worksheetCards);
+    await user.page.waitForTimeout(3000);
+    const still = await user.player.videoState().catch(() => ({ paused: true }));
+    expect(still.paused, 'the video is not still playing').toBe(true);
+    await user.player.closePlayer();
+    await user.player.closePlayer();
+  });
+
+  test(
+    'PLR-05-08: double-clicking a video card opens only one player (regression)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      await expect(user.player.videoCards.first()).toBeAttached({ timeout: 10000 });
+      await user.player.videoCards.first().evaluate((el) => {
+        el.scrollIntoView({ block: 'center' });
+        el.click();
+        el.click();
+      });
+      await page.waitForTimeout(6000);
+      expect(await page.frameLocator('iframe').locator('video').count(), 'one video player').toBeLessThanOrEqual(1);
+      await user.player.closePlayer();
+    }
+  );
 });

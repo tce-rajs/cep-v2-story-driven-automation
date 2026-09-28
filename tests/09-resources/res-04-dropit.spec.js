@@ -95,7 +95,8 @@ test.describe('RES-04 DropIt', () => {
     'RES-04-04: a paired session allows sharing a link, and the shared link opens correctly when accessed',
     { tag: ['@functional'] },
     async ({ user }) => {
-      test.setTimeout(60000);
+      // 150 s: pairing, sharing, opening the player and removing the card again took just over 60 s live (2026-09-26).
+      test.setTimeout(150000);
       const { browser, phone } = await pairDropit(user);
       const sharedUrl = 'https://example.com/';
       try {
@@ -214,6 +215,129 @@ test.describe('RES-04 DropIt', () => {
       } finally {
         fs.unlinkSync(tmpFile);
         await fileBrowser.close();
+      }
+    }
+  );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Drop It workbook and Zoho bugs) ---
+
+  test('RES-04-07: Close exits DropIt cleanly', { tag: ['@functional'] }, async ({ user }) => {
+    await openDropIt(user);
+    await user.addResource.dropitCloseBtn.click();
+    await expect(user.addResource.dropitQrCanvas).toBeHidden({ timeout: 10000 });
+    await expect(user.addResource.dropitCloseBtn).toBeHidden();
+  });
+
+  test(
+    'RES-04-08: opening and closing DropIt 8 times leaves no stuck or duplicated panel',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      test.setTimeout(180000);
+      for (let i = 0; i < 8; i++) {
+        await openDropIt(user);
+        await user.addResource.dropitCloseBtn.click();
+        await expect(user.addResource.dropitQrCanvas).toBeHidden({ timeout: 10000 });
+      }
+      await openDropIt(user);
+      await expect(user.addResource.dropitQrCanvas, 'one QR, not several').toHaveCount(1);
+      await user.addResource.dropitCloseBtn.click();
+    }
+  );
+
+  test(
+    'RES-04-09: switching class straight after opening DropIt leaves no DropIt panel behind (regression)',
+    { tag: ['@bug', '@regression'] },
+    async ({ user }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's DRP-BREAK-01): switching class
+      // straight after opening DropIt leaves its panel and QR code on screen over the new class.
+      test.fail(true, 'DropIt stays open over the new class after a class switch');
+      await openDropIt(user);
+      await user.nav.applyClassMap('navigationGeneral');
+      await expect(user.whiteboard.currentClassBtn).toContainText('Class 5');
+      await expect(user.addResource.dropitQrCanvas, 'no DropIt panel over the new class').toBeHidden({
+        timeout: 10000,
+      });
+    }
+  );
+
+  test(
+    "RES-04-10: DropIt's Close button doesn't cover the Add Resource button (regression)",
+    { tag: ['@bug', '@regression'] },
+    async ({ user, page }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's DRP-FAB-OVERLAP-01): DropIt's
+      // Close button sits over the Add Resource "+" button.
+      test.fail(true, "DropIt's Close button covers the Add Resource button");
+      await openDropIt(user);
+      const close = await user.addResource.dropitCloseBtn.boundingBox();
+      const add = await user.addResource.addResourcesTrigger.boundingBox();
+      const overlap =
+        close &&
+        add &&
+        close.x < add.x + add.width &&
+        add.x < close.x + close.width &&
+        close.y < add.y + add.height &&
+        add.y < close.y + close.height;
+      expect(overlap, 'Close does not sit on top of Add Resource').toBeFalsy();
+      // And the Add Resource button is the thing actually under its own centre.
+      const onTop = await page.evaluate(
+        ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-qa-id="add-resource-trigger"]'),
+        { x: add.x + add.width / 2, y: add.y + add.height / 2 }
+      );
+      expect(onTop, 'Add Resource is not covered').toBe(true);
+      await user.addResource.dropitCloseBtn.click();
+    }
+  );
+
+  test(
+    'RES-04-11: sharing text from the paired device works (regression, Zoho TCN-I16701)',
+    { tag: ['@bug', '@regression'] },
+    async ({ user }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; Zoho TCN-I16701, still open): text shared from the paired
+      // device (the companion page offers only Upload File and Share Link) never arrives in the classroom Playlist.
+      test.fail(true, 'Text shared through DropIt does not arrive in the Playlist');
+      test.setTimeout(90000);
+      const { browser, phone } = await pairDropit(user);
+      try {
+        const before = await user.playlist.resourceCards.count();
+        const note = `Homework reminder ${Date.now()}`;
+        await phone.shareLink(note);
+        await expect(
+          user.addResource.dropitTransferStatus.or(user.addResource.dropitUploadStatus).first(),
+          'not a failure'
+        ).not.toHaveText(/fail/i, { timeout: 10000 });
+        await user.addResource.dropitCloseBtn.click({ force: true }).catch(() => {});
+        await user.playlist.ensureDrawerVisible();
+        await expect(user.playlist.resourceCards, 'the shared text arrived as a card').toHaveCount(before + 1, {
+          timeout: 20000,
+        });
+        await user.playlist.removeOwnedAsset(user.playlist.resourceCards.last()).catch(() => {});
+      } finally {
+        await browser.close();
+      }
+    }
+  );
+
+  test(
+    'RES-04-12: a file type DropIt does not support is rejected with a clear message',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      test.setTimeout(90000);
+      const { browser, phone } = await pairDropit(user);
+      const tmp = path.join(os.tmpdir(), 'autotest-notes.txt');
+      fs.writeFileSync(tmp, 'plain text is not an accepted type');
+      try {
+        const before = await user.playlist.resourceCards.count();
+        await phone.uploadFile(tmp);
+        await user.page.waitForTimeout(5000);
+        await expect(user.addResource.dropitUploadStatus, 'no successful upload recorded').not.toHaveText(
+          /success|complete|uploaded/i
+        );
+        await expect(user.playlist.resourceCards, 'nothing added').toHaveCount(before);
+        const shot = await phone.page.screenshot();
+        await test.info().attach('phone after rejected upload', { body: shot, contentType: 'image/png' });
+      } finally {
+        fs.unlinkSync(tmp);
+        await browser.close();
       }
     }
   );

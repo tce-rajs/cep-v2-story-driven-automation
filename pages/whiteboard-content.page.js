@@ -54,6 +54,94 @@ class WhiteboardContent {
     await this.addGalleryImage();
   }
 
+  /** The part of the board a teacher writes on: clear of the header/logo (top-left), the toolbar (right), the side
+   * buttons (left) and the class bar / Playlist strip (bottom). Canvas-relative pixels. */
+  async writingArea() {
+    const box = await this.toolbar.wbSvg.boundingBox();
+    return { x: 150, y: 110, width: Math.min(box.width - 450, 1500), height: Math.min(box.height - 330, 700) };
+  }
+
+  /** Handwrite pre-laid-out pages (pages/lib/handwriting.js layoutHandwriting) with the Pen, like a teacher: one
+   * joined stroke per word, then its dots and crosses. Between pages `nextPage(pageIndex)` is called (the caller pans
+   * to fresh board space). Returns how long each word took, in ms, to spot the board slowing down. */
+  async writeHandwriting(pages, { nextPage, draw, step = 4 } = {}) {
+    const { densify } = require('./lib/handwriting');
+    const box = await this.toolbar.wbSvg.boundingBox();
+    const timings = [];
+    // `draw(points)` lets the caller write with a finger or a stylus (pages/touch-input.js); the default is the mouse,
+    // sent straight to the browser (page.mouse makes every move a tracked step: an 800-word session took hours).
+    if (!draw) {
+      const { TouchInput } = require('./touch-input');
+      this.directInput = this.directInput || new TouchInput(this.page);
+    }
+    const drawStroke = draw || ((pts) => this.directInput.mouseStroke(pts));
+    await this.toolbar.selectTool('gtPen');
+    for (let p = 0; p < pages.length; p++) {
+      if (p > 0 && nextPage) {
+        await nextPage(p);
+        await this.toolbar.selectTool('gtPen');
+      }
+      for (const word of pages[p].words) {
+        const t0 = Date.now();
+        for (const stroke of word.strokes) {
+          // `step`: pen points every N px (4 = smooth; 6 keeps an 800-word session to about half an hour).
+          await drawStroke(densify(stroke, step).map((pt) => ({ x: box.x + pt.x, y: box.y + pt.y })));
+        }
+        timings.push({ word: word.text, ms: Date.now() - t0, page: p });
+      }
+    }
+    return timings;
+  }
+
+  /** Pan the board with the Pan tool so the view moves up by `dy` px (fresh space appears below). */
+  async panUp(dy) {
+    await this.toolbar.selectTool('gtPan');
+    const box = await this.toolbar.wbSvg.boundingBox();
+    const x = box.x + box.width / 2;
+    const from = box.y + Math.min(box.height - 200, dy + 150);
+    await this.page.mouse.move(x, from);
+    await this.page.mouse.down();
+    for (let i = 1; i <= 20; i++) await this.page.mouse.move(x, from - (dy * i) / 20);
+    await this.page.mouse.up();
+    await this.page.waitForTimeout(500);
+  }
+
+  /** Pan down past everything already written, so new writing lands on fresh board space (a board that is never
+   * cleared keeps what earlier sessions wrote). `pan(dy)` does one pan move (mouse or two fingers); default mouse. */
+  async panBelowExistingWriting(pan) {
+    const box = await this.toolbar.wbSvg.boundingBox();
+    const area = await this.writingArea();
+    const top = box.y + area.y;
+    const doPan = pan || ((dy) => this.panUp(dy));
+    for (let i = 0; i < 40; i++) {
+      const bottom = await this.toolbar.paths.evaluateAll((els) =>
+        els.reduce((m, e) => Math.max(m, e.getBoundingClientRect().bottom), -Infinity)
+      );
+      if (!Number.isFinite(bottom) || bottom < top - 10) return;
+      await doPan(Math.min(area.height, bottom - top + 60));
+    }
+  }
+
+  /** Start recording every autosave message ("Saving whiteboard …" / "Whiteboard Saved! N stroke(s)") with the time
+   * it appeared, so a long session can show autosave kept up. Read them back with savedMessages(). */
+  async startSaveLog() {
+    await this.page.evaluate(() => {
+      window.__wbSaveLog = [];
+      let last = '';
+      const check = () => {
+        const text = (document.body.innerText.match(/Whiteboard Saved![^\n]*|Saving whiteboard[^\n]*/i) || [''])[0];
+        if (text && text !== last) window.__wbSaveLog.push({ at: Date.now(), text });
+        last = text;
+      };
+      window.__wbSaveObserver = new MutationObserver(check);
+      window.__wbSaveObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+    });
+  }
+
+  async savedMessages() {
+    return this.page.evaluate(() => window.__wbSaveLog || []);
+  }
+
   /** The top-centre success message. Every scenario waits for THIS, never an arbitrary timer. */
   async waitForSaved(timeout = 30000) {
     await this.toolbar.savedToast.first().waitFor({ state: 'visible', timeout });

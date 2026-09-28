@@ -35,14 +35,58 @@ covered separately in PL-02, since it has its own navigation behavior).
 2. PL-04-02 — To check resetting the playlist reverts it to the expected state
 3. PL-04-03 — To check filtering the playlist shows only matching resources
 4. PL-04-04 — Negative: to check filtering with a term that matches nothing shows an appropriate empty state, not a blank panel
+5. PL-04-05 — To check unticking the main Filter Resources box hides every resource card, and ticking it again brings them all back
+6. PL-04-06 — To check unticking one resource type hides only cards of that type
+7. PL-04-07 — To check the filter goes back to showing everything after switching topic
+8. PL-04-08 — To check Reset asks for confirmation first, and cancelling it changes nothing
+9. PL-04-09 — To check entering Edit and finishing without changes leaves the Playlist exactly as it was
+10. PL-04-10 — Edge: to check turning every filter off and on 3 times quickly ends with every card showing
 
 ### PL-05 — Navigation
 
 1. PL-05-01 — Regression: switching topics/chapters rapidly, several times, before the previous one finishes loading doesn't corrupt Playlist state
 2. PL-05-02 — Regression (Plan Mode, excluded from automation): a custom chapter/topic/resource created in Plan Mode appears correctly in Teach Mode Playlist, and vice versa
+3. PL-05-03 — To check the Playlist shows the same resources after the app reloads
 
 ### PL-06 — Pin
 
 1. PL-06-01 — To check pinning a resource keeps it fixed at the top of the playlist
 2. PL-06-02 — To check unpinning removes that fixed placement
 3. PL-06-03 — Edge: to check pinning multiple resources keeps them all fixed at the top in a consistent order
+
+### PL-07 — Playlist strip
+
+Added 2026-09-26 from the reference suite (Playlist workbook, PL-CORE-01..05, PL-EXP-07/09).
+
+1. PL-07-01 — To check the strip shows E-Books, Contents and the resource cards, each card with its type icon
+2. PL-07-02 — To check the Contents tile shows the current chapter and topic
+3. PL-07-03 — To check the arrows scroll the strip when there are more cards than fit
+4. PL-07-04 — Edge: to check a topic with 20 or more resources keeps the strip usable
+
+### PL-08 — Contents (table of contents)
+
+Added 2026-09-26 from the reference suite (Playlist workbook, PL-TOC-01..09, PL-CHP-01..06).
+
+1. PL-08-01 — To check Contents opens the chapter and topic list with the current topic highlighted
+2. PL-08-02 — To check choosing a topic from Contents changes the current topic and reloads the Playlist
+3. PL-08-03 — To check searching Contents finds topics regardless of letter case
+4. PL-08-04 — To check Cancel brings back the full list after a search
+5. PL-08-05 — Negative: to check a search with no matches shows a message, not a blank panel
+6. PL-08-06 — Edge: to check a very long search is handled without error
+
+### PL-09 — Manage resources in the Playlist
+
+Added 2026-09-26 from the reference suite (Playlist workbook, PL-STATE-02, PL-GAP-01, PL-CYP-02, PL-EXP-05) and Zoho bugs.
+
+1. PL-09-01 — To check removing a resource asks for confirmation before it disappears
+2. PL-09-02 — To check a new order made by dragging cards is kept after the app reloads
+3. PL-09-03 — To check Edit in a card's menu appears only on resources the teacher created
+4. PL-09-04 — Regression: saving changes to a teacher-created resource shows the right success message (Zoho TCN-I16558)
+5. PL-09-05 — Edge: to check adding a resource that's already in the Playlist doesn't create a confusing duplicate
+
+### PL-10 — Multiple clicks and fast actions on the Playlist (added 2026-09-27)
+
+1. PL-10-01 — Regression/Negative: double-clicking Remove's confirm button removes only the chosen resource, not the next one as well
+2. PL-10-02 — Edge: fast clicks on the strip's scroll arrows reach both ends and never leave it blank or stuck
+3. PL-10-03 — Edge: double-clicking a topic in Contents opens that topic once, and the label and Playlist match it
+4. PL-10-04 — Edge: toggling Edit mode on and off five times fast leaves the Playlist in normal mode with every card

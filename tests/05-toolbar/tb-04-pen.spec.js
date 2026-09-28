@@ -3,7 +3,6 @@
 
 const { test, expect } = require('../../fixtures');
 
-// Counts and "last path" lookups need a blank board, not the persisted content earlier tests left behind.
 test.use({ cleanBoard: true });
 
 const THICKNESS_LABELS = ['Thin', 'Normal', 'Thick', 'Strong'];
@@ -36,6 +35,8 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
     'TB-04-02: drawing with each available pen colour renders that colour correctly',
     { tag: ['@functional'] },
     async ({ user }) => {
+      // One stroke per colour takes just over 90 s in a full run (timed out there 2026-09-26), so allow more.
+      test.setTimeout(240000);
       const tb = user.toolbar;
       await tb.openToolPanel('gtPen');
       const colours = await tb.penColorOptions.count();
@@ -126,6 +127,90 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
         await user.toolbar.selectTool('gtSelect');
         x += 350;
       }
+    }
+  );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Toolbar workbook and Zoho bugs) ---
+
+  test(
+    'TB-04-05: switching from Pen to Eraser part-way through a drag leaves no stray half-drawn stroke (regression)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const errors = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      const tb = user.toolbar;
+      await tb.selectTool('gtPen');
+      const before = await tb.pathCount();
+      const box = await tb.wbSvg.boundingBox();
+      await page.mouse.move(box.x + 400, box.y + 400);
+      await page.mouse.down();
+      for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + 400 + i * 15, box.y + 400);
+      await tb.tool('gtErase').dispatchEvent('click');
+      for (let i = 9; i <= 16; i++) await page.mouse.move(box.x + 400 + i * 15, box.y + 400);
+      await page.mouse.up();
+      await page.waitForTimeout(800);
+      const added = (await tb.pathCount()) - before;
+      expect(added, 'at most the one stroke that was being drawn').toBeLessThanOrEqual(1);
+      if (added === 1) {
+        const b = await tb.lastPathBox();
+        expect(b.width, 'no tiny stray fragment').toBeGreaterThan(20);
+      }
+      // The board still works.
+      await tb.penStroke({ x: 400, y: 550 }, { x: 600, y: 560 });
+      expect(await tb.pathCount()).toBeGreaterThan(before + added);
+      expect(errors).toEqual([]);
+    }
+  );
+
+  test(
+    'TB-04-06: curved strokes are drawn as curves, not straight lines (regression, Zoho TCN-I16705)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      await tb.selectTool('gtPen');
+      const before = await tb.pathCount();
+      const box = await tb.wbSvg.boundingBox();
+      const cx = box.x + 600,
+        cy = box.y + 450,
+        r = 150;
+      await page.mouse.move(cx - r, cy);
+      await page.mouse.down();
+      for (let a = 180; a >= 0; a -= 6) {
+        const rad = (a * Math.PI) / 180;
+        await page.mouse.move(cx + r * Math.cos(rad), cy - r * Math.sin(rad));
+      }
+      await page.mouse.up();
+      await page.waitForTimeout(700);
+      expect(await tb.pathCount()).toBe(before + 1);
+      // How far the drawn path bows away from the straight line between its ends.
+      const bow = await tb.paths.last().evaluate((p) => {
+        const len = p.getTotalLength();
+        const a = p.getPointAtLength(0),
+          b = p.getPointAtLength(len);
+        let max = 0;
+        for (let i = 1; i < 40; i++) {
+          const q = p.getPointAtLength((len * i) / 40);
+          const d =
+            Math.abs((b.y - a.y) * q.x - (b.x - a.x) * q.y + b.x * a.y - b.y * a.x) / Math.hypot(b.y - a.y, b.x - a.x);
+          max = Math.max(max, d);
+        }
+        return max;
+      });
+      expect(bow, 'the stroke keeps its curve').toBeGreaterThan(60);
+    }
+  );
+
+  test(
+    'TB-04-07: a long continuous stroke is drawn without breaks (regression, Zoho TCN-I15837)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      const before = await tb.pathCount();
+      await tb.selectTool('gtPen');
+      await tb.drawStroke({ x: 200, y: 300 }, { x: 1100, y: 600 }, 90);
+      expect(await tb.pathCount(), 'one stroke, not several pieces').toBe(before + 1);
+      const length = await tb.paths.last().evaluate((p) => p.getTotalLength());
+      expect(length, 'the whole drag was drawn').toBeGreaterThan(0.85 * Math.hypot(900, 300));
     }
   );
 });

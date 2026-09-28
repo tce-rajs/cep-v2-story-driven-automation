@@ -256,6 +256,12 @@ class PlaylistPage {
   }
 
   async finishEditing() {
+    // CONFIRMED LIVE (2026-09-26): right after a removal an ngx-spinner overlay covers the page for a moment and
+    // intercepts the click -- wait for it to go first.
+    await this.page
+      .locator('.ngx-spinner-overlay')
+      .waitFor({ state: 'hidden', timeout: 20000 })
+      .catch(() => {});
     await this.finishEditingBtn.click();
     await this.page.waitForTimeout(500);
   }

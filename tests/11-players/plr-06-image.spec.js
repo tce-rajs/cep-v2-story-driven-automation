@@ -124,4 +124,10 @@ test.describe('PLR-06 View an image resource', () => {
       }
     }
   );
+
+  test.fixme('PLR-06-05: zooming and panning work on an open image', async () => {
+    // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): the image player has no zoom or pan control, and the mouse
+    // wheel over the image does nothing (the image stayed 981px wide). The story came from the reference suite's
+    // PLR-IMG-03. Owner to decide: drop the case, or raise a product gap.
+  });
 });

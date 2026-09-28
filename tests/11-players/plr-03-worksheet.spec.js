@@ -222,4 +222,85 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
       expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's Players workbook) ---
+
+  const pdfCanvas = (user) => user.page.locator('.pdfViewer canvas, canvas').filter({ visible: true }).first();
+
+  test.fixme("PLR-03-09: the zoom buttons change the worksheet's zoom", async () => {
+    // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): the worksheet player has no zoom control. Its only controls are
+    // the page numbers with prev/next, Scroll-up / Scroll-down, GO, "switch view", Answer Toggle, Print and close.
+    // The story came from the reference suite's PLR-WS-09. Owner to decide: drop the case, or raise a product gap.
+  });
+
+  test(
+    'PLR-03-10: the answer key button shows and hides the answers, on a worksheet that has one',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await openWorksheet(user);
+      const hasKey = await user.player.worksheetAnswerKeyBtn.isVisible().catch(() => false);
+      test.skip(!hasKey, "This topic's worksheet has no answer key.");
+      // The page is re-rendered on every toggle, so "hidden again" is judged against the answers-shown render, not
+      // against the very first render pixel for pixel.
+      const render = () => pdfCanvas(user).evaluate((c) => c.toDataURL());
+      const before = await render();
+      await user.player.worksheetAnswerKeyBtn.click({ force: true });
+      await expect.poll(render, { message: 'answers shown', timeout: 10000 }).not.toBe(before);
+      const shown = await render();
+      await user.player.worksheetAnswerKeyBtn.click({ force: true });
+      await expect.poll(render, { message: 'answers hidden again', timeout: 10000 }).not.toBe(shown);
+    }
+  );
+
+  test('PLR-03-11: the orientation button changes the page orientation', { tag: ['@functional'] }, async ({ user }) => {
+    await openWorksheet(user);
+    // CONFIRMED LIVE (2026-09-26): the control is labelled "switch view"; it changes how the pages are laid out rather
+    // than rotating the page, so the check is that the layout changes and a second press restores it.
+    const layout = async () => {
+      const boxes = await user.page
+        .locator('.pdfViewer canvas, canvas')
+        .filter({ visible: true })
+        .evaluateAll((els) =>
+          els.map((e) => {
+            const r = e.getBoundingClientRect();
+            return [Math.round(r.width), Math.round(r.height)].join('x');
+          })
+        );
+      return boxes.join(',');
+    };
+    const before = await layout();
+    await user.player.worksheetOrientationToggle.click({ force: true });
+    await expect.poll(layout, { message: 'the page layout changed', timeout: 10000 }).not.toBe(before);
+    await user.player.worksheetOrientationToggle.click({ force: true });
+    await expect.poll(layout, { message: 'and back again', timeout: 10000 }).toBe(before);
+  });
+
+  test('PLR-03-12: Next on the last page stays on the last page', { tag: ['@negative'] }, async ({ user }) => {
+    await openWorksheet(user);
+    const pages = await user.page
+      .locator('li.page-item.number-item, li.page-item:not(.previous-item):not(.next-item)')
+      .filter({ visible: true })
+      .count();
+    for (let i = 0; i < pages + 2; i++)
+      await user.player.worksheetNextPage
+        .first()
+        .click({ force: true })
+        .catch(() => {});
+    const last = await currentPage(user);
+    await user.player.worksheetNextPage
+      .first()
+      .click({ force: true })
+      .catch(() => {});
+    await user.page.waitForTimeout(800);
+    expect(await currentPage(user), 'still on the last page, not wrapped to 1').toBe(last);
+    expect(last).toBeGreaterThanOrEqual(1);
+  });
+
+  test('PLR-03-13: closing the worksheet exits cleanly', { tag: ['@functional'] }, async ({ user }) => {
+    await openWorksheet(user);
+    await user.player.closePlayer();
+    await expect(user.player.closeIcon.first()).toBeHidden({ timeout: 10000 });
+    await user.playlist.ensureDrawerVisible();
+    await expect(user.playlist.contentsTile, 'back on the whiteboard with the Playlist').toBeVisible();
+  });
 });

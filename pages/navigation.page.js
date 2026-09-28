@@ -77,7 +77,9 @@ class NavigationPage {
     await this.divisionButton(division).click({ timeout: 10000 });
     await this.page.waitForTimeout(300);
     await this.subjectButton(subject).click({ timeout: 10000 });
-    await this.currentClassBtn.filter({ hasText: subject }).waitFor({ state: 'visible', timeout: 10000 });
+    // Right after a client relaunch the class label can take well over 10 s to update (seen 2026-09-26: the switch
+    // landed, just late), so allow 30 s.
+    await this.currentClassBtn.filter({ hasText: subject }).waitFor({ state: 'visible', timeout: 30000 });
   }
 
   async openChaptersPopup() {

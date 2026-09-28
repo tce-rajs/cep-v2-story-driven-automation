@@ -13,6 +13,8 @@ case** belonging to that story.
 
 1. HDR-02-01 — Regression: the header's Date & Time display shows a correct, non-blank value
 2. HDR-02-02 — To check the date/time stays accurate after being idle for several minutes
+3. HDR-02-03 — To check the time in the header moves forward on its own, without reloading
+4. HDR-02-04 — To check the date and time shown match the computer's clock
 
 ### HDR-03 — Logout
 
@@ -34,6 +36,12 @@ case** belonging to that story.
 6. HDR-05-06 — Regression: a Revision Test card's title text doesn't overlap its info line/type icon
 7. HDR-05-07 — Regression (blocked, see spec): the Revision Test popup doesn't persist after signing out (and back in) without closing it first
 8. HDR-05-08 — Manual-only (needs Plan Mode to author the triggering content): Compass stays visible in Teach Mode alongside Magnet after a Revision Test is created in Plan Mode for that class/topic
+9. HDR-05-09 — To check Explore It shows the chapter's widgets, and opening one shows that widget
+10. HDR-05-10 — To check Explore It's "Open Widgets" link opens the full widget browser
+11. HDR-05-11 — To check Analyse It shows a "no homework" message with a link to create homework when the topic has none
+12. HDR-05-12 — Regression: in Analyse It, "View Questions" and "View Last 5 Homework" open their views (Zoho TCN-I16623)
+13. HDR-05-13 — Edge: to check clicking the Compass button 6 times quickly never opens more than one Compass window
+14. HDR-05-14 — To check Compass opens normally again after the app reloads with its details view open
 
 ### HDR-06 — Profile (Plan Mode)
 

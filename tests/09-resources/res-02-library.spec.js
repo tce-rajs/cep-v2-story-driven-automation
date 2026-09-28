@@ -245,4 +245,116 @@ test.describe('RES-02 Library', () => {
       await expect(user.addResource.librarySearchInput).toHaveValue("Coulomb's Law");
     }
   );
+
+  // --- Added 2026-09-26 (gap-fill from the reference suite's TCE Search Library workbook and Zoho bugs) ---
+
+  test(
+    'RES-02-13: Search is disabled while the search box is empty or has fewer than 3 characters',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const ar = user.addResource;
+      await openLibrary(user);
+      await ar.librarySearchInput.fill('');
+      await expect(ar.librarySearchBtn).toBeDisabled();
+      await ar.librarySearchInput.fill('fo');
+      await expect(ar.librarySearchBtn).toBeDisabled();
+      await ar.librarySearchInput.fill('for');
+      await expect(ar.librarySearchBtn).toBeEnabled();
+    }
+  );
+
+  test('RES-02-14: Clear empties the search box', { tag: ['@functional'] }, async ({ user }) => {
+    const ar = user.addResource;
+    await openLibrary(user);
+    await ar.librarySearchInput.fill('magnetic field');
+    await ar.libraryClearBtn.click();
+    await expect(ar.librarySearchInput).toHaveValue('');
+  });
+
+  test('RES-02-15: closing a preview changes nothing', { tag: ['@functional'] }, async ({ user }) => {
+    const titles = await user.playlist.cardTitles();
+    const board = await user.content.snapshot();
+    await openLibrary(user);
+    await openFirstResult(user);
+    await user.addResource.libraryPdfCloseBtn
+      .or(user.addResource.libraryPreviewCloseBtn)
+      .filter({ visible: true })
+      .first()
+      .click();
+    await expect(user.addResource.libraryResults.first(), 'back on the results').toBeVisible({ timeout: 10000 });
+    expect(await user.playlist.cardTitles(), 'Playlist unchanged').toEqual(titles);
+    expect(await user.content.snapshot(), 'whiteboard unchanged').toEqual(board);
+  });
+
+  test(
+    'RES-02-16: double-clicking "Save to Playlist" adds the resource only once (regression)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      test.setTimeout(3 * 60 * 1000);
+      await user.playlist.ensureDrawerVisible();
+      const inPlaylist = (await user.playlist.cardTitles()).map((t) => t.toLowerCase());
+      await openLibrary(user);
+      await user.addResource.librarySearchInput.fill('magnet');
+      await user.addResource.librarySearchBtn.click({ force: true });
+      await expect(user.addResource.libraryResults.first()).toBeVisible({ timeout: 20000 });
+      const results = user.addResource.libraryResults;
+      let pick = -1;
+      let pickTitle = '';
+      for (let i = 0; i < Math.min(await results.count(), 20); i++) {
+        const t = ((await results.nth(i).innerText()) || '')
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean)[0];
+        if (t && !inPlaylist.some((e) => e.includes(t.toLowerCase()))) {
+          pick = i;
+          pickTitle = t;
+          break;
+        }
+      }
+      expect(pick, 'a result not yet in the Playlist').toBeGreaterThanOrEqual(0);
+      await results.nth(pick).click({ force: true });
+      await saveToPlaylist(user).dblclick();
+      await user.page.waitForTimeout(4000);
+      await user.addResource.libraryCloseBtn.click({ force: true }).catch(() => {});
+      const added = user.playlist.resourceCards.filter({ hasText: pickTitle });
+      try {
+        await expect(added.first()).toBeVisible({ timeout: 15000 });
+        await expect(added, 'added exactly once').toHaveCount(1);
+      } finally {
+        for (let i = 0; i < 3 && (await added.count()) > 0; i++) await user.playlist.removeCard(added).catch(() => {});
+        await user.playlist.finishEditing().catch(() => {});
+      }
+    }
+  );
+
+  test(
+    'RES-02-17: typing a search quickly, letter by letter, searches for the full text typed',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      // INTERMITTENT PRODUCT DEFECT, SEEN LIVE (2026-09-26, v 0.0.232; the reference suite's LIB-AUTOSEARCH-RACE-01): the Library
+      // starts its own search for the topic name when it opens. A search typed before that finishes keeps the typed text in
+      // the box but the results are replaced by the topic's ("Electric Field ...") when the automatic search returns.
+      // Typed after the automatic search has finished, the same query works (searchTerm=magnetic, magnetic results).
+      // Did not happen in the full run of 2026-09-26, so it is left asserting the correct outcome.
+      const ar = user.addResource;
+      await openLibrary(user);
+      await ar.librarySearchInput.fill('');
+      await ar.librarySearchInput.pressSequentially('magnetic', { delay: 15 });
+      await ar.librarySearchInput.press('Enter');
+      await expect(ar.librarySearchInput).toHaveValue('magnetic');
+      await expect(ar.libraryResults.first()).toBeVisible({ timeout: 20000 });
+      const titles = await ar.libraryResults.allInnerTexts();
+      expect(
+        titles.some((t) => /magnet/i.test(t)),
+        'results are for "magnetic", not a partial word'
+      ).toBe(true);
+    }
+  );
+
+  test.fixme('RES-02-18: an Exercise resource preview shows its answers, not blanks (regression, Zoho TCN-I6380)', async () => {
+    // BLOCKED, CONFIRMED LIVE (2026-09-26): searching "exercise" lists 21 results ("NCERT Chapter Exercise Solutions:
+    // ..."), but clicking one opens no in-app preview that can be inspected -- the same limitation as RES-02-08/09
+    // (previews are iframes / an opaque PDF viewer). Zoho TCN-I6380 was raised against Lesson Planning, which is Plan
+    // Mode (manual-only per PROCESS.md). Unblock: a way into the Library preview, or check it by hand.
+  });
 });

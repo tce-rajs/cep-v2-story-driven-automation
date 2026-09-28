@@ -308,4 +308,28 @@ test.describe('TB-09 User menu', () => {
       }
     );
   });
+
+  test(
+    'TB-09-14: switching Theme 10 times in a row ends on the expected theme, with no flicker left behind',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      const look = () =>
+        page.evaluate(() =>
+          [
+            document.documentElement.className,
+            document.body.className,
+            getComputedStyle(document.body).backgroundColor,
+          ].join('|')
+        );
+      await user.userMenu.openProfileMenu();
+      const startChecked = await user.userMenu.darkModeToggle.isChecked();
+      const before = await look();
+      for (let i = 0; i < 10; i++) await user.userMenu.darkModeToggle.click({ force: true });
+      await page.waitForTimeout(1500);
+      await expect(user.userMenu.darkModeToggle, 'toggle back where it started').toBeChecked({ checked: startChecked });
+      expect(await look(), 'theme back where it started').toBe(before);
+      await page.waitForTimeout(1500);
+      expect(await look(), 'and it stays there (no flicker)').toBe(before);
+    }
+  );
 });
