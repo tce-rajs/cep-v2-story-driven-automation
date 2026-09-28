@@ -109,7 +109,8 @@ Classroom panels are touch screens used with fingers and a pen. These cases use 
 13. WB-10-13 — Swiping the Playlist strip with a finger scrolls it and does not open a card
 14. WB-10-14 — Edge: a long press on the board with the Pen leaves at most a dot and opens nothing unexpected
 15. WB-10-15 — Regression: a teacher handwrites about 150 words with a finger; every stroke lands, autosaves and is back exactly after a reload
-16. WB-10-16 — Regression: a teacher handwrites about 150 words with a stylus, the palm resting on the screen, panning to fresh space with two fingers; every pen stroke lands (no extra marks from the palm or the pan), autosaves and is back exactly after a reload
+16. WB-10-16 — Regression: a teacher handwrites about 150 words with a stylus, panning to fresh space with the Pan tool; every pen stroke lands, autosaves and is back exactly after a reload _(split 2026-09-28: the palm resting on the screen is now WB-10-17, so this case is not failed by the palm bug. Panning uses the Pan tool, not two fingers, because a two-finger drag draws instead of panning (WB-10-04).)_
+17. WB-10-17 — Negative: the same 150-word stylus session with the palm resting on the screen; only the pen strokes land (no extra marks from the palm), autosave and are back exactly after a reload
 
 ### WB-11 — A teacher's day on one topic (added 2026-09-27)
 

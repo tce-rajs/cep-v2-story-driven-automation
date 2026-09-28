@@ -302,7 +302,9 @@ test.describe('WB-10 Handwriting by finger and stylus', () => {
     await touch.dispose();
   });
 
-  // --- A teacher writing a lesson by hand: finger, then stylus with the palm resting and two-finger panning ---
+  // --- A teacher writing a lesson by hand: finger; stylus; stylus with the palm resting ---
+  // The palm-resting session is its own case (WB-10-17): with no palm rejection (bug WB-10-06) every pen stroke also
+  // draws a palm line, which would otherwise make the plain stylus session fail for a reason that is not its own.
 
   const handwritingSession = async (user, how) => {
     test.setTimeout(30 * 60 * 1000);
@@ -310,7 +312,7 @@ test.describe('WB-10 Handwriting by finger and stylus', () => {
     const area = await user.content.writingArea();
     // A bit larger letters than with a mouse, as people write bigger with a finger.
     const pages = layoutHandwriting(lessonText(150), area, {
-      seed: how === 'finger' ? 51 : 52,
+      seed: { finger: 51, stylus: 52, 'stylus with palm': 53 }[how],
       xHeight: how === 'finger' ? 20 : 16,
     });
     // The board is never cleared: note what is already there, and pan below it to fresh space.
@@ -322,8 +324,13 @@ test.describe('WB-10 Handwriting by finger and stylus', () => {
     const palm = { x: c.x + Math.min(c.width - 300, area.x + area.width + 60), y: c.y + area.y + area.height - 40 };
     await user.content.startSaveLog();
     const started = Date.now();
+    const draw = {
+      finger: (pts) => touch.fingerStroke(pts, 0),
+      stylus: (pts) => touch.penStroke(pts),
+      'stylus with palm': (pts) => touch.penStrokeWithPalm(pts, palm),
+    }[how];
     await user.content.writeHandwriting(pages, {
-      draw: how === 'finger' ? (pts) => touch.fingerStroke(pts, 0) : (pts) => touch.penStrokeWithPalm(pts, palm),
+      draw,
       nextPage: () => user.content.panUp(area.height + 40),
     });
     const finished = Date.now();
@@ -361,10 +368,20 @@ test.describe('WB-10 Handwriting by finger and stylus', () => {
   );
 
   test(
-    'WB-10-16: a teacher handwrites 150 words with a stylus, palm resting, panning with two fingers; every stroke is kept and saved',
+    'WB-10-16: a teacher handwrites 150 words with a stylus; every stroke is kept and saved',
     { tag: ['@long', '@regression'] },
     async ({ user }) => {
       await handwritingSession(user, 'stylus');
+    }
+  );
+
+  test(
+    'WB-10-17: a teacher handwrites 150 words with a stylus, the palm resting on the screen; only the pen strokes are kept and saved',
+    { tag: ['@long', '@regression', '@negative'] },
+    async ({ user }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP; single stroke: WB-10-06): with the palm resting on the screen, every pen stroke also draws a line from the palm (no palm rejection)
+      test.fail(true, 'With the palm resting on the screen, every pen stroke also draws a line from the palm');
+      await handwritingSession(user, 'stylus with palm');
     }
   );
 });

@@ -139,32 +139,47 @@ test.describe('WB-09 Whiteboard data integrity', () => {
     'WB-09-06: switching class straight after writing does not put the strokes on the other class’s board',
     { tag: ['@regression', '@negative'] },
     async ({ user }) => {
-      // Baseline of the other class's board (Class 11A Mathematics, 1.1), read only.
-      await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
-      await user.nav.goToChapterTopic(0, 0);
-      await user.toolbar.waitForBoardToSettle();
-      const otherBefore = await user.content.pathGeometry();
+      // Two separate outcomes (the other board is not touched; the strokes are on their own board), each checked softly
+      // in its own step so one failing does not hide the other.
+      let otherBefore;
+      let mine;
 
-      await user.nav.applyClassMap('toolbarGeneral');
-      await user.toolbar.waitForBoardToSettle();
-      await write(user, 15, 36);
-      const mine = await user.content.pathGeometry();
-      // No wait for the save: switch class at once, as a teacher moving to the next period.
-      await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
-      await user.nav.goToChapterTopic(0, 0);
-      await user.page.waitForTimeout(12000);
-      await user.toolbar.waitForBoardToSettle();
-      const otherAfter = await user.content.pathGeometry();
-      expect(
-        otherAfter.filter((d) => mine.includes(d)),
-        'none of the new strokes are on the other class’s board'
-      ).toEqual([]);
-      expect(otherAfter, 'the other class’s board is unchanged').toEqual(otherBefore);
+      await test.step('baseline of the other class’s board (Class 11A Mathematics, 1.1), read only', async () => {
+        await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
+        await user.nav.goToChapterTopic(0, 0);
+        await user.toolbar.waitForBoardToSettle();
+        otherBefore = await user.content.pathGeometry();
+      });
 
-      await user.nav.applyClassMap('toolbarGeneral');
-      await expect
-        .poll(() => user.content.pathGeometry(), { message: 'the strokes are on their own board', timeout: 30000 })
-        .toEqual(mine);
+      await test.step('write, then switch class at once (no wait for the save)', async () => {
+        await user.nav.applyClassMap('toolbarGeneral');
+        await user.toolbar.waitForBoardToSettle();
+        await write(user, 15, 36);
+        mine = await user.content.pathGeometry();
+        // As a teacher moving to the next period.
+        await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
+        await user.nav.goToChapterTopic(0, 0);
+        await user.page.waitForTimeout(12000);
+        await user.toolbar.waitForBoardToSettle();
+      });
+
+      await test.step('the other class’s board is untouched', async () => {
+        const otherAfter = await user.content.pathGeometry();
+        expect
+          .soft(
+            otherAfter.filter((d) => mine.includes(d)),
+            'none of the new strokes are on the other class’s board'
+          )
+          .toEqual([]);
+        expect.soft(otherAfter, 'the other class’s board is unchanged').toEqual(otherBefore);
+      });
+
+      await test.step('the strokes are on their own board', async () => {
+        await user.nav.applyClassMap('toolbarGeneral');
+        await expect
+          .poll(() => user.content.pathGeometry(), { message: 'the strokes are on their own board', timeout: 30000 })
+          .toEqual(mine);
+      });
     }
   );
 

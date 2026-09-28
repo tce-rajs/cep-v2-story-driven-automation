@@ -4,42 +4,46 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('WB-02 Zoom', () => {
-  test(
-    'WB-02-01: zooming in/out changes the canvas view without distorting existing content',
-    { tag: ['@smoke', '@functional'] },
-    async ({ user }) => {
-      const tb = user.toolbar;
-      await tb.penStroke({ x: 400, y: 400 }, { x: 600, y: 480 });
-      const geometry = await user.content.pathGeometry();
-      const sizeBefore = await tb.lastPathBox();
-      const percentBefore = await user.content.zoomPercent();
+  // WB-02-01 is one story covering both directions; each direction is its own test so a zoom-in failure does not hide
+  // whether zoom-out works (and vice versa). Both start from the reset (default) zoom level.
+  for (const direction of ['in', 'out']) {
+    const button = direction === 'in' ? 'zoomInBtn' : 'zoomOutBtn';
 
-      await tb.openToolPanel('gtZoom');
-      await tb.zoomInBtn.click({ force: true });
-      await tb.zoomInBtn.click({ force: true });
-      await tb.closePanelByTappingOutside();
+    test(
+      `WB-02-01: zooming ${direction} changes the canvas view without distorting existing content`,
+      { tag: ['@smoke', '@functional'] },
+      async ({ user }) => {
+        const tb = user.toolbar;
+        await tb.penStroke({ x: 400, y: 400 }, { x: 600, y: 480 });
+        const geometry = await user.content.pathGeometry();
+        const sizeBefore = await tb.lastPathBox();
+        const percentBefore = await user.content.zoomPercent();
 
-      const percentIn = await user.content.zoomPercent();
-      const sizeIn = await tb.lastPathBox();
-      expect(percentIn, 'zoom level went up').toBeGreaterThan(percentBefore);
-      expect(sizeIn.width, 'content appears larger').toBeGreaterThan(sizeBefore.width);
-      // Same shape, scaled uniformly: aspect ratio preserved, underlying geometry untouched.
-      expect(sizeIn.width / sizeIn.height).toBeCloseTo(sizeBefore.width / sizeBefore.height, 1);
-      expect(await user.content.pathGeometry()).toEqual(geometry);
+        try {
+          await tb.openToolPanel('gtZoom');
+          for (let i = 0; i < 2; i++) await tb[button].click({ force: true });
+          await tb.closePanelByTappingOutside();
 
-      await tb.openToolPanel('gtZoom');
-      await tb.zoomOutBtn.click({ force: true });
-      await tb.zoomOutBtn.click({ force: true });
-      await tb.zoomOutBtn.click({ force: true });
-      await tb.closePanelByTappingOutside();
-      expect(await user.content.zoomPercent(), 'zoom level went down').toBeLessThan(percentIn);
-      expect(await user.content.pathGeometry()).toEqual(geometry);
-
-      await tb.openToolPanel('gtZoom');
-      await tb.zoomResetBtn.click({ force: true });
-      await tb.closePanelByTappingOutside();
-    }
-  );
+          const percentAfter = await user.content.zoomPercent();
+          const sizeAfter = await tb.lastPathBox();
+          if (direction === 'in') {
+            expect(percentAfter, 'zoom level went up').toBeGreaterThan(percentBefore);
+            expect(sizeAfter.width, 'content appears larger').toBeGreaterThan(sizeBefore.width);
+          } else {
+            expect(percentAfter, 'zoom level went down').toBeLessThan(percentBefore);
+            expect(sizeAfter.width, 'content appears smaller').toBeLessThan(sizeBefore.width);
+          }
+          // Same shape, scaled uniformly: aspect ratio preserved, underlying geometry untouched.
+          expect(sizeAfter.width / sizeAfter.height).toBeCloseTo(sizeBefore.width / sizeBefore.height, 1);
+          expect(await user.content.pathGeometry(), 'content itself unchanged').toEqual(geometry);
+        } finally {
+          await tb.openToolPanel('gtZoom');
+          await tb.zoomResetBtn.click({ force: true });
+          await tb.closePanelByTappingOutside();
+        }
+      }
+    );
+  }
 
   test(
     'WB-02-02: zooming to the maximum or minimum limit does not break the canvas',

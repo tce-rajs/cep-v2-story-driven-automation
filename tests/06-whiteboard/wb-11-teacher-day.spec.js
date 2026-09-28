@@ -28,9 +28,13 @@ const signInToTopic = async (app) => {
   await app.toolbar.waitForBoardToSettle();
 };
 
+// Every checkpoint of the day is soft: a failure after session 1 is recorded and the day carries on, so the sign-out,
+// app-close and final-reload checkpoints still report their own result.
+const softExpect = expect.configure({ soft: true });
+
 /** Every stroke that should be on the board is there, once; returns the board's geometry. */
 const expectAllThere = async (app, expected, when) => {
-  await expect
+  await softExpect
     .poll(async () => (await app.content.pathGeometry()).length, {
       message: `${when}: all strokes loaded`,
       timeout: 60000,
@@ -41,8 +45,8 @@ const expectAllThere = async (app, expected, when) => {
   const counts = new Map();
   now.forEach((d) => counts.set(d, (counts.get(d) || 0) + 1));
   const doubled = expected.filter((d) => counts.get(d) > 1);
-  expect(missing, `${when}: nothing written earlier is missing`).toHaveLength(0);
-  expect(doubled, `${when}: nothing written earlier is doubled`).toHaveLength(0);
+  softExpect(missing, `${when}: nothing written earlier is missing`).toHaveLength(0);
+  softExpect(doubled, `${when}: nothing written earlier is doubled`).toHaveLength(0);
   return now;
 };
 
@@ -67,7 +71,7 @@ const writeSession = async (app, how, words, seed) => {
     nextPage: () => app.content.panUp(area.height + 40),
   });
   const finished = Date.now();
-  await expect
+  await softExpect
     .poll(async () => (await app.content.savedMessages()).some((m) => m.at > finished && /saved/i.test(m.text)), {
       message: `${how} session: "Whiteboard Saved!" after the last word`,
       timeout: 60000,
@@ -85,49 +89,59 @@ test(
     test.setTimeout(90 * 60 * 1000);
     const log = [];
 
-    // --- Session 1: stylus, then sign out ---
     let { client, app } = await openClient();
     let kept;
     try {
-      await signInToTopic(app);
-      const before = await app.content.pathGeometry();
-      log.push(`start: ${before.length} strokes already on the board from earlier days`);
-      const s1 = await writeSession(app, 'stylus', 100, 61);
-      kept = await expectAllThere(app, before, 'session 1 (stylus)');
-      expect(kept, 'session 1: the board grew by exactly the strokes written').toHaveLength(before.length + s1);
-      log.push(`session 1 (stylus): +${s1} strokes -> ${kept.length}`);
-      await app.userMenu.signOut();
+      await test.step('session 1: stylus, then sign out', async () => {
+        await signInToTopic(app);
+        const before = await app.content.pathGeometry();
+        log.push(`start: ${before.length} strokes already on the board from earlier days`);
+        const s1 = await writeSession(app, 'stylus', 100, 61);
+        kept = await expectAllThere(app, before, 'session 1 (stylus)');
+        softExpect(kept, 'session 1: the board grew by exactly the strokes written').toHaveLength(before.length + s1);
+        log.push(`session 1 (stylus): +${s1} strokes -> ${kept.length}`);
+        await app.userMenu.signOut();
+      });
 
-      // --- Session 2: sign in again, check, pan, finger ---
-      await signInToTopic(app);
-      await expectAllThere(app, kept, 'after signing out and in');
-      const s2 = await writeSession(app, 'finger', 100, 62);
-      const after2 = await expectAllThere(app, kept, 'session 2 (finger)');
-      expect(after2, 'session 2: the board grew by exactly the strokes written').toHaveLength(kept.length + s2);
-      kept = after2;
-      log.push(`session 2 (finger, after sign-out/in): +${s2} strokes -> ${kept.length}`);
+      await test.step('after signing out and in: everything is still there', async () => {
+        await signInToTopic(app);
+        await expectAllThere(app, kept, 'after signing out and in');
+      });
+
+      await test.step('session 2: pan, finger', async () => {
+        const s2 = await writeSession(app, 'finger', 100, 62);
+        const after2 = await expectAllThere(app, kept, 'session 2 (finger)');
+        softExpect(after2, 'session 2: the board grew by exactly the strokes written').toHaveLength(kept.length + s2);
+        kept = after2;
+        log.push(`session 2 (finger, after sign-out/in): +${s2} strokes -> ${kept.length}`);
+      });
     } finally {
       await client.app.close().catch(() => {});
     }
 
-    // --- Session 3: the app was closed; reopen, check, pan, stylus ---
     ({ client, app } = await openClient());
     try {
-      await signInToTopic(app);
-      await expectAllThere(app, kept, 'after closing and reopening the app');
-      const s3 = await writeSession(app, 'stylus', 100, 63);
-      const after3 = await expectAllThere(app, kept, 'session 3 (stylus)');
-      expect(after3, 'session 3: the board grew by exactly the strokes written').toHaveLength(kept.length + s3);
-      kept = after3;
-      log.push(`session 3 (stylus, after closing the app): +${s3} strokes -> ${kept.length}`);
+      await test.step('after closing and reopening the app: everything is still there', async () => {
+        await signInToTopic(app);
+        await expectAllThere(app, kept, 'after closing and reopening the app');
+      });
 
-      // --- Final: a reload brings back every stroke of every session exactly ---
-      await app.page.reload();
-      await app.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
-      await app.toolbar.waitForBoardToSettle();
-      const final = await expectAllThere(app, kept, 'final reload');
-      expect(final, 'final: exactly the same number of strokes, nothing extra').toHaveLength(kept.length);
-      log.push(`final reload: ${final.length} strokes, all present`);
+      await test.step('session 3: pan, stylus', async () => {
+        const s3 = await writeSession(app, 'stylus', 100, 63);
+        const after3 = await expectAllThere(app, kept, 'session 3 (stylus)');
+        softExpect(after3, 'session 3: the board grew by exactly the strokes written').toHaveLength(kept.length + s3);
+        kept = after3;
+        log.push(`session 3 (stylus, after closing the app): +${s3} strokes -> ${kept.length}`);
+      });
+
+      await test.step('final reload: every stroke of every session is back exactly', async () => {
+        await app.page.reload();
+        await app.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
+        await app.toolbar.waitForBoardToSettle();
+        const final = await expectAllThere(app, kept, 'final reload');
+        expect(final, 'final: exactly the same number of strokes, nothing extra').toHaveLength(kept.length);
+        log.push(`final reload: ${final.length} strokes, all present`);
+      });
     } finally {
       test.info().annotations.push({ type: 'note', description: log.join(' | ') });
       await client.app.close().catch(() => {});
