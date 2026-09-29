@@ -15,9 +15,31 @@ This repo is the story-driven suite (stories, then test cases, then automation).
 automated directly from the test-case workbooks, lives in the old repo (`tce-rajs/client-playwright-automation`, branch
 `main`) and is not part of this repo.
 
-## Where things stand (2026-09-27)
+## Where things stand (2026-09-29)
 
-**IN PROGRESS as this is written** -- a second gap-fill pass, still on branch `improve/reference-driven-coverage`
+Committed on `improve/reference-driven-coverage` (not pushed). Target server **172.18.2.85 only**.
+
+- **Full end-to-end run on .85 (922 tests):** 603 work, 94 known bugs still present, 24 skipped with a reason,
+  1 known bug did not reproduce, 200 new failures. Almost all of the 200 were test data that does not exist on .85
+  (Players topics without images/web links, no Compass Revision Tests, Attendance and AI Homework only in some classes).
+  `config/moduleClassMap.js` now points at .85 topics that have the data (each entry carries a `server85` note);
+  data that .85 has nowhere fails as `DATA MISSING ON THIS SERVER`. **Those modules still need a rerun.**
+- **Learning Shorts cannot record on .85:** the server is plain http, so the browser gives the app no screen capture
+  (`getDisplayMedia` is undefined). Reported as ENVIRONMENT, not a product bug; needs https.
+- **Boards are never cleared** (see "Data these tests change"). Whiteboard module after the change: 65 passed; the
+  rerun of the failures confirmed WB-02-04 and WB-09-07. WB-10-11 (finger tap) worked three times in a row: probably
+  fixed on .85.
+- **Long whiteboard data for manual checks** (PIN 89632, Mandar A, Class 12A Computer Science): 7.2 has 800 words plus
+  a 1,003-word lesson with images, diagrams and pen changes (2,992 strokes, 4 images); 8.1 has the same lesson
+  written in the desktop client (1,390 strokes, 4 images). 7 sign-out checks lost nothing.
+  [CLIENT_VS_BROWSER_TIMING.md](CLIENT_VS_BROWSER_TIMING.md): the client took about 2x as long as the browser.
+- **Waiting on the owner:** how to test the Clear button; whether a single failed token renewal should sign the teacher
+  out (LOG-06-04); the idle popup timing (~11-14 min); autosave shows no "Whiteboard Saved!" while writing (WB-08-11).
+- **Next:** rerun the data-gap modules on .85, the long whiteboard tests, WB-02-01 and WB-06-16.
+
+## Where things stood (2026-09-27)
+
+**IN PROGRESS as this was written** -- a second gap-fill pass, still on branch `improve/reference-driven-coverage`
 (not yet committed), adding real touch/stylus input and long-session whiteboard-writing coverage on top of the
 2026-09-26 pass below. New this pass:
 
@@ -160,11 +182,14 @@ missing after "Quiz Complete!" (PLR-02-01 records it as a bug).
   counts _before vs after_, never absolute numbers.
 - Planning ("Classroom Mode") is a separate app at `/plan/` with no `data-qa-id`s.
 
-## Data these tests change (shared QA account — be careful)
+## Data these tests change (shared account — be careful)
 
 Tests create then remove their own Playlist assets and restore theme, dock side and background. They **do** draw on real
-topic whiteboards (persisted), and TB-05-06 uses **Clear Whiteboard** on the current topic. WB-06 tests add content to
-topics 1 and 2 of Class 12A Physics. Module 02 is one-shot per user: it changes the fresh test user (default password `classedge`
+topic whiteboards (persisted) but **never clear them** (owner rule 2026-09-29): every writing test moves below the
+existing writing and counts only its own strokes, so the boards only grow. Boards written (PIN 74125, Class 12A
+Physics): **1.1** (most whiteboard/toolbar tests), **2.1** (WB-06's second topic), **3.1** (WB-11, a teacher's day).
+The four tests about the Clear button itself (TB-05-09/10, WB-09-01/02) are `fixme` until the owner decides how Clear
+may be tested. Module 02 is one-shot per user: it changes the fresh test user (default password `classedge`
 → new password → PIN → first class). Re-running needs an admin to reset that user or a fresh user.
 
 ## Code map
