@@ -3,7 +3,8 @@
 //
 // Needs raw control over closing and relaunching a whole separate client (like LOG-01-14), so it uses Playwright's own
 // `test` and launchWithRetry() instead of this suite's fixtures. Data: 'toolbarGeneral' (Class 12A Physics, 1.1),
-// cleared before and after.
+// never cleared (owner rule 2026-09-29): the test writes on fresh space below the teacher's writing and compares only
+// its own strokes, in the reopened client too.
 
 const { test, expect } = require('@playwright/test');
 const { launchWithRetry } = require('../../fixtures/electron-app');
@@ -25,11 +26,16 @@ test(
   async () => {
     test.skip(!!process.env.RUN_IN_BROWSER, 'closing the desktop client has no browser-mode equivalent');
     test.setTimeout(10 * 60 * 1000);
+    // Known product bug (found 2026-09-27 on QA, video in test-evidence/; reproduced on 172.18.2.85 on 2026-09-29,
+    // closed during "Saving whiteboard ... in 10s"): the pending save is dropped when the app closes.
+    test.fail(true, 'Closing the app during the autosave countdown loses everything written since the last save');
 
     let written;
+    let existing;
     const first = await openSignedIn();
     try {
-      await first.app.toolbar.clearBoard(first.app.whiteboard);
+      await first.app.content.startOnFreshSpace();
+      existing = first.app.page.__autotestExisting; // the teacher's content, to leave out of the counts after reopening
       const area = await first.app.content.writingArea();
       await first.app.content.writeHandwriting(layoutHandwriting(lessonText(40), area, { seed: 21 }));
       written = await first.app.content.pathGeometry();
@@ -45,6 +51,7 @@ test(
     }
 
     const second = await openSignedIn();
+    second.app.page.__autotestExisting = existing;
     try {
       await expect
         .poll(() => second.app.toolbar.pathCount(), {
@@ -54,7 +61,6 @@ test(
         .toBe(written.length);
       expect(await second.app.content.pathGeometry(), 'with exactly the same shapes').toEqual(written);
     } finally {
-      await second.app.toolbar.clearBoard(second.app.whiteboard).catch(() => {});
       await second.client.app.close().catch(() => {});
     }
   }

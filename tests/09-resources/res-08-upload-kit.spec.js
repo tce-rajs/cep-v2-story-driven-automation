@@ -165,7 +165,9 @@ test.describe('RES-08 Uploading real teacher files', () => {
           } else if (m.kind === 'pdf' || m.kind === 'office' || m.kind === 'text') {
             const pages = page.locator('.page, .pdf-page, [data-page-number]');
             const expected = Object.entries(pdfPages).find(([k]) => m.file.includes(k));
-            expect(pages, 'the document shows its pages').toBeGreaterThan(0);
+            await expect
+              .poll(() => pages.count(), { message: 'the document shows its pages', timeout: 15000 })
+              .toBeGreaterThan(0);
             if (expected) await expect(pages, `all ${expected[1]} pages`).toHaveCount(expected[1]);
           }
         } finally {

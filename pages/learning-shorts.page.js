@@ -54,8 +54,20 @@ class LearningShortsPage {
     await this.recordStartBtn.waitFor({ state: 'visible', timeout: 15000 });
   }
 
+  /** Screen recording needs a secure page (https). CONFIRMED LIVE 2026-09-29: 172.18.2.85 serves the app over plain
+   * http, so navigator.mediaDevices is undefined and Record throws "Cannot read properties of undefined (reading
+   * 'getDisplayMedia')" -- nothing records, for any teacher. Fail with that reason instead of a Stop-button timeout. */
+  async assertCanRecord() {
+    const secure = await this.page.evaluate(() => window.isSecureContext && !!navigator.mediaDevices);
+    if (!secure)
+      throw new Error(
+        `ENVIRONMENT: screen recording is impossible here -- the app is served over plain http (${this.page.url()}), so the browser gives it no screen-capture access. Needs https on the server.`
+      );
+  }
+
   /** Record for `seconds`, stop, and wait for the composer. */
   async record(seconds = 4) {
+    await this.assertCanRecord();
     await this.recordStartBtn.click({ force: true });
     await this.recordStopBtn.waitFor({ state: 'visible', timeout: 15000 });
     await this.page.waitForTimeout(seconds * 1000);

@@ -19,14 +19,22 @@ test.describe('PL-08 Contents (table of contents)', () => {
     }).toPass({ timeout: 20000 });
   };
 
+  // Split 2026-09-28: the list opens (PL-08-01) and the current topic is highlighted in it (PL-08-07); choosing a topic
+  // changes the current topic (PL-08-02) and reloads the Playlist (PL-08-08).
+  test('PL-08-01: Contents opens the chapter and topic list', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
+    await user.playlist.openContentsPopup();
+    await expect(user.playlist.contentsPopup).toBeVisible({ timeout: 10000 });
+    await expect(user.nav.chapterItems.first()).toBeVisible();
+    await expect(user.nav.topicItems.first()).toBeVisible();
+  });
+
   test(
-    'PL-08-01: Contents opens the chapter and topic list with the current topic highlighted',
+    'PL-08-07: in Contents, the current topic is highlighted',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const current = (await user.whiteboard.currentChapterTopicBtn.innerText()).replace(/\s+/g, ' ');
       await user.playlist.openContentsPopup();
-      await expect(user.playlist.contentsPopup).toBeVisible({ timeout: 10000 });
-      await expect(user.nav.chapterItems.first()).toBeVisible();
+      await expect(user.playlist.contentsPopup, 'set-up: Contents open').toBeVisible({ timeout: 10000 });
       const active = user.nav.topicItems
         .filter({ has: user.page.locator('.active, .selected') })
         .or(
@@ -41,14 +49,23 @@ test.describe('PL-08 Contents (table of contents)', () => {
   );
 
   test(
-    'PL-08-02: choosing a topic from Contents changes the current topic and reloads the Playlist',
+    'PL-08-02: choosing a topic from Contents changes the current topic',
     { tag: ['@functional'] },
     async ({ user }) => {
       const before = await user.whiteboard.currentChapterTopicBtn.innerText();
-      const cardsBefore = await user.playlist.cardTitles();
       await user.playlist.openContentsPopup();
       await user.nav.topicItems.nth(1).click();
       await expect(user.whiteboard.currentChapterTopicBtn).not.toHaveText(before, { timeout: 10000 });
+    }
+  );
+
+  test(
+    'PL-08-08: choosing a topic from Contents reloads the Playlist for that topic',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const cardsBefore = await user.playlist.cardTitles();
+      await user.playlist.openContentsPopup();
+      await user.nav.topicItems.nth(1).click();
       await expect
         .poll(() => user.playlist.cardTitles(), { message: 'Playlist reloaded for the new topic' })
         .not.toEqual(cardsBefore);

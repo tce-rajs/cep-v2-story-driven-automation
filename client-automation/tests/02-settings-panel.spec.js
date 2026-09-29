@@ -22,7 +22,7 @@ test.describe('CLIENT-02 Settings screen', () => {
 
   test.beforeEach(() => {
     backup = backupSettingsRaw();
-    forceSingleProfile({ title: 'QA-V2', url: 'https://ce-qa-school.devstudi.com/teach/' });
+    forceSingleProfile({ title: 'QA-V2', url: 'http://172.18.2.85/teach/' });
   });
 
   test.afterEach(() => {

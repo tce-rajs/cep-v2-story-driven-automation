@@ -17,17 +17,29 @@ test.describe('AIH-03 Generate and review the questions', () => {
     await app.aiHomework.closeAll();
   });
 
+  // The number of questions (AIH-03-01) and what they are about (AIH-03-08): one test each (split 2026-09-28).
   test(
-    'AIH-03-01: Generate produces the chosen number of questions about the chapter',
+    'AIH-03-01: Generate produces the chosen number of questions, each with text',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const hw = user.aiHomework;
-      const chapter = await hw.headerChapter();
       await hw.generate();
       await hw.waitForMathRendered();
       await expect(hw.questions).toHaveCount(5);
       const texts = await hw.questions.allTextContents();
       texts.forEach((t, i) => expect(t.trim().length, `question ${i + 1} has text`).toBeGreaterThan(10));
+    }
+  );
+
+  test(
+    'AIH-03-08: the generated questions are about the selected chapter',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const hw = user.aiHomework;
+      const chapter = await hw.headerChapter();
+      await hw.generate();
+      await hw.waitForMathRendered();
+      const texts = await hw.questions.allTextContents();
       // About the chapter in the header: its key words turn up across the questions.
       const words = chapter
         .toLowerCase()
@@ -63,29 +75,40 @@ test.describe('AIH-03 Generate and review the questions', () => {
     }
   );
 
+  // CONFIRMED LIVE (2026-09-26): Regenerate is one button for the whole set (no per-question regenerate is shown, so the
+  // story's "a single question" is the whole set here). Split 2026-09-28: Regenerate replaces the questions (AIH-03-03),
+  // and the new ones survive Next -> Previous (AIH-03-07).
+  /** Generate, then Regenerate until a full, different set is shown; returns the new set. */
+  const regenerate = async (hw) => {
+    await hw.generate();
+    await hw.waitForMathRendered();
+    const before = await hw.questions.allTextContents();
+    await hw.regenerateBtn.click();
+    await expect
+      .poll(
+        async () => {
+          // The list empties while regenerating: wait for a full, different set.
+          const now = await hw.questions.allTextContents();
+          return now.length === before.length && JSON.stringify(now) !== JSON.stringify(before);
+        },
+        { message: 'questions replaced', timeout: 90000 }
+      )
+      .toBe(true);
+    await hw.waitForMathRendered();
+    return hw.questions.allTextContents();
+  };
+
+  test('AIH-03-03: Regenerate replaces the generated questions', { tag: ['@functional'] }, async ({ user }) => {
+    const replaced = await regenerate(user.aiHomework);
+    expect(replaced, 'a full set').toHaveLength(5);
+  });
+
   test(
-    'AIH-03-03: Regenerate replaces a single question, and the new question is still there after moving away and back',
+    'AIH-03-07: regenerated questions are still there after going Next and back again',
     { tag: ['@functional'] },
     async ({ user }) => {
-      // CONFIRMED LIVE (2026-09-26): Regenerate is one button for the whole set (no per-question regenerate is shown), so
-      // this checks it replaces the questions, and that the new ones survive Next -> Previous.
       const hw = user.aiHomework;
-      await hw.generate();
-      await hw.waitForMathRendered();
-      const before = await hw.questions.allTextContents();
-      await hw.regenerateBtn.click();
-      await expect
-        .poll(
-          async () => {
-            // The list empties while regenerating: wait for a full, different set.
-            const now = await hw.questions.allTextContents();
-            return now.length === before.length && JSON.stringify(now) !== JSON.stringify(before);
-          },
-          { message: 'questions replaced', timeout: 90000 }
-        )
-        .toBe(true);
-      await hw.waitForMathRendered();
-      const replaced = await hw.questions.allTextContents();
+      const replaced = await regenerate(hw);
       await hw.goToAssign();
       await hw.assignPreviousBtn.click();
       await expect(hw.questions).toHaveCount(replaced.length, { timeout: 10000 });

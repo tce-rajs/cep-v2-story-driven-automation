@@ -7,8 +7,9 @@ known bugs and the list of skipped tests. [HOW_TO_RUN.md](HOW_TO_RUN.md) explain
 
 Playwright (JavaScript, CommonJS) end-to-end tests for Tata ClassEdge **CEP v2**'s teach webapp, written from the
 client-facing stories in `CEPV2_Stories/` (one file per module; `PROCESS.md` there is the method; `INDEX.md` the map).
-Tests drive the real **Tata ClassEdge School desktop client** (Electron) against the QA server
-(`https://ce-qa-school.devstudi.com/teach/`). `RUN_IN_BROWSER=1` runs the same specs in a normal browser instead.
+Tests drive the real **Tata ClassEdge School desktop client** (Electron) against the target server
+(`http://172.18.2.85/teach/`, school C P Goenka International School; owner, 2026-09-28 -- the old QA server
+`ce-qa-school.devstudi.com` is disabled and must not be used: its profile is `config/environments/qa.env.disabled`). `RUN_IN_BROWSER=1` runs the same specs in a normal browser instead.
 
 This repo is the story-driven suite (stories, then test cases, then automation). The earlier approach, about 1,000 tests
 automated directly from the test-case workbooks, lives in the old repo (`tce-rajs/client-playwright-automation`, branch
@@ -95,7 +96,8 @@ school).
 3. `cp .env.example .env` and fill it in (`.env` is gitignored): `VALID_PIN`, `VALID_PIN_2`, `INVALID_PIN`,
    `SCHOOL_NAME`, `SCHOOL_SEARCH_TERM`, `USERNAME`, `PASSWORD`, and for Module 02 `NEW_USER_USERNAME`,
    `NEW_USER_NEW_PASSWORD`, `NEW_USER_PIN`.
-4. `C:\Users\Public\tce_settings.json` must have `"path": "https://ce-qa-school.devstudi.com/teach/"`. If the client
+4. `C:\Users\Public\tce_settings.json` must have `"path": "http://172.18.2.85/teach/"` (one profile only;
+   `npm run set-env new-server` sets it). If the client
    shows "No web URLs available" / "Unable to connect ClassEdge server", this is why.
 5. If the client is not at the default install path, set `CLASSEDGE_CLIENT_EXE` in `.env`.
 
@@ -111,7 +113,7 @@ npm run lint
 
 `workers` is 1 on purpose: every test shares one live account/session. Tags: `@smoke @functional @negative @edge
 @regression @concurrency @interruption @performance @long @bug`. `@long` tests wait minutes; shorten them with
-`SESSION_SOAK_MINUTES` (16), `SESSION_IDLE_MINUTES` (6), `HEADER_IDLE_MINUTES` (5), `NAV_RESTORE_WAIT_MINUTES` (3).
+`SESSION_SOAK_MINUTES` (16), `SESSION_IDLE_MINUTES` (3.5), `HEADER_IDLE_MINUTES` (3.5), `NAV_RESTORE_WAIT_MINUTES` (3).
 
 ## Next steps
 

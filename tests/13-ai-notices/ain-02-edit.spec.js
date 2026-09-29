@@ -3,7 +3,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ classMap: 'default', cleanBoard: true });
+test.use({ classMap: 'default', freshSpace: true });
 
 test.describe('AIN-02 Write and edit the notice', () => {
   test.beforeEach(async ({ user }) => {
@@ -14,20 +14,23 @@ test.describe('AIN-02 Write and edit the notice', () => {
     await app.aiNotices.closeAll();
   });
 
-  test(
-    'AIN-02-01: Send is blocked while the title is empty and allowed once a title is entered',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      const n = user.aiNotices;
-      await n.titleInput.fill('');
-      await expect(n.sendBtn, 'Ready to Send disabled with an empty title').toBeDisabled();
-      await n.titleInput.fill('Science club meeting');
-      await expect(n.sendBtn, 'Ready to Send enabled with a title').toBeEnabled();
-    }
-  );
+  // Send with an empty title (AIN-02-01) and with a title (AIN-02-07): one test each (split 2026-09-28).
+  test('AIN-02-01: Send is blocked while the notice title is empty', { tag: ['@functional'] }, async ({ user }) => {
+    const n = user.aiNotices;
+    await n.titleInput.fill('');
+    await expect(n.sendBtn, 'Ready to Send disabled with an empty title').toBeDisabled();
+  });
 
+  test('AIN-02-07: Send is allowed once a notice title is entered', { tag: ['@functional'] }, async ({ user }) => {
+    const n = user.aiNotices;
+    await n.titleInput.fill('');
+    await n.titleInput.fill('Science club meeting');
+    await expect(n.sendBtn, 'Ready to Send enabled with a title').toBeEnabled();
+  });
+
+  // Backspace (AIN-02-02) and Delete (AIN-02-08) in the title: one test each (split 2026-09-28).
   test(
-    'AIN-02-02: Backspace and Delete remove characters from the notice title (regression)',
+    'AIN-02-02: Backspace removes characters from the notice title (regression)',
     { tag: ['@regression'] },
     async ({ user, page }) => {
       const n = user.aiNotices;
@@ -37,9 +40,19 @@ test.describe('AIN-02 Write and edit the notice', () => {
       await page.keyboard.press('Backspace');
       await page.keyboard.press('Backspace');
       await expect(n.titleInput, 'Backspace removed two characters').toHaveValue('Holiday noti');
+    }
+  );
+
+  test(
+    'AIN-02-08: Delete removes characters from the notice title (regression)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const n = user.aiNotices;
+      await n.titleInput.fill('Holiday notice');
+      await n.titleInput.click();
       await page.keyboard.press('Home');
       await page.keyboard.press('Delete');
-      await expect(n.titleInput, 'Delete removed the first character').toHaveValue('oliday noti');
+      await expect(n.titleInput, 'Delete removed the first character').toHaveValue('oliday notice');
     }
   );
 
@@ -92,25 +105,38 @@ test.describe('AIN-02 Write and edit the notice', () => {
     }
   );
 
+  // Recapture: the title (AIN-02-06) and the body (AIN-02-09) come from the fresh capture -- one test each (split
+  // 2026-09-28).
+  /** Edit the title, then Recapture the same text area and approve it. */
+  const editThenRecapture = async (user) => {
+    const n = user.aiNotices;
+    await n.titleInput.fill('My own edited title');
+    await n.recaptureBtn.click({ force: true });
+    await expect(n.captureBanner, 'set-up: back in capture mode').toBeVisible({ timeout: 10000 });
+    const box = await user.toolbar.wbSvg.boundingBox();
+    await n.dragSelect(box, { x: 250, y: 270 }, { x: 650, y: 345 });
+    await n.approveBtn.click({ force: true });
+    await n.titleInput.waitFor({ state: 'visible', timeout: 30000 });
+  };
+
   test(
-    'AIN-02-06: Recapture replaces the title and body with a fresh capture',
+    'AIN-02-06: Recapture replaces an edited title with one from the fresh capture',
     { tag: ['@functional'] },
     async ({ user }) => {
-      const n = user.aiNotices;
-      await n.titleInput.fill('My own edited title');
-      await n.recaptureBtn.click({ force: true });
-      await expect(n.captureBanner, 'back in capture mode').toBeVisible({ timeout: 10000 });
-      const box = await user.toolbar.wbSvg.boundingBox();
-      await n.dragSelect(box, { x: 250, y: 270 }, { x: 650, y: 345 });
-      await n.approveBtn.click({ force: true });
-      await n.titleInput.waitFor({ state: 'visible', timeout: 30000 });
-      await expect(n.titleInput, 'title comes from the new capture, not the earlier edit').not.toHaveValue(
+      await editThenRecapture(user);
+      await expect(user.aiNotices.titleInput, 'title comes from the new capture, not the earlier edit').not.toHaveValue(
         'My own edited title',
-        {
-          timeout: 15000,
-        }
+        { timeout: 15000 }
       );
-      await expect(n.bodyEditor).toContainText(/photosynthesis/i);
+    }
+  );
+
+  test(
+    'AIN-02-09: Recapture fills the body with the freshly captured text',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await editThenRecapture(user);
+      await expect(user.aiNotices.bodyEditor).toContainText(/photosynthesis/i);
     }
   );
 });

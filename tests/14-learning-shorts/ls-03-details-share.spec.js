@@ -17,20 +17,22 @@ test.describe('LS-03 Complete the details and share', () => {
     await app.learningShorts.closeAll();
   });
 
-  test(
-    'LS-03-01: Save and Send are blocked while the title is empty and allowed with a title',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      const ls = user.learningShorts;
-      // Right after recording, the save actions are Save to Playlist and "Save & Send as Revision" (no plain Send).
-      await ls.titleInput.fill('');
-      await expect(ls.savePlaylistBtn, 'Save to Playlist blocked').toBeDisabled();
-      await expect(ls.saveRevisionBtn, 'Save & Send blocked').toBeDisabled();
-      await ls.titleInput.fill('Refraction recap');
-      await expect(ls.savePlaylistBtn).toBeEnabled();
-      await expect(ls.saveRevisionBtn).toBeEnabled();
-    }
-  );
+  // Right after recording, the save actions are Save to Playlist and "Save & Send as Revision" (no plain Send). With an
+  // empty title (LS-03-01) and with a title (LS-03-10): one test each (split 2026-09-28).
+  test('LS-03-01: Save and Send are blocked while the title is empty', { tag: ['@functional'] }, async ({ user }) => {
+    const ls = user.learningShorts;
+    await ls.titleInput.fill('');
+    await expect(ls.savePlaylistBtn, 'Save to Playlist blocked').toBeDisabled();
+    await expect(ls.saveRevisionBtn, 'Save & Send blocked').toBeDisabled();
+  });
+
+  test('LS-03-10: Save and Send are allowed once a title is entered', { tag: ['@functional'] }, async ({ user }) => {
+    const ls = user.learningShorts;
+    await ls.titleInput.fill('');
+    await ls.titleInput.fill('Refraction recap');
+    await expect(ls.savePlaylistBtn).toBeEnabled();
+    await expect(ls.saveRevisionBtn).toBeEnabled();
+  });
 
   test.fixme('LS-03-02: Delete Attachment removes the video and Recapture attaches a new one', async () => {
     // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): neither composer (after recording, or when sending a saved
@@ -75,37 +77,55 @@ test.describe('LS-03 Complete the details and share', () => {
     }
   );
 
+  // Save Revision and Save to Playlist are two separate buttons (LS-03-05), and Save Revision confirms what it did
+  // (LS-03-11; Save to Playlist's result is LS-03-04) -- one test each (split 2026-09-28).
   test(
-    'LS-03-05: Save Revision and Save to Playlist are separate actions that each confirm what they did',
+    'LS-03-05: Save Revision and Save to Playlist are separate actions (two different buttons)',
     { tag: ['@functional'] },
     async ({ user }) => {
       const ls = user.learningShorts;
       await expect(ls.saveRevisionBtn).toBeVisible();
       await expect(ls.savePlaylistBtn).toBeVisible();
       await expect(ls.saveRevisionBtn).not.toHaveText(await ls.savePlaylistBtn.innerText());
-      await ls.titleInput.fill(`AutoTest revision ${Date.now()}`);
-      await ls.saveRevisionBtn.click();
-      await expect(ls.snackbar.first(), 'Save Revision confirms what it did').toContainText(/revision|saved|success/i, {
-        timeout: 30000,
-      });
     }
   );
+
+  test('LS-03-11: Save Revision confirms what it did', { tag: ['@functional'] }, async ({ user }) => {
+    const ls = user.learningShorts;
+    await ls.titleInput.fill(`AutoTest revision ${Date.now()}`);
+    await ls.saveRevisionBtn.click();
+    await expect(ls.snackbar.first(), 'Save Revision confirms what it did').toContainText(/revision|saved|success/i, {
+      timeout: 30000,
+    });
+  });
+
+  // Send to one class: a success message (LS-03-06), and the composer closes (LS-03-12) -- one test each (split
+  // 2026-09-28). Each really sends the short to the first class.
+  const sendToFirstClass = async (user) => {
+    const ls = user.learningShorts;
+    await ls.openSendComposer(user);
+    const total = await ls.classOptions.count();
+    for (let i = 0; i < total; i++)
+      if (await ls.classCheckbox(i).isChecked()) await ls.classOption(i).click({ force: true });
+    await ls.classOption(0).click({ force: true });
+    await ls.sendBtn.click();
+  };
 
   test(
     'LS-03-06: Send delivers the short to the chosen class with a success message',
     { tag: ['@functional'] },
     async ({ user }) => {
-      const ls = user.learningShorts;
-      await ls.openSendComposer(user);
-      const total = await ls.classOptions.count();
-      for (let i = 0; i < total; i++)
-        if (await ls.classCheckbox(i).isChecked()) await ls.classOption(i).click({ force: true });
-      await ls.classOption(0).click({ force: true });
-      await ls.sendBtn.click();
-      await expect(ls.snackbar.first(), 'success message').toContainText(/sent|success|shared/i, { timeout: 30000 });
-      await expect(ls.sendBtn).toBeHidden({ timeout: 30000 });
+      await sendToFirstClass(user);
+      await expect(user.learningShorts.snackbar.first(), 'success message').toContainText(/sent|success|shared/i, {
+        timeout: 30000,
+      });
     }
   );
+
+  test('LS-03-12: the Learning Shorts composer closes after sending', { tag: ['@functional'] }, async ({ user }) => {
+    await sendToFirstClass(user);
+    await expect(user.learningShorts.sendBtn, 'composer closed after sending').toBeHidden({ timeout: 30000 });
+  });
 
   test(
     'LS-03-07: a very long title with emoji does not break the composer or the class list',

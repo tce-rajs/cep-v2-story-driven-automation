@@ -60,25 +60,25 @@ test.describe('NAV-02 Search Chapter', () => {
     }
   );
 
-  test(
-    'NAV-02-03: special characters or a very long query do not break the search',
-    { tag: ['@edge'] },
-    async ({ user, page }) => {
+  // Special characters (NAV-02-03) and a very long query (NAV-02-06): one test each (split 2026-09-28). "Not broken" =
+  // the field still works, Cancel brings the full chapter list back, and no page errors.
+  for (const [id, what, queries] of [
+    ['NAV-02-03', 'special characters', ['<script>alert(1)</script>', `'"%_\\;--${'&*()[]{}^~`'.repeat(3)}`]],
+    ['NAV-02-06', 'a very long (2,000-character) query', ['a'.repeat(2000)]],
+  ]) {
+    test(`${id}: searching with ${what} does not break the search`, { tag: ['@edge'] }, async ({ user, page }) => {
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
-
-      for (const query of ['<script>alert(1)</script>', `'"%_\\;--${'&*()[]{}^~`'.repeat(3)}`, 'a'.repeat(2000)]) {
+      for (const query of queries) {
         await user.nav.searchContents(query);
         await expect(user.nav.chapterTpSearchInput, 'the field still works').toBeVisible();
       }
-
-      // Search recovers: Cancel brings the full chapter list back.
       await user.nav.chapterTpSearchCancel.click({ timeout: 5000 });
       await expect(user.nav.chapterItems.first(), 'the chapter list is restored').toBeVisible({ timeout: 8000 });
       expect(await user.nav.chapterItems.count()).toBeGreaterThan(0);
       expect(errors, 'no uncaught page errors').toEqual([]);
-    }
-  );
+    });
+  }
 
   // --- Added 2026-09-26 (gap-fill from the reference suite's Grade/Subject/Division workbook) ---
 

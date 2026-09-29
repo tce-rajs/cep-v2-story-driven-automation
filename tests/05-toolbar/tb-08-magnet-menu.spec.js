@@ -1,13 +1,13 @@
 // TB-08 — Magnet menu
 // Source: CEPV2_Stories/05_Toolbar.md
-// Magnet's entries are gated per class/subject. Class 12A Physics ('default' in config/moduleClassMap.js) is
-// the confirmed class where Notice, Learning Shorts, Homework and Attendance can all be reached.
+// Magnet's entries are gated per class/subject. The 'attendance' class in config/moduleClassMap.js is the confirmed
+// class where Notice, Learning Shorts, Homework and Attendance can all be reached (on .85, 12A Physics has no Attendance).
 
 const { test, expect } = require('../../fixtures');
 
 test.describe('TB-08 Magnet menu', () => {
   test.beforeEach(async ({ user }) => {
-    await user.nav.applyClassMap('default');
+    await user.nav.applyClassMap('attendance');
   });
 
   test(
@@ -61,21 +61,39 @@ test.describe('TB-08 Magnet menu', () => {
     }
   );
 
+  // After opening and closing Magnet 6 times quickly: not stuck open (TB-08-07), not duplicated (TB-08-08) -- one test
+  // each (split 2026-09-28).
+  // CONFIRMED LIVE (2026-09-26): the Magnet icon only opens its menu (a second click leaves it open); tapping outside
+  // closes it.
+  const openCloseSixTimes = async (user) => {
+    for (let i = 0; i < 6; i++) {
+      await user.magnet.tool.click({ force: true });
+      await expect(user.magnet.noticeItem, 'set-up: the menu opened').toBeVisible({ timeout: 5000 });
+      await user.toolbar.closePanelByTappingOutside();
+    }
+  };
+
   test(
-    'TB-08-07: opening and closing Magnet 6 times quickly never leaves its menu stuck open or duplicated',
+    'TB-08-07: after opening and closing Magnet 6 times quickly, its menu is closed, not stuck open',
     { tag: ['@edge'] },
-    async ({ user, page }) => {
-      // CONFIRMED LIVE (2026-09-26): the Magnet icon only opens its menu (a second click leaves it open); tapping outside closes it.
-      for (let i = 0; i < 6; i++) {
-        await user.magnet.tool.click({ force: true });
-        await expect(user.magnet.noticeItem).toBeVisible({ timeout: 5000 });
+    async ({ user }) => {
+      await openCloseSixTimes(user);
+      await expect(user.magnet.noticeItem, 'menu closed, not stuck open').toBeHidden({ timeout: 5000 });
+    }
+  );
+
+  test(
+    'TB-08-08: after opening and closing Magnet 6 times quickly, opening it again shows exactly one menu',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      await openCloseSixTimes(user);
+      await user.magnet.open();
+      try {
+        await expect(user.magnet.noticeItem, 'exactly one menu').toHaveCount(1);
+        await expect(user.magnet.noticeItem).toBeVisible();
+      } finally {
         await user.toolbar.closePanelByTappingOutside();
       }
-      await expect(user.magnet.noticeItem, 'menu closed, not stuck open').toBeHidden({ timeout: 5000 });
-      await user.magnet.open();
-      await expect(user.magnet.noticeItem, 'exactly one menu').toHaveCount(1);
-      await expect(user.magnet.noticeItem).toBeVisible();
-      await user.toolbar.closePanelByTappingOutside();
     }
   );
 });

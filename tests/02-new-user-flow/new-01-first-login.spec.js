@@ -21,20 +21,30 @@ test.describe('NEW-01 First login: default password forces a password reset', ()
 
   const { username, newPassword, schoolSearchTerm } = NewUserPage.credentials;
 
+  // The two school paths, one test each (split 2026-09-28; neither changes the account, so the order is unaffected):
+  // the pre-selected school (NEW-01-01) and choosing the school by hand (NEW-01-06).
+  const openPasswordView = async (login) => {
+    await login.open();
+    await login.openSignIn();
+    await login.switchToPasswordView();
+    await expect(login.schoolSelect).toBeVisible();
+  };
+
   test(
-    'NEW-01-01: the school is pre-selected by default or can be selected manually, and both paths reach the username field',
+    'NEW-01-01: with the school as pre-selected (if at all), the username field is reachable',
+    { tag: ['@smoke', '@functional'] },
+    async ({ app }) => {
+      await openPasswordView(app.login);
+      await expect(app.login.usernameInput).toBeVisible();
+    }
+  );
+
+  test(
+    'NEW-01-06: choosing the school by hand shows the chosen school, and the username field is reachable',
     { tag: ['@smoke', '@functional'] },
     async ({ app }) => {
       const { login } = app;
-      await login.open();
-      await login.openSignIn();
-      await login.switchToPasswordView();
-      await expect(login.schoolSelect).toBeVisible();
-
-      // Path 1: whatever is pre-selected (if anything) leaves the username field reachable.
-      await expect(login.usernameInput).toBeVisible();
-
-      // Path 2: choosing the school by hand also leaves it reachable and shows the chosen school.
+      await openPasswordView(login);
       await login.selectSchool(schoolSearchTerm);
       await expect(login.schoolSelect).toContainText(new RegExp(schoolSearchTerm, 'i'));
       await expect(login.usernameInput).toBeVisible();

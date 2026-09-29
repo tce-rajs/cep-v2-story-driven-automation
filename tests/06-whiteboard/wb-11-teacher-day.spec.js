@@ -1,24 +1,20 @@
-// WB-11 — A teacher's day on one topic: write, sign out, come back, pan, write again (nothing ever cleared)
+// WB-11 — A teacher's day on one topic: write, sign out, come back, write again, close the app, reload (nothing ever
+// cleared)
 // Source: CEPV2_Stories/06_Whiteboard.md
 //
 // Data: 'longSession' (Class 12A Physics, 3.1) -- a board that is NEVER cleared (owner's request, 2026-09-27): each run
-// adds three more sessions of handwriting to what earlier runs left, like a real classroom board filling up, and checks
-// that everything written before -- in this run and in earlier runs -- is still there, unchanged, and not duplicated.
+// adds more handwriting to what earlier runs left, like a real classroom board filling up, and checks that everything
+// written before -- in this run and in earlier runs -- is still there, unchanged, and not duplicated.
 //
-// Needs to close and relaunch the whole client between sessions, so it uses launchWithRetry() directly (like
-// LOG-01-14 / WB-08-04) instead of the suite's fixtures.
+// One test per result, in the order of the day. Each test notes the board as it finds it, so none depends on another
+// having passed. Some need to close and relaunch the whole client, so this file uses launchWithRetry() directly (like
+// LOG-01-14 / WB-08-04) instead of the suite's fixtures, and every test starts its own client.
 
 const { test, expect } = require('@playwright/test');
 const { launchWithRetry } = require('../../fixtures/electron-app');
 const { App } = require('../../pages/app');
 const { TouchInput } = require('../../pages/touch-input');
 const { layoutHandwriting, lessonText } = require('../../pages/lib/handwriting');
-
-const openClient = async () => {
-  const client = await launchWithRetry();
-  const app = new App(client.teachWindow);
-  return { client, app };
-};
 
 const signInToTopic = async (app) => {
   await app.signIn(process.env.VALID_PIN);
@@ -28,123 +24,126 @@ const signInToTopic = async (app) => {
   await app.toolbar.waitForBoardToSettle();
 };
 
-// Every checkpoint of the day is soft: a failure after session 1 is recorded and the day carries on, so the sign-out,
-// app-close and final-reload checkpoints still report their own result.
-const softExpect = expect.configure({ soft: true });
+/** Launch the client, sign in and open the topic; runs `body(app, client)` and always closes the client. */
+const withClient = async (body) => {
+  const client = await launchWithRetry();
+  const app = new App(client.teachWindow);
+  try {
+    await signInToTopic(app);
+    return await body(app, client);
+  } finally {
+    await client.app.close().catch(() => {});
+  }
+};
 
-/** Every stroke that should be on the board is there, once; returns the board's geometry. */
-const expectAllThere = async (app, expected, when) => {
-  await softExpect
-    .poll(async () => (await app.content.pathGeometry()).length, {
-      message: `${when}: all strokes loaded`,
-      timeout: 60000,
-    })
-    .toBeGreaterThanOrEqual(expected.length);
-  const now = await app.content.pathGeometry();
-  const missing = expected.filter((d) => !now.includes(d));
+/** The board once every stroke has loaded (at least `atLeast` of them). */
+const loadedBoard = async (app, atLeast) => {
+  await expect
+    .poll(async () => (await app.content.pathGeometry()).length, { message: 'all strokes loaded', timeout: 60000 })
+    .toBeGreaterThanOrEqual(atLeast);
+  return app.content.pathGeometry();
+};
+
+/** Assert the board holds everything in `earlier` exactly once, plus exactly `added` new strokes. */
+const expectBoard = (now, earlier, added, when) => {
   const counts = new Map();
   now.forEach((d) => counts.set(d, (counts.get(d) || 0) + 1));
-  const doubled = expected.filter((d) => counts.get(d) > 1);
-  softExpect(missing, `${when}: nothing written earlier is missing`).toHaveLength(0);
-  softExpect(doubled, `${when}: nothing written earlier is doubled`).toHaveLength(0);
-  return now;
+  const missing = earlier.filter((d) => !counts.has(d));
+  const doubled = earlier.filter((d) => counts.get(d) > 1);
+  test.info().annotations.push({
+    type: 'note',
+    description: `${when}: ${earlier.length} strokes before, ${now.length} now (${added} added); missing ${missing.length}, doubled ${doubled.length}`,
+  });
+  expect(
+    { missing: missing.length, doubled: doubled.length, total: now.length },
+    `${when}: everything from before is there once, plus exactly the ${added} new strokes`
+  ).toEqual({ missing: 0, doubled: 0, total: earlier.length + added });
 };
 
-/** Pan to fresh board space below everything written so far (the "slider" move), then handwrite `words` words. */
+/** Pan below everything written so far, handwrite `words` words, and give autosave up to a minute to finish. */
 const writeSession = async (app, how, words, seed) => {
   const touch = new TouchInput(app.page);
-  const area = await app.content.writingArea();
-  const box = await app.toolbar.wbSvg.boundingBox();
-  // Fresh space below everything written before, with the Pan tool (a two-finger drag draws lines instead of
-  // panning: bug WB-10-04, left to its own case so it does not spoil this one).
-  await app.content.panBelowExistingWriting();
-  const draw =
-    how === 'finger'
-      ? (pts) => touch.fingerStroke(pts, 0)
-      : how === 'stylus'
-        ? (pts) => touch.penStroke(pts)
-        : undefined;
-  const pages = layoutHandwriting(lessonText(words), area, { seed, xHeight: how === 'finger' ? 20 : 16 });
-  await app.content.startSaveLog();
-  await app.content.writeHandwriting(pages, {
-    draw,
-    nextPage: () => app.content.panUp(area.height + 40),
-  });
-  const finished = Date.now();
-  await softExpect
-    .poll(async () => (await app.content.savedMessages()).some((m) => m.at > finished && /saved/i.test(m.text)), {
-      message: `${how} session: "Whiteboard Saved!" after the last word`,
-      timeout: 60000,
-    })
-    .toBe(true);
-  await touch.dispose();
-  return pages.reduce((n, p) => n + p.words.reduce((m, w) => m + w.strokes.length, 0), 0);
+  try {
+    const area = await app.content.writingArea();
+    // Fresh space with the Pan tool (a two-finger drag draws lines instead of panning: bug WB-10-04).
+    await app.content.panBelowExistingWriting();
+    const draw = how === 'finger' ? (pts) => touch.fingerStroke(pts, 0) : (pts) => touch.penStroke(pts);
+    const pages = layoutHandwriting(lessonText(words), area, { seed, xHeight: how === 'finger' ? 20 : 16 });
+    await app.content.startSaveLog();
+    await app.content.writeHandwriting(pages, { draw, nextPage: () => app.content.panUp(area.height + 40) });
+    const finished = Date.now();
+    // Set-up for the next part of the day (the save message itself is WB-10-25/28's check): wait for it, up to a minute.
+    for (let i = 0; i < 60; i++) {
+      if ((await app.content.savedMessages()).some((m) => m.at > finished && /saved/i.test(m.text))) break;
+      await app.page.waitForTimeout(1000);
+    }
+    return pages.reduce((n, p) => n + p.words.reduce((m, w) => m + w.strokes.length, 0), 0);
+  } finally {
+    await touch.dispose();
+  }
 };
 
-test(
-  'WB-11-01: a teacher writes over three sessions on one topic (stylus, sign out, finger, app closed, stylus); everything written stays, unchanged and not doubled',
-  { tag: ['@long', '@regression'] },
-  async () => {
+test.describe('WB-11 A teacher’s day on one topic', () => {
+  test.beforeEach(() => {
     test.skip(!!process.env.RUN_IN_BROWSER, 'relaunching the desktop client has no browser-mode equivalent');
-    test.setTimeout(90 * 60 * 1000);
-    const log = [];
+  });
 
-    let { client, app } = await openClient();
-    let kept;
-    try {
-      await test.step('session 1: stylus, then sign out', async () => {
-        await signInToTopic(app);
-        const before = await app.content.pathGeometry();
-        log.push(`start: ${before.length} strokes already on the board from earlier days`);
-        const s1 = await writeSession(app, 'stylus', 100, 61);
-        kept = await expectAllThere(app, before, 'session 1 (stylus)');
-        softExpect(kept, 'session 1: the board grew by exactly the strokes written').toHaveLength(before.length + s1);
-        log.push(`session 1 (stylus): +${s1} strokes -> ${kept.length}`);
+  const sessionTest = (id, how, when, seed) =>
+    test(
+      `${id}: ${when}, the teacher handwrites about 100 words with a ${how}; the board keeps everything from before, once, plus exactly the new strokes`,
+      { tag: ['@long', '@regression'] },
+      async () => {
+        test.setTimeout(30 * 60 * 1000);
+        await withClient(async (app) => {
+          const before = await app.content.pathGeometry();
+          const added = await writeSession(app, how, 100, seed);
+          expectBoard(await loadedBoard(app, before.length), before, added, `${how} session`);
+        });
+      }
+    );
+
+  sessionTest('WB-11-01', 'stylus', 'In the morning', 61);
+
+  test(
+    'WB-11-02: after signing out and back in, everything on the board is still there, once',
+    { tag: ['@long', '@regression'] },
+    async () => {
+      test.setTimeout(5 * 60 * 1000);
+      await withClient(async (app) => {
+        const before = await loadedBoard(app, 0);
         await app.userMenu.signOut();
-      });
-
-      await test.step('after signing out and in: everything is still there', async () => {
         await signInToTopic(app);
-        await expectAllThere(app, kept, 'after signing out and in');
+        expectBoard(await loadedBoard(app, before.length), before, 0, 'after signing out and in');
       });
-
-      await test.step('session 2: pan, finger', async () => {
-        const s2 = await writeSession(app, 'finger', 100, 62);
-        const after2 = await expectAllThere(app, kept, 'session 2 (finger)');
-        softExpect(after2, 'session 2: the board grew by exactly the strokes written').toHaveLength(kept.length + s2);
-        kept = after2;
-        log.push(`session 2 (finger, after sign-out/in): +${s2} strokes -> ${kept.length}`);
-      });
-    } finally {
-      await client.app.close().catch(() => {});
     }
+  );
 
-    ({ client, app } = await openClient());
-    try {
-      await test.step('after closing and reopening the app: everything is still there', async () => {
-        await signInToTopic(app);
-        await expectAllThere(app, kept, 'after closing and reopening the app');
+  sessionTest('WB-11-03', 'finger', 'After signing in again', 62);
+
+  test(
+    'WB-11-04: after closing and reopening the app, everything on the board is still there, once',
+    { tag: ['@long', '@regression'] },
+    async () => {
+      test.setTimeout(5 * 60 * 1000);
+      const before = await withClient((app) => loadedBoard(app, 0));
+      await withClient(async (app) => {
+        expectBoard(await loadedBoard(app, before.length), before, 0, 'after closing and reopening the app');
       });
+    }
+  );
 
-      await test.step('session 3: pan, stylus', async () => {
-        const s3 = await writeSession(app, 'stylus', 100, 63);
-        const after3 = await expectAllThere(app, kept, 'session 3 (stylus)');
-        softExpect(after3, 'session 3: the board grew by exactly the strokes written').toHaveLength(kept.length + s3);
-        kept = after3;
-        log.push(`session 3 (stylus, after closing the app): +${s3} strokes -> ${kept.length}`);
-      });
-
-      await test.step('final reload: every stroke of every session is back exactly', async () => {
+  test(
+    'WB-11-05: at the end of the day, a reload brings back every stroke of every session exactly, once',
+    { tag: ['@long', '@regression'] },
+    async () => {
+      test.setTimeout(5 * 60 * 1000);
+      await withClient(async (app) => {
+        const before = await loadedBoard(app, 0);
         await app.page.reload();
         await app.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
         await app.toolbar.waitForBoardToSettle();
-        const final = await expectAllThere(app, kept, 'final reload');
-        expect(final, 'final: exactly the same number of strokes, nothing extra').toHaveLength(kept.length);
-        log.push(`final reload: ${final.length} strokes, all present`);
+        expectBoard(await loadedBoard(app, before.length), before, 0, 'after a reload');
       });
-    } finally {
-      test.info().annotations.push({ type: 'note', description: log.join(' | ') });
-      await client.app.close().catch(() => {});
     }
-  }
-);
+  );
+});

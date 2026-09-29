@@ -81,6 +81,8 @@ test.describe('LOG-01 Login', () => {
       const minutes = Number(process.env.SESSION_SOAK_MINUTES || 16);
       test.setTimeout((minutes + 4) * 60 * 1000);
 
+      // The board keeps what earlier runs wrote: pan to fresh space first, so the new strokes do not land on old ones.
+      await user.content.panBelowExistingWriting();
       const startPaths = await user.toolbar.pathCount();
       for (let minute = 1; minute <= minutes; minute++) {
         // Real use: one whiteboard stroke a minute, then confirm still signed in.
@@ -94,13 +96,18 @@ test.describe('LOG-01 Login', () => {
   );
 
   test(
-    'LOG-01-09: auto-logout does not recur — the session survives being idle',
+    'LOG-01-09: auto-logout does not come early — idle for under 4 minutes, the session stays and no warning shows',
     { tag: ['@long', '@regression'] },
     async ({ user }) => {
-      const idleMinutes = Number(process.env.SESSION_IDLE_MINUTES || 6);
+      // Owner-stated rule (2026-09-28): the inactivity warning comes after 4 minutes idle, and an unanswered warning signs
+      // the teacher out a minute later (LOG-05-07/09). So "auto-logout does not recur" means: nothing happens BEFORE
+      // 4 minutes. (Until 2026-09-28 this idled 6 minutes and expected the session to survive, which the rule now
+      // says is wrong.)
+      const idleMinutes = Number(process.env.SESSION_IDLE_MINUTES || 3.5);
       test.setTimeout((idleMinutes + 3) * 60 * 1000);
 
       await user.page.waitForTimeout(idleMinutes * 60 * 1000); // no interaction at all
+      await expect(user.page.getByRole('button', { name: /stay signed in/i }), 'no warning yet').toBeHidden();
       await expect(user.login.avatar).toBeVisible();
       await expect(user.login.guestModeText).toBeHidden();
 

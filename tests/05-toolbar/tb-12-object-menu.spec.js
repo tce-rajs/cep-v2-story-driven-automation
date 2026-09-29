@@ -4,7 +4,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 test.describe('TB-12 Right-click menu on board objects', () => {
   test(

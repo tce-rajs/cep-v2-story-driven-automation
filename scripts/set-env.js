@@ -18,8 +18,8 @@ const { setTceServerUrl } = require('./lib/tce-settings');
 
 const ENVIRONMENTS_DIR = path.join(__dirname, '..', 'config', 'environments');
 const ENV_PATH = path.join(__dirname, '..', '.env');
-// The environment "reset" returns to -- CLAUDE.md documents this as the project's primary target.
-const DEFAULT_PROFILE = 'qa';
+// The environment "reset" returns to -- the project's only target server (see CLAUDE.md).
+const DEFAULT_PROFILE = 'new-server'; // 172.18.2.85 -- the QA server is disabled (owner, 2026-09-28)
 
 function fail(message) {
   console.error(`\nset-env: ${message}`);

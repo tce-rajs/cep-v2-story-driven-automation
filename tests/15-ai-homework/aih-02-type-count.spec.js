@@ -14,13 +14,22 @@ test.describe('AIH-02 Choose the homework type and number of questions', () => {
     await app.aiHomework.closeAll();
   });
 
+  // The Homework default (AIH-02-01) and the Revise option (AIH-02-07): one test each (split 2026-09-28).
   test(
-    'AIH-02-01: Homework is the default with 15 objective questions; Revise offers 10 objective and 5 subjective',
+    'AIH-02-01: Homework is selected by default, with 15 objective questions',
     { tag: ['@functional'] },
     async ({ user }) => {
       const hw = user.aiHomework;
       await expect(hw.homeworkCard).toHaveClass(/select|active|checked/i);
       await expect(hw.hwObjInput).toHaveValue('15');
+    }
+  );
+
+  test(
+    'AIH-02-07: Revise can be selected and offers 10 objective and 5 subjective questions',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const hw = user.aiHomework;
       await expect(hw.revObjInput).toHaveValue('10');
       await expect(hw.revSubjInput).toHaveValue('5');
       await hw.reviseCard.click();
@@ -28,18 +37,20 @@ test.describe('AIH-02 Choose the homework type and number of questions', () => {
     }
   );
 
-  test(
-    'AIH-02-02: the + and − buttons change a count by one each click',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      const hw = user.aiHomework;
-      await hw.hwObjPlus.click();
-      await expect(hw.hwObjInput).toHaveValue('16');
-      await hw.hwObjMinus.click();
-      await hw.hwObjMinus.click();
-      await expect(hw.hwObjInput).toHaveValue('14');
-    }
-  );
+  // + (AIH-02-02) and − (AIH-02-08): one test each (split 2026-09-28).
+  test('AIH-02-02: the + button raises a question count by one', { tag: ['@functional'] }, async ({ user }) => {
+    const hw = user.aiHomework;
+    await expect(hw.hwObjInput, 'set-up: the default 15').toHaveValue('15');
+    await hw.hwObjPlus.click();
+    await expect(hw.hwObjInput).toHaveValue('16');
+  });
+
+  test('AIH-02-08: the − button lowers a question count by one', { tag: ['@functional'] }, async ({ user }) => {
+    const hw = user.aiHomework;
+    await expect(hw.hwObjInput, 'set-up: the default 15').toHaveValue('15');
+    await hw.hwObjMinus.click();
+    await expect(hw.hwObjInput).toHaveValue('14');
+  });
 
   test(
     'AIH-02-03: a fast double-click on + adds two questions (regression)',

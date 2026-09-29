@@ -9,54 +9,77 @@ test.describe('PRE-03 Toolbar is available, except Magnet', () => {
     await new WithoutLoginPage(page).open();
   });
 
+  // The story's PRE-03-01 listed the whole toolbar plus the User menu in one case. Split (2026-09-28) into one case per
+  // tool: every tool is visible (PRE-03-04), each works on its own (PRE-03-05..13), and the User menu (PRE-03-01).
   test(
-    // Split from the story's own PRE-03-01 (which also covers the User menu, see PRE-03-01 below) so the two halves
-    // -- the working toolbar, and the User-menu mismatch -- aren't both reported under one ID.
-    'PRE-03-01a: the toolbar (Select, Pan, Background, Pen, Eraser, Shapes, Undo/Redo) is visible and functional without logging in',
+    'PRE-03-04: every toolbar tool (Select, Pan, Background, Pen, Text, Eraser, Shapes, Undo, Redo) is visible without logging in',
     { tag: ['@smoke', '@functional'] },
     async ({ page }) => {
-      const app = new WithoutLoginPage(page);
-      const tb = app.toolbar;
-
-      await test.step('every tool is visible', async () => {
-        for (const id of GUEST_TOOL_IDS) {
-          await expect.soft(tb.tool(id), id).toBeVisible();
-        }
-      });
-
-      // Tools that switch the active mode.
-      for (const id of ['gtSelect', 'gtPan', 'gtPen', 'gtInserttext']) {
-        await test.step(`${id} activates when clicked`, async () => {
-          await tb.selectTool(id);
-          await expect.soft(tb.isToolActive(id), id).toHaveCount(1);
-        });
-      }
-
-      // Tools that open an options panel on double-tap.
-      for (const [id, marker] of [
-        ['gtBackground', /choose a background/i],
-        ['gtErase', /clear whiteboard/i],
-        ['gtShapes', /choose a shape/i],
-      ]) {
-        await test.step(`${id} opens its panel`, async () => {
-          await tb.openToolPanel(id);
-          await expect.soft(tb.panel, id).toBeVisible();
-          await expect.soft(tb.panel, id).toContainText(marker);
-          await tb.closePanelByTappingOutside();
-        });
-      }
-
-      await test.step('Undo/Redo work on a drawn stroke', async () => {
-        const before = await tb.pathCount();
-        await app.draw();
-        expect(await tb.pathCount()).toBe(before + 1);
-        await tb.tool('gtUndo').click({ force: true });
-        await expect.poll(() => tb.pathCount()).toBe(before);
-        await tb.tool('gtRedo').click({ force: true });
-        await expect.poll(() => tb.pathCount()).toBe(before + 1);
-      });
+      const tb = new WithoutLoginPage(page).toolbar;
+      for (const id of GUEST_TOOL_IDS) await expect.soft(tb.tool(id), id).toBeVisible();
     }
   );
+
+  // Tools that switch the active mode.
+  for (const [cid, id, name] of [
+    ['PRE-03-05', 'gtSelect', 'Select'],
+    ['PRE-03-06', 'gtPan', 'Pan'],
+    ['PRE-03-07', 'gtPen', 'Pen'],
+    ['PRE-03-08', 'gtInserttext', 'Text'],
+  ]) {
+    test(
+      `${cid}: the ${name} tool activates when clicked, without logging in`,
+      { tag: ['@functional'] },
+      async ({ page }) => {
+        const tb = new WithoutLoginPage(page).toolbar;
+        await tb.selectTool(id);
+        await expect(tb.isToolActive(id), id).toHaveCount(1);
+      }
+    );
+  }
+
+  // Tools that open an options panel on double-tap.
+  for (const [cid, id, name, marker] of [
+    ['PRE-03-09', 'gtBackground', 'Background', /choose a background/i],
+    ['PRE-03-10', 'gtErase', 'Eraser', /clear whiteboard/i],
+    ['PRE-03-11', 'gtShapes', 'Shapes', /choose a shape/i],
+  ]) {
+    test(
+      `${cid}: the ${name} tool opens its options panel, without logging in`,
+      { tag: ['@functional'] },
+      async ({ page }) => {
+        const tb = new WithoutLoginPage(page).toolbar;
+        await tb.openToolPanel(id);
+        try {
+          await expect(tb.panel, id).toBeVisible();
+          await expect(tb.panel, id).toContainText(marker);
+        } finally {
+          await tb.closePanelByTappingOutside();
+        }
+      }
+    );
+  }
+
+  test('PRE-03-12: Undo removes a drawn stroke, without logging in', { tag: ['@functional'] }, async ({ page }) => {
+    const app = new WithoutLoginPage(page);
+    const tb = app.toolbar;
+    const before = await tb.pathCount();
+    await app.draw();
+    expect(await tb.pathCount(), 'set-up: a stroke drawn').toBe(before + 1);
+    await tb.tool('gtUndo').click({ force: true });
+    await expect.poll(() => tb.pathCount()).toBe(before);
+  });
+
+  test('PRE-03-13: Redo puts an undone stroke back, without logging in', { tag: ['@functional'] }, async ({ page }) => {
+    const app = new WithoutLoginPage(page);
+    const tb = app.toolbar;
+    const before = await tb.pathCount();
+    await app.draw();
+    await tb.tool('gtUndo').click({ force: true });
+    await expect.poll(() => tb.pathCount(), { message: 'set-up: the stroke undone' }).toBe(before);
+    await tb.tool('gtRedo').click({ force: true });
+    await expect.poll(() => tb.pathCount()).toBe(before + 1);
+  });
 
   test('PRE-03-01: the User menu is visible without logging in', { tag: ['@functional', '@bug'] }, async ({ page }) => {
     // MISMATCH, CONFIRMED LIVE (v 0.0.223): the story lists "User menu" among the tools

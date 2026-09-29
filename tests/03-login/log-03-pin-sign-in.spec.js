@@ -16,16 +16,19 @@ test.describe('LOG-03 Sign in with a PIN', () => {
   });
 
   test(
-    'LOG-03-01: the PIN view shows the heading, welcome and instruction text, and five PIN boxes',
+    'LOG-03-01: the PIN view shows the Sign In heading, the welcome and the instruction text',
     { tag: ['@smoke', '@functional'] },
     async ({ app }) => {
       await expect(app.login.modalTitle).toContainText(/sign in/i);
       await expect(app.login.modalSubtitle).toContainText(/\w{4,}/);
       await expect(app.login.modal, 'instruction text').toContainText(/enter your pin/i);
-      for (let i = 0; i < 5; i++) await expect(app.login.pinDigitBox(i)).toBeVisible();
-      await expect(app.login.pinDigitBox(5)).toHaveCount(0);
     }
   );
+
+  test('LOG-03-09: the PIN view shows exactly five PIN boxes', { tag: ['@smoke', '@functional'] }, async ({ app }) => {
+    for (let i = 0; i < 5; i++) await expect(app.login.pinDigitBox(i)).toBeVisible();
+    await expect(app.login.pinDigitBox(5)).toHaveCount(0);
+  });
 
   test('LOG-03-02: a partly filled PIN does not sign in', { tag: ['@negative'] }, async ({ app, page }) => {
     const posts = [];
@@ -46,25 +49,48 @@ test.describe('LOG-03 Sign in with a PIN', () => {
     await expect(app.login.pinDigitBox(0)).toHaveValue('4');
   });
 
+  // The on-screen keypad's digit, Backspace and Enter keys: one test each (split 2026-09-28).
+  // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232, desktop client 1536x864): clicking a PIN box opens the
+  // on-screen keyboard (a full QWERTY layout, not a number pad) BELOW the visible window -- its top row starts at
+  // y~834 and the digit keys at y~869, so none of it can be clicked. Same defect as TB-09-08 (chapter search).
+  const KEYPAD_OFF_SCREEN =
+    'On-screen keyboard opens below the visible window on the PIN screen, so its keys cannot be used';
+  const openKeypad = async (app, page) => {
+    await app.login.pinDigitBox(0).click();
+    const key = (k) => page.locator(`.simple-keyboard .hg-button[data-skbtn="${k}"]`).filter({ visible: true }).first();
+    await expect(key('1'), 'keypad shown').toBeVisible({ timeout: 8000 });
+    return key;
+  };
+
   test(
-    "LOG-03-04: the on-screen keypad's digit, Backspace and Enter keys work in the PIN boxes",
+    "LOG-03-04: the on-screen keypad's digit keys type into the PIN boxes",
     { tag: ['@functional', '@bug'] },
     async ({ app, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232, desktop client 1536x864): clicking a PIN box opens the
-      // on-screen keyboard (a full QWERTY layout, not a number pad) BELOW the visible window -- its top row starts at
-      // y~834 and the digit keys at y~869, so none of it can be clicked. Same defect as TB-09-08 (chapter search).
-      test.fail(
-        true,
-        'On-screen keyboard opens below the visible window on the PIN screen, so its keys cannot be used'
-      );
-      await app.login.pinDigitBox(0).click();
-      const key = (k) =>
-        page.locator(`.simple-keyboard .hg-button[data-skbtn="${k}"]`).filter({ visible: true }).first();
-      await expect(key('1'), 'keypad shown').toBeVisible({ timeout: 8000 });
+      test.fail(true, KEYPAD_OFF_SCREEN);
+      const key = await openKeypad(app, page);
       await key('9').click();
       await expect(app.login.pinDigitBox(0)).toHaveValue('9');
+    }
+  );
+
+  test(
+    "LOG-03-10: the on-screen keypad's Backspace key clears a digit",
+    { tag: ['@functional', '@bug'] },
+    async ({ app, page }) => {
+      test.fail(true, KEYPAD_OFF_SCREEN);
+      const key = await openKeypad(app, page);
+      await key('9').click();
       await key('{bksp}').click();
       await expect(app.login.pinDigitBox(0), 'Backspace cleared the digit').toHaveValue('');
+    }
+  );
+
+  test(
+    'LOG-03-11: a PIN entered on the on-screen keypad signs in (with Enter if needed)',
+    { tag: ['@functional', '@bug'] },
+    async ({ app, page }) => {
+      test.fail(true, KEYPAD_OFF_SCREEN);
+      const key = await openKeypad(app, page);
       for (const d of String(PIN)) await key(d).click();
       if (!(await app.login.avatar.isVisible().catch(() => false)))
         await key('{enter}')
@@ -124,12 +150,23 @@ test.describe('LOG-03 Sign in with a PIN', () => {
   });
 
   test(
-    'LOG-03-07: switching to the password view and back part-way through typing leaves both forms usable',
+    'LOG-03-12: after typing part of a PIN, the password view opens and its fields can be filled',
     { tag: ['@edge'] },
     async ({ app }) => {
       await app.login.enterPin(String(PIN).slice(0, 3));
       await app.login.switchToPasswordView();
       await expect(app.login.passwordForm).toBeVisible();
+      await app.login.usernameInput.fill('someone');
+      await expect(app.login.usernameInput).toHaveValue('someone');
+    }
+  );
+
+  test(
+    'LOG-03-07: switching to the password view and back part-way through typing, the PIN still signs in',
+    { tag: ['@edge'] },
+    async ({ app }) => {
+      await app.login.enterPin(String(PIN).slice(0, 3));
+      await app.login.switchToPasswordView();
       await app.login.usernameInput.fill('someone');
       await app.login.pinLink.click();
       await expect(app.login.pinForm).toBeVisible();
@@ -139,26 +176,39 @@ test.describe('LOG-03 Sign in with a PIN', () => {
     }
   );
 
+  /** Fill the PIN, then tap the fifth box twice quickly; returns the sign-in requests and page errors seen. */
+  const doubleTapLastBox = async (app, page) => {
+    const posts = [];
+    page.on('request', (r) => isAuthPost(r) && posts.push(r.url()));
+    const errors = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    const digits = String(PIN).split('');
+    for (let i = 0; i < 5; i++) await app.login.pinDigitBox(i).fill(digits[i]);
+    await app.login
+      .pinDigitBox(4)
+      .dblclick({ force: true })
+      .catch(() => {});
+    await expect(app.login.avatar, 'set-up: signed in').toBeVisible({ timeout: 20000 });
+    await page.waitForTimeout(2000);
+    return { posts, errors };
+  };
+
   test(
-    'LOG-03-08: tapping the fifth PIN box twice quickly signs in once, without an error (regression)',
+    'LOG-03-08: tapping the fifth PIN box twice quickly sends only one sign-in (regression)',
     { tag: ['@regression'] },
     async ({ app, page }) => {
-      const posts = [];
-      page.on('request', (r) => isAuthPost(r) && posts.push(r.url()));
-      const errors = [];
-      page.on('pageerror', (err) => errors.push(err.message));
-      const digits = String(PIN).split('');
-      for (let i = 0; i < 4; i++) await app.login.pinDigitBox(i).fill(digits[i]);
-      await app.login.pinDigitBox(4).fill(digits[4]);
-      await app.login
-        .pinDigitBox(4)
-        .dblclick({ force: true })
-        .catch(() => {});
-      await expect(app.login.avatar).toBeVisible({ timeout: 20000 });
-      await page.waitForTimeout(2000);
+      const { posts } = await doubleTapLastBox(app, page);
       expect(posts, `one sign-in request (saw ${posts.length})`).toHaveLength(1);
-      await expect(app.login.pinErrorMessage).toBeHidden();
-      expect(errors).toEqual([]);
+    }
+  );
+
+  test(
+    'LOG-03-13: tapping the fifth PIN box twice quickly shows no error (regression)',
+    { tag: ['@regression'] },
+    async ({ app, page }) => {
+      const { errors } = await doubleTapLastBox(app, page);
+      await expect(app.login.pinErrorMessage, 'no PIN error message').toBeHidden();
+      expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
 });

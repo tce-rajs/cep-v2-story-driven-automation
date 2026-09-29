@@ -20,8 +20,10 @@ test.describe('LS-01 Open the Learning Shorts recorder', () => {
     }
   );
 
+  // Exit without recording: the panel closes cleanly (LS-01-02), and no composer or video is produced (LS-01-04) -- one
+  // test each (split 2026-09-28).
   test(
-    'LS-01-02: Exit without recording closes the panel cleanly',
+    'LS-01-02: Exit without recording closes the recorder panel cleanly',
     { tag: ['@functional'] },
     async ({ user, page }) => {
       const errors = [];
@@ -31,8 +33,19 @@ test.describe('LS-01 Open the Learning Shorts recorder', () => {
       await ls.exitBtn.click({ force: true });
       await expect(ls.recordStartBtn).toBeHidden({ timeout: 5000 });
       await expect(ls.exitBtn).toBeHidden();
+      expect(errors, 'no uncaught page errors').toEqual([]);
+    }
+  );
+
+  test(
+    'LS-01-04: Exit without recording opens no composer, since nothing was recorded',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const ls = user.learningShorts;
+      await ls.openRecorder(user.magnet);
+      await ls.exitBtn.click({ force: true });
+      await page.waitForTimeout(2000);
       await expect(ls.titleInput, 'no composer, since nothing was recorded').toBeHidden();
-      expect(errors).toEqual([]);
     }
   );
 

@@ -4,19 +4,29 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('NAV-04 List Topics', () => {
+  // The list (NAV-04-01) and choosing a topic from it (NAV-04-03): one test each (split 2026-09-28).
+  const showFirstChapterTopics = async (user) => {
+    await user.nav.resetToClass('Class 12', 'A', 'Physics');
+    await user.nav.showTopicsOf(0);
+    await expect(user.nav.topicItems.first()).toBeVisible();
+    return (await user.nav.topicItems.allInnerTexts()).map((t) => t.trim());
+  };
+
   test(
-    'NAV-04-01: the topic list displays correctly for a selected chapter',
+    'NAV-04-01: the topic list displays correctly for a selected chapter, every topic with a title',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
-      await user.nav.resetToClass('Class 12', 'A', 'Physics');
-      await user.nav.showTopicsOf(0);
-
-      await expect(user.nav.topicItems.first()).toBeVisible();
-      const topics = (await user.nav.topicItems.allInnerTexts()).map((t) => t.trim());
+      const topics = await showFirstChapterTopics(user);
       expect(topics.length).toBeGreaterThan(0);
       for (const topic of topics) expect(topic.length, 'every topic has a title').toBeGreaterThan(0);
+    }
+  );
 
-      // Choosing one makes it the current topic.
+  test(
+    'NAV-04-03: choosing a topic from the list makes it the current topic',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      const topics = await showFirstChapterTopics(user);
       await user.nav.topicItems.first().click({ timeout: 10000 });
       await user.page.waitForTimeout(800);
       // Each topic's text starts with an icon label ("article"); its title is on the following line.

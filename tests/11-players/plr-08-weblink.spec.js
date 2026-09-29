@@ -5,7 +5,7 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('PLR-08 Open a web link', () => {
-  test.use({ classMap: 'playersDefault' });
+  test.use({ classMap: 'playersWeblink' }); // .85: the only topic found with a Web link (moduleClassMap)
 
   const openWeblink = async (user) => {
     await expect(user.player.weblinkCards.first()).toBeAttached({ timeout: 10000 });

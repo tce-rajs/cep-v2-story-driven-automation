@@ -10,7 +10,8 @@
 //
 // Where an annotation lands is not the same for every player (the Worksheet has its own annotation layer), so strokes
 // are counted on both the asset's annotation layer and the whiteboard under it.
-// Annotations are cleared from the asset (Eraser -> Clear annotations) before and after each test; the board is not.
+// Nothing is ever cleared -- not the asset's annotations, not the board (owner rule 2026-09-29): every check compares
+// before vs after and looks only at the strokes the test itself drew.
 
 const { test, expect } = require('../../fixtures');
 
@@ -21,9 +22,9 @@ const KINDS = [
   { id: '01', kind: 'worksheet (PDF)', selector: icon('ic.Worksheet'), map: 'playersDefault' },
   { id: '02', kind: 'image', selector: icon('ic.Image'), map: 'playersDefault' },
   { id: '03', kind: 'video', selector: icon('ic.AVMediaVideo'), map: 'playersDefault' },
-  { id: '04', kind: 'web link', selector: icon('ic.Weblink'), map: 'playersDefault' },
+  { id: '04', kind: 'web link', selector: icon('ic.Weblink'), map: 'playersWeblink' },
   { id: '05', kind: 'code editor', selector: icon('ic.code'), map: 'playersDefault' },
-  { id: '06', kind: 'unsupported file', selector: icon('ic.unsupport'), map: 'playersDefault' },
+  { id: '06', kind: 'unsupported file', selector: icon('ic.unsupport'), map: 'playersUnsupported' },
   { id: '07', kind: 'quiz', selector: '[data-qa-id="playlist-quiz-card"] .resource-card', map: 'quiz' },
 ];
 
@@ -49,13 +50,6 @@ const writeOnAsset = async (user, { dx = 180, dy = 40, offsetY = 0, offsetX = 0 
   for (let i = 1; i <= 14; i++) await page.mouse.move(x + (dx * i) / 14, y + Math.sin(i / 2) * 12 + (dy * i) / 14);
   await page.mouse.up();
   await page.waitForTimeout(700);
-};
-
-const clearAnnotations = async (user) => {
-  await user.toolbar.openToolPanel('gtErase');
-  await user.toolbar.eraserClearAnnotationsBtn.click({ force: true, timeout: 3000 }).catch(() => {});
-  await user.page.waitForTimeout(1000);
-  await user.toolbar.closePanelByTappingOutside();
 };
 
 const open = async (user, k) => {
@@ -92,11 +86,9 @@ for (const k of KINDS) {
 
     test.beforeEach(async ({ user }) => {
       await open(user, k);
-      await clearAnnotations(user);
     });
 
     test.afterEach(async ({ app }) => {
-      await clearAnnotations(app).catch(() => {});
       for (let i = 0; i < 3; i++) await app.player.closePlayer().catch(() => {});
     });
 
@@ -120,8 +112,9 @@ for (const k of KINDS) {
       }
     );
 
+    // (Whether the strokes also move with the asset is recorded as a note, not asserted.)
     test(
-      `PLR-14-${k.id}b: zoom in, write, pan, write again on a ${k.kind}: both strokes stay and move with the asset`,
+      `PLR-14-${k.id}b: zoom in, write, pan, write again on a ${k.kind}: both strokes stay, none lost to the zoom or the pan`,
       { tag: ['@functional', '@edge'] },
       async ({ user, page }) => {
         const tb = user.toolbar;
@@ -161,47 +154,81 @@ for (const k of KINDS) {
       }
     );
 
+    // Every tool on the asset, one test each (split 2026-09-28; the pen is xxa): shape (xxc), text box (xxf), eraser
+    // (xxg), Undo (xxh), Redo (xxi).
+    test(`PLR-14-${k.id}c: a shape can be drawn on a ${k.kind}`, { tag: ['@functional'] }, async ({ user, page }) => {
+      const start = await page.locator(STROKES).count();
+      await chooseRectangleOverAsset(user);
+      const box = await playerBox(page);
+      await page.mouse.move(box.x + box.width / 2 - 60, box.y + Math.min(box.height / 2, 260) + 20);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2 + 60, box.y + Math.min(box.height / 2, 260) + 90, { steps: 10 });
+      await page.mouse.up();
+      await page.waitForTimeout(700);
+      await expect.poll(() => page.locator(STROKES).count(), { message: 'shape', timeout: 5000 }).toBe(start + 1);
+    });
+
     test(
-      `PLR-14-${k.id}c: every tool works on a ${k.kind}: pen, shape, text, eraser, undo, redo`,
+      `PLR-14-${k.id}f: a text box can be added on a ${k.kind}`,
       { tag: ['@functional'] },
       async ({ user, page }) => {
         const tb = user.toolbar;
-        const count = () => page.locator(STROKES).count();
-        const pollCount = (msg, target) => expect.poll(count, { message: msg, timeout: 5000 }).toBe(target);
-        const start = await count();
-        await tb.selectTool('gtPen');
-        await writeOnAsset(user, { offsetY: -60 });
-        await pollCount('pen', start + 1);
-        await chooseRectangleOverAsset(user);
         const box = await playerBox(page);
-        await page.mouse.move(box.x + box.width / 2 - 60, box.y + Math.min(box.height / 2, 260) + 20);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + 60, box.y + Math.min(box.height / 2, 260) + 90, { steps: 10 });
-        await page.mouse.up();
-        await page.waitForTimeout(700);
-        await pollCount('shape', start + 2);
         const texts = await page.locator('foreignObject.text-element').count();
+        const canvas = await tb.wbSvg.boundingBox();
         await user.whiteboard
-          .insertTextAndType(
-            box.x + box.width / 2 - 200 - (await tb.wbSvg.boundingBox()).x,
-            box.y + 60 - (await tb.wbSvg.boundingBox()).y,
-            'Note on asset'
-          )
+          .insertTextAndType(box.x + box.width / 2 - 200 - canvas.x, box.y + 60 - canvas.y, 'Note on asset')
           .catch(() => {});
         await tb.selectTool('gtSelect');
         await expect
           .poll(() => page.locator('foreignObject.text-element').count(), { message: 'text box', timeout: 5000 })
           .toBe(texts + 1);
-        await tb.selectTool('gtErase');
-        const s = await page.locator(STROKES).first().boundingBox();
-        await writeOnAsset(user, { offsetY: -60, dx: 220, dy: 0 }); // erase back across the pen stroke
-        await expect.poll(count, { message: 'eraser removed something', timeout: 5000 }).toBeLessThan(start + 2);
+      }
+    );
+
+    /** A pen stroke on the asset, then the eraser dragged back across it; returns the stroke counts. */
+    const writeThenErase = async (user, page) => {
+      const count = () => page.locator(STROKES).count();
+      const start = await count();
+      await user.toolbar.selectTool('gtPen');
+      await writeOnAsset(user, { offsetY: -60 });
+      await expect.poll(count, { message: 'set-up: pen stroke', timeout: 5000 }).toBe(start + 1);
+      await user.toolbar.selectTool('gtErase');
+      await writeOnAsset(user, { offsetY: -60, dx: 220, dy: 0 }); // erase back across the pen stroke
+      return { start, count };
+    };
+
+    test(
+      `PLR-14-${k.id}g: the eraser removes a stroke on a ${k.kind}`,
+      { tag: ['@functional'] },
+      async ({ user, page }) => {
+        const { start, count } = await writeThenErase(user, page);
+        await expect.poll(count, { message: 'eraser removed something', timeout: 5000 }).toBeLessThan(start + 1);
+      }
+    );
+
+    test(
+      `PLR-14-${k.id}h: Undo brings back a stroke erased on a ${k.kind}`,
+      { tag: ['@functional'] },
+      async ({ user, page }) => {
+        const { start, count } = await writeThenErase(user, page);
+        await expect.poll(count, { message: 'set-up: erased', timeout: 5000 }).toBeLessThan(start + 1);
+        await user.toolbar.tool('gtUndo').click({ force: true });
+        await expect.poll(count, { message: 'undo brings the erased stroke back', timeout: 5000 }).toBe(start + 1);
+      }
+    );
+
+    test(
+      `PLR-14-${k.id}i: Redo erases the stroke on a ${k.kind} again after Undo`,
+      { tag: ['@functional'] },
+      async ({ user, page }) => {
+        const { start, count } = await writeThenErase(user, page);
+        await expect.poll(count, { message: 'set-up: erased', timeout: 5000 }).toBeLessThan(start + 1);
         const afterErase = await count();
-        await tb.tool('gtUndo').click({ force: true });
-        await pollCount('undo brings the erased stroke back', start + 2);
-        await tb.tool('gtRedo').click({ force: true });
-        await pollCount('redo erases it again', afterErase);
-        void s;
+        await user.toolbar.tool('gtUndo').click({ force: true });
+        await expect.poll(count, { message: 'set-up: undone', timeout: 5000 }).toBe(start + 1);
+        await user.toolbar.tool('gtRedo').click({ force: true });
+        await expect.poll(count, { message: 'redo erases it again', timeout: 5000 }).toBe(afterErase);
       }
     );
 
@@ -243,7 +270,7 @@ for (const k of KINDS) {
           onBoard.filter((d) => mine.includes(d)),
           'the asset’s annotation did not stay behind on the board'
         ).toEqual([]);
-        await open(user, k); // back open, so afterEach clears the asset's annotations
+        await open(user, k); // back open, as the teacher left it
       }
     );
   });
@@ -256,7 +283,6 @@ test.describe('PLR-14-V Annotations on a video while it plays', () => {
 
   test.beforeEach(async ({ user }) => {
     await open(user, video);
-    await clearAnnotations(user);
     const before = await user.page.locator(STROKES).count();
     await user.toolbar.selectTool('gtPen');
     await writeOnAsset(user);
@@ -264,7 +290,6 @@ test.describe('PLR-14-V Annotations on a video while it plays', () => {
   });
 
   test.afterEach(async ({ app }) => {
-    await clearAnnotations(app).catch(() => {});
     await app.player.closePlayer().catch(() => {});
   });
 
@@ -327,37 +352,64 @@ test.describe('PLR-14-M Two assets open at once', () => {
   test.use({ classMap: 'playersDefault' });
   test.describe.configure({ timeout: 180000 });
 
+  // With a worksheet and an image open, each annotated, then the image closed: the worksheet keeps its annotation
+  // (PLR-14-M1), and the image's annotation goes with the image (PLR-14-M2) -- one test each (split 2026-09-28).
+  /** Annotate a worksheet, open an image over it and annotate that, then close the image; returns both strokes. */
+  const annotateBothCloseImage = async (user, page) => {
+    const [image, sheet] = [KINDS[1], KINDS[0]];
+    await open(user, sheet);
+    await user.toolbar.selectTool('gtPen');
+    const beforeSheet = await page.locator(STROKES).count();
+    await writeOnAsset(user);
+    await expect
+      .poll(() => page.locator(STROKES).count(), { message: 'set-up: worksheet annotated', timeout: 5000 })
+      .toBe(beforeSheet + 1);
+    const sheetMine = (await strokeGeometry(page)).slice(-1);
+    await open(user, image);
+    await user.toolbar.selectTool('gtPen');
+    const beforeImage = await page.locator(STROKES).count();
+    await writeOnAsset(user, { offsetY: 60 });
+    await expect
+      .poll(() => page.locator(STROKES).count(), { message: 'set-up: image annotated', timeout: 5000 })
+      .toBe(beforeImage + 1);
+    const imageMine = (await strokeGeometry(page)).slice(-1);
+    await user.player.closePlayer(); // closes the one on top (the image)
+    await page.waitForTimeout(2500);
+    return { sheetMine, imageMine, now: await strokeGeometry(page) };
+  };
+  const tidyUp = async (user) => {
+    await user.player.closePlayer().catch(() => {});
+  };
+
   test(
-    'PLR-14-M1: with an image and a worksheet open, each keeps its own annotation, and closing one keeps the other’s',
+    'PLR-14-M1: with an image and a worksheet open and both annotated, closing the image keeps the worksheet’s annotation',
     { tag: ['@edge'] },
     async ({ user, page }) => {
-      const [image, sheet] = [KINDS[1], KINDS[0]];
-      await open(user, sheet);
-      await clearAnnotations(user);
-      await user.toolbar.selectTool('gtPen');
-      const beforeSheet = await page.locator(STROKES).count();
-      await writeOnAsset(user);
-      await expect.poll(() => page.locator(STROKES).count(), { timeout: 5000 }).toBe(beforeSheet + 1);
-      const sheetMine = (await strokeGeometry(page)).slice(-1);
-      await open(user, image);
-      await user.toolbar.selectTool('gtPen');
-      const beforeImage = await page.locator(STROKES).count();
-      await writeOnAsset(user, { offsetY: 60 });
-      await expect.poll(() => page.locator(STROKES).count(), { timeout: 5000 }).toBe(beforeImage + 1);
-      const imageMine = (await strokeGeometry(page)).slice(-1);
-      await user.player.closePlayer(); // closes the one on top (the image)
-      await page.waitForTimeout(2500);
-      const now = await strokeGeometry(page);
-      expect(
-        now.filter((d) => sheetMine.includes(d)),
-        'the worksheet’s annotation is still there'
-      ).toHaveLength(1);
-      expect(
-        now.filter((d) => imageMine.includes(d)),
-        'the image’s annotation went with the image'
-      ).toHaveLength(0);
-      await clearAnnotations(user);
-      await user.player.closePlayer();
+      try {
+        const { sheetMine, now } = await annotateBothCloseImage(user, page);
+        expect(
+          now.filter((d) => sheetMine.includes(d)),
+          'the worksheet’s annotation is still there'
+        ).toHaveLength(1);
+      } finally {
+        await tidyUp(user);
+      }
+    }
+  );
+
+  test(
+    'PLR-14-M2: with an image and a worksheet open and both annotated, closing the image takes the image’s annotation with it',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      try {
+        const { imageMine, now } = await annotateBothCloseImage(user, page);
+        expect(
+          now.filter((d) => imageMine.includes(d)),
+          'the image’s annotation went with the image'
+        ).toHaveLength(0);
+      } finally {
+        await tidyUp(user);
+      }
     }
   );
 });

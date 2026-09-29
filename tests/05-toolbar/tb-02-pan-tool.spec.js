@@ -3,7 +3,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 test.describe('TB-02 Pan Tool', () => {
   test(

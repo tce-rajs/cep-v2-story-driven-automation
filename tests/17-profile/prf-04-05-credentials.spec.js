@@ -21,8 +21,10 @@ test.afterEach(async ({ app }) => {
 });
 
 test.describe('PRF-04 Change password', () => {
+  // The form's fields and rules (PRF-04-01), and Save disabled while it is empty (PRF-04-09): one test each (split
+  // 2026-09-28).
   test(
-    'PRF-04-01: Change Password shows the three fields, the password rules and a disabled Save',
+    'PRF-04-01: Change Password shows the Current, New and Repeat fields and the password rules',
     { tag: ['@functional'] },
     async ({ app }) => {
       const p = app.profile;
@@ -31,9 +33,14 @@ test.describe('PRF-04 Change password', () => {
       await expect(p.newPasswordInput).toBeVisible();
       await expect(p.repeatPasswordInput).toBeVisible();
       await expect(p.changePasswordForm, 'password rules shown').toContainText(/8 characters/i);
-      await expect(p.changePasswordSaveBtn).toBeDisabled();
     }
   );
+
+  test('PRF-04-09: Change Password opens with Save disabled', { tag: ['@functional'] }, async ({ app }) => {
+    const p = app.profile;
+    await p.openChangePassword();
+    await expect(p.changePasswordSaveBtn).toBeDisabled();
+  });
 
   test(
     'PRF-04-02: a new password shorter than 8 characters shows an error while typing',
@@ -50,33 +57,61 @@ test.describe('PRF-04 Change password', () => {
     }
   );
 
+  // Different New and Repeat values: a mismatch message (PRF-04-03), and Save stays blocked (PRF-04-10) -- one test each
+  // (split 2026-09-28).
+  const fillMismatch = async (p) => {
+    await p.openChangePassword();
+    await p.currentPasswordInput.fill(PWD);
+    await p.newPasswordInput.fill('Kestrel#2026');
+    await p.repeatPasswordInput.fill('Kestrel#2027');
+    await p.repeatPasswordInput.blur();
+  };
+
   test(
-    'PRF-04-03: different New and Repeat values are caught and Save stays blocked',
+    'PRF-04-03: different New and Repeat passwords show a mismatch message',
     { tag: ['@negative'] },
     async ({ app }) => {
-      const p = app.profile;
-      await p.openChangePassword();
-      await p.currentPasswordInput.fill(PWD);
-      await p.newPasswordInput.fill('Kestrel#2026');
-      await p.repeatPasswordInput.fill('Kestrel#2027');
-      await p.repeatPasswordInput.blur();
-      await expect(p.changePasswordForm).toContainText(/match/i);
-      await expect(p.changePasswordSaveBtn).toBeDisabled();
+      await fillMismatch(app.profile);
+      await expect(app.profile.changePasswordForm).toContainText(/match/i);
     }
   );
 
   test(
-    'PRF-04-04: a wrong current password is rejected and the password stays the same',
+    'PRF-04-10: with different New and Repeat passwords, Save stays blocked',
+    { tag: ['@negative'] },
+    async ({ app }) => {
+      await fillMismatch(app.profile);
+      await expect(app.profile.changePasswordSaveBtn).toBeDisabled();
+    }
+  );
+
+  // A wrong current password: the server rejects it (PRF-04-04), and the teacher sees a clear error (PRF-04-11) -- one
+  // test each (split 2026-09-28).
+  // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): with all three fields filled and Save enabled, pressing Save
+  // (the click lands on the button, the keyboard and spinner out of the way) sends no request, shows no message and leaves
+  // the form open -- the password cannot be changed from the profile.
+  const SAVE_DOES_NOTHING = 'Change Password Save does nothing (no request, no message)';
+
+  test(
+    'PRF-04-04: a wrong current password is rejected by the server, so the password stays the same',
     { tag: ['@bug', '@negative'] },
     async ({ app }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): with all three fields filled and Save enabled, pressing Save
-      // (the click lands on the button, the keyboard and spinner out of the way) sends no request, shows no message and leaves
-      // the form open -- the password cannot be changed from the profile.
-      test.fail(true, 'Change Password Save does nothing (no request, no message)');
+      test.fail(true, SAVE_DOES_NOTHING);
       const p = app.profile;
       await p.openChangePassword();
       const reply = await p.changePassword(`${PWD}-wrong`, 'Kestrel#2026');
       expect(reply.ok(), 'server rejects the wrong current password').toBe(false);
+    }
+  );
+
+  test(
+    'PRF-04-11: a wrong current password shows the teacher a clear error',
+    { tag: ['@bug', '@negative'] },
+    async ({ app }) => {
+      test.fail(true, SAVE_DOES_NOTHING);
+      const p = app.profile;
+      await p.openChangePassword();
+      await p.changePassword(`${PWD}-wrong`, 'Kestrel#2026').catch(() => null);
       await expect(p.errorText.or(p.snackbar).first(), 'a clear error').toBeVisible({ timeout: 10000 });
     }
   );
@@ -118,48 +153,64 @@ test.describe('PRF-04 Change password', () => {
     await expect(app.login.avatar).toBeVisible({ timeout: 20000 });
   });
 
+  // After a successful change: the new password signs in (PRF-04-07), and the old one is rejected (PRF-04-12) -- one
+  // test each (split 2026-09-28). Each changes the spare account's password, signs out, runs its check, then puts the
+  // original password back.
+  const withChangedPassword = async (app, check) => {
+    const p = app.profile;
+    const next = `Kestrel#${Date.now() % 100000}`;
+    await p.openChangePassword();
+    expect((await p.changePassword(PWD, next)).ok(), 'set-up: password changed').toBe(true);
+    let current = next;
+    try {
+      await app.userMenu.signOut().catch(() => {});
+      await check(next);
+    } finally {
+      // Put the original password back.
+      await app.login.avatar
+        .isVisible()
+        .then((v) =>
+          v ? null : app.login.signInWithPassword({ schoolSearchTerm: SCHOOL, username: USER, password: next })
+        )
+        .catch(() => {});
+      await p.openChangePassword().catch(() => {});
+      const back = await p.changePassword(next, PWD).catch(() => null);
+      if (back && back.ok()) current = PWD;
+      test.info().annotations.push({
+        type: 'credential',
+        description: `Spare account password is now: ${current === PWD ? 'the original (restored)' : next}`,
+      });
+      if (current !== PWD)
+        console.error(
+          `${test.info().title.slice(0, 9)}: could not restore the spare account password; it is now "${next}". Update DISPOSABLE_PASSWORD in .env.`
+        );
+    }
+    expect(current, 'original password restored').toBe(PWD);
+  };
+
   test(
-    'PRF-04-07: after a successful change the new password signs in and the old one is rejected',
+    'PRF-04-07: after a successful password change, the new password signs in',
     { tag: ['@bug', '@functional'] },
     async ({ app }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): with all three fields filled and Save enabled, pressing Save
-      // (the click lands on the button, the keyboard and spinner out of the way) sends no request, shows no message and leaves
-      // the form open -- the password cannot be changed from the profile.
-      test.fail(true, 'Change Password Save does nothing (no request, no message)');
+      test.fail(true, SAVE_DOES_NOTHING);
       test.setTimeout(240000);
-      const p = app.profile;
-      const next = `Kestrel#${Date.now() % 100000}`;
-      await p.openChangePassword();
-      expect((await p.changePassword(PWD, next)).ok(), 'password changed').toBe(true);
-      let current = next;
-      try {
-        await app.userMenu.signOut().catch(() => {});
-        await app.login.signInWithPassword({ schoolSearchTerm: SCHOOL, username: USER, password: PWD });
-        await expect(app.login.passwordErrorMessage, 'old password rejected').toBeVisible({ timeout: 15000 });
-
+      await withChangedPassword(app, async (next) => {
         await app.login.signInWithPassword({ schoolSearchTerm: SCHOOL, username: USER, password: next });
         await expect(app.login.avatar, 'new password signs in').toBeVisible({ timeout: 20000 });
-      } finally {
-        // Put the original password back.
-        await app.login.avatar
-          .isVisible()
-          .then((v) =>
-            v ? null : app.login.signInWithPassword({ schoolSearchTerm: SCHOOL, username: USER, password: next })
-          )
-          .catch(() => {});
-        await p.openChangePassword().catch(() => {});
-        const back = await p.changePassword(next, PWD).catch(() => null);
-        if (back && back.ok()) current = PWD;
-        test.info().annotations.push({
-          type: 'credential',
-          description: `Spare account password is now: ${current === PWD ? 'the original (restored)' : next}`,
-        });
-        if (current !== PWD)
-          console.error(
-            `PRF-04-07: could not restore the spare account password; it is now "${next}". Update DISPOSABLE_PASSWORD in .env.`
-          );
-      }
-      expect(current, 'original password restored').toBe(PWD);
+      });
+    }
+  );
+
+  test(
+    'PRF-04-12: after a successful password change, the old password is rejected',
+    { tag: ['@bug', '@functional'] },
+    async ({ app }) => {
+      test.fail(true, SAVE_DOES_NOTHING);
+      test.setTimeout(240000);
+      await withChangedPassword(app, async () => {
+        await app.login.signInWithPassword({ schoolSearchTerm: SCHOOL, username: USER, password: PWD });
+        await expect(app.login.passwordErrorMessage, 'old password rejected').toBeVisible({ timeout: 15000 });
+      });
     }
   );
 
@@ -265,39 +316,53 @@ test.describe('PRF-05 Change PIN', () => {
     await expect(app.login.avatar).toBeVisible();
   });
 
+  // After a successful change: the new PIN signs in (PRF-05-07), and the old one is rejected (PRF-05-08) -- one test each
+  // (split 2026-09-28). Each changes the spare account's PIN, signs out, runs its check, then puts the original PIN back.
+  const withChangedPin = async (app, check) => {
+    const p = app.profile;
+    const next = otherPin();
+    await p.openChangePin();
+    expect((await p.changePin(PIN, next)).ok(), 'set-up: PIN changed').toBe(true);
+    let current = next;
+    try {
+      await app.userMenu.signOut().catch(() => {});
+      await app.login.page.goto('./');
+      await check(next);
+    } finally {
+      if (!(await app.login.avatar.isVisible().catch(() => false))) await app.signIn(next).catch(() => {});
+      await p.openChangePin().catch(() => {});
+      const back = await p.changePin(next, PIN).catch(() => null);
+      if (back && back.ok()) current = PIN;
+      test.info().annotations.push({
+        type: 'credential',
+        description: `Spare account PIN is now: ${current === PIN ? 'the original (restored)' : next}`,
+      });
+      if (current !== PIN)
+        console.error(
+          `${test.info().title.slice(0, 9)}: could not restore the spare account PIN; it is now ${next}. Update DISPOSABLE_PIN in .env.`
+        );
+    }
+    expect(current, 'original PIN restored').toBe(PIN);
+  };
+
+  test('PRF-05-07: after a successful PIN change, the new PIN signs in', { tag: ['@functional'] }, async ({ app }) => {
+    test.setTimeout(240000);
+    await withChangedPin(app, async (next) => {
+      await app.signIn(next);
+      await expect(app.login.avatar, 'new PIN signs in').toBeVisible();
+    });
+  });
+
   test(
-    'PRF-05-07: after a successful change the new PIN signs in and the old one is rejected',
+    'PRF-05-08: after a successful PIN change, the old PIN is rejected',
     { tag: ['@functional'] },
     async ({ app }) => {
       test.setTimeout(240000);
-      const p = app.profile;
-      const next = otherPin();
-      await p.openChangePin();
-      expect((await p.changePin(PIN, next)).ok(), 'PIN changed').toBe(true);
-      let current = next;
-      try {
-        await app.userMenu.signOut().catch(() => {});
-        await app.login.page.goto('./');
+      await withChangedPin(app, async () => {
         await app.login.openSignIn();
         await app.login.enterPin(PIN);
         await expect(app.login.pinErrorMessage, 'old PIN rejected').toBeVisible({ timeout: 15000 });
-        await app.signIn(next);
-        await expect(app.login.avatar, 'new PIN signs in').toBeVisible();
-      } finally {
-        if (!(await app.login.avatar.isVisible().catch(() => false))) await app.signIn(next).catch(() => {});
-        await p.openChangePin().catch(() => {});
-        const back = await p.changePin(next, PIN).catch(() => null);
-        if (back && back.ok()) current = PIN;
-        test.info().annotations.push({
-          type: 'credential',
-          description: `Spare account PIN is now: ${current === PIN ? 'the original (restored)' : next}`,
-        });
-        if (current !== PIN)
-          console.error(
-            `PRF-05-07: could not restore the spare account PIN; it is now ${next}. Update DISPOSABLE_PIN in .env.`
-          );
-      }
-      expect(current, 'original PIN restored').toBe(PIN);
+      });
     }
   );
 });

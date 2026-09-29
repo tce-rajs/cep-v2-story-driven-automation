@@ -8,7 +8,7 @@ const { test, expect } = require('../../fixtures');
 const isSend = (req) => req.method() === 'POST' && /noticeboard/i.test(req.url());
 
 test.describe('AIN-05 Sending a notice when the network fails', () => {
-  test.use({ cleanBoard: true });
+  test.use({ freshSpace: true });
 
   test.beforeEach(async ({ user }) => {
     await user.aiNotices.openComposer(user);
@@ -19,29 +19,49 @@ test.describe('AIN-05 Sending a notice when the network fails', () => {
     await app.aiNotices.closeAll();
   });
 
+  // A failed send: the teacher is told (AIN-05-01), no success message shows (AIN-05-03), and the composer stays open
+  // with the teacher's text (AIN-05-04) -- one test each (split 2026-09-28).
+  /** Fill a title, make only the send request fail, and press Send; returns the title typed. */
+  const sendWhileSendFails = async (user, page) => {
+    const n = user.aiNotices;
+    const title = `AutoTest failed-send ${Date.now()}`;
+    await n.titleInput.fill(title);
+    await n.hideKeyboard();
+    await page.route('**/*', (route) =>
+      isSend(route.request()) ? route.abort('internetdisconnected') : route.continue()
+    );
+    await n.sendBtn.click();
+    await page.waitForTimeout(5000);
+    return title;
+  };
+
   test(
-    'AIN-05-01: a failed send says so, keeps the composer open with the teacher’s text, and shows no success message',
+    'AIN-05-01: a failed send tells the teacher the notice was not sent',
     { tag: ['@negative'] },
     async ({ user, page }) => {
-      const n = user.aiNotices;
-      const title = `AutoTest failed-send ${Date.now()}`;
-      await n.titleInput.fill(title);
-      await n.hideKeyboard();
-      await page.route('**/*', (route) =>
-        isSend(route.request()) ? route.abort('internetdisconnected') : route.continue()
-      );
-      await n.sendBtn.click();
-      await page.waitForTimeout(5000);
-      await expect(
-        page.getByText(/sent successfully|notice (sent|shared)|success/i).first(),
-        'no success message for a notice that was not sent'
-      ).toBeHidden();
+      await sendWhileSendFails(user, page);
       await expect(
         page.getByText(/fail|error|could not|couldn.t|unable|try again|network|offline/i).first(),
         'the teacher is told the notice was not sent'
       ).toBeVisible({ timeout: 10000 });
-      await expect(n.titleInput, 'the composer stays open').toBeVisible();
-      await expect(n.titleInput, 'with the teacher’s title kept').toHaveValue(title);
+    }
+  );
+
+  test('AIN-05-03: a failed send shows no success message', { tag: ['@negative'] }, async ({ user, page }) => {
+    await sendWhileSendFails(user, page);
+    await expect(
+      page.getByText(/sent successfully|notice (sent|shared)|success/i).first(),
+      'no success message for a notice that was not sent'
+    ).toBeHidden();
+  });
+
+  test(
+    'AIN-05-04: after a failed send the composer stays open with the teacher’s title',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const title = await sendWhileSendFails(user, page);
+      await expect(user.aiNotices.titleInput, 'the composer stays open').toBeVisible();
+      await expect(user.aiNotices.titleInput, 'with the teacher’s title kept').toHaveValue(title);
     }
   );
 

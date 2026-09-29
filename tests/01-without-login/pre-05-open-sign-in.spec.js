@@ -28,16 +28,28 @@ test.describe('PRE-05 Open Sign In from Guest Mode', () => {
     }
   );
 
-  test('PRE-05-03: the Sign In window can be closed and opened again', { tag: ['@functional'] }, async ({ app }) => {
+  test('PRE-05-03: the Sign In window can be closed', { tag: ['@functional'] }, async ({ app }) => {
     await app.login.openSignIn();
-    await expect(app.login.modal, 'Sign In open').toHaveClass(/login-modal-outer--active/, { timeout: 10000 });
+    await expect(app.login.modal, 'set-up: Sign In open').toHaveClass(/login-modal-outer--active/, { timeout: 10000 });
     await app.login.closeSignIn();
     await expect(app.login.modal, 'Sign In closed').not.toHaveClass(/login-modal-outer--active/, { timeout: 10000 });
     await expect(app.login.pinDigitBox(0), 'slid out of view').not.toBeInViewport();
-    await app.login.openSignIn();
-    await expect(app.login.modal, 'Sign In open').toHaveClass(/login-modal-outer--active/, { timeout: 10000 });
-    await expect(app.login.pinDigitBox(0)).toBeVisible();
   });
+
+  test(
+    'PRE-05-05: the Sign In window can be opened again after closing it',
+    { tag: ['@functional'] },
+    async ({ app }) => {
+      await app.login.openSignIn();
+      await app.login.closeSignIn();
+      await expect(app.login.modal, 'set-up: Sign In closed').not.toHaveClass(/login-modal-outer--active/, {
+        timeout: 10000,
+      });
+      await app.login.openSignIn();
+      await expect(app.login.modal, 'Sign In open again').toHaveClass(/login-modal-outer--active/, { timeout: 10000 });
+      await expect(app.login.pinDigitBox(0)).toBeVisible();
+    }
+  );
 
   test(
     'PRE-05-04: content drawn in Guest Mode is unchanged after opening and closing the Sign In window',

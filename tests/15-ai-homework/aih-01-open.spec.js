@@ -1,8 +1,11 @@
 // AIH-01 — Open the homework builder
 // Source: CEPV2_Stories/15_AIHomework.md
-// Data: 'aiHomework' = Class 11A Mathematics (a supported subject). History on the same class is unsupported.
+// Data: 'aiHomework' (config/moduleClassMap.js) is a class the AI supports. History in Class 11 is unsupported.
 
 const { test, expect } = require('../../fixtures');
+const { getClassMap } = require('../../config/moduleClassMap');
+
+const HW = getClassMap('aiHomework');
 
 test.use({ classMap: 'aiHomework' });
 
@@ -34,7 +37,9 @@ test.describe('AIH-01 Open the homework builder', () => {
       const chapterTopic = (await user.whiteboard.currentChapterTopicBtn.innerText()).replace(/\s+/g, ' ');
       const chapterNo = chapterTopic.match(/^(\d+)\./)?.[1] || chapterTopic.match(/(\d+)\.\d+/)?.[1];
       await hw.open(user.magnet);
-      const header = page.getByText(/Class\s*11\s*\|\s*Mathematics/i).first();
+      const header = page
+        .getByText(new RegExp(`${HW.grade.replace(/\s+/g, '\\s*')}\\s*\\|\\s*${HW.subject}`, 'i'))
+        .first();
       await expect(header, 'class and subject in the header').toBeVisible({ timeout: 10000 });
       if (chapterNo) await expect(header.locator('xpath=..')).toContainText(new RegExp(`${chapterNo}\\.`));
     }

@@ -16,7 +16,7 @@ test.describe('CLIENT-05 Volume control', () => {
 
   test.beforeEach(() => {
     backup = backupSettingsRaw();
-    forceSingleProfile({ title: 'QA-V2', url: 'https://ce-qa-school.devstudi.com/teach/' });
+    forceSingleProfile({ title: 'QA-V2', url: 'http://172.18.2.85/teach/' });
   });
 
   test.afterEach(() => {

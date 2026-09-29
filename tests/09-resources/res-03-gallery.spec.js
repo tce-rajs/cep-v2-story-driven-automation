@@ -6,12 +6,9 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('RES-03 Gallery', () => {
-  test.use({ classMap: 'default' });
-
-  // Gallery images inserted onto the whiteboard persist for the topic, so leave the board as found.
-  test.afterEach(async ({ user }) => {
-    await user.toolbar.clearBoard(user.whiteboard).catch(() => {});
-  });
+  // Gallery images inserted onto the whiteboard persist for the topic. They go onto fresh space below the teacher's
+  // writing; the board is never cleared afterwards (owner rule 2026-09-29).
+  test.use({ classMap: 'default', freshSpace: true });
 
   const openGallery = async (user) => {
     await user.addResource.openAction('gallery');
@@ -107,7 +104,8 @@ test.describe('RES-03 Gallery', () => {
   );
 
   test(
-    'RES-03-06: the inserted image is selectable and movable via the arrow keys',
+    // Only the arrow keys MOVING a selected image is checked here; selecting an image is RES-03-04 (via the toolbar).
+    'RES-03-06: a selected inserted image moves with the arrow keys',
     { tag: ['@functional', '@bug'] },
     async ({ user, page }) => {
       // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): the arrow keys do nothing to the image -- they neither select it

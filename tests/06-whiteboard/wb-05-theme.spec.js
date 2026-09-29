@@ -4,7 +4,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 test.describe('WB-05 Theme', () => {
   const toggleTheme = async (user) => {

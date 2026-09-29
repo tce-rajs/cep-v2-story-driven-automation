@@ -26,7 +26,7 @@ A practical guide for running the CEP v2 suite. For what the project is and how 
 | `NEW_USER_SCHOOL_SEARCH_TERM`           | The school of the module 02 user (Velammal), if different from the main school |
 | `CLASSEDGE_CLIENT_EXE`                  | Optional: full path to `Tata ClassEdge School.exe`                             |
 
-Optional timing knobs (defaults in brackets) for the long tests: `SESSION_SOAK_MINUTES` [16], `SESSION_IDLE_MINUTES` [6], `HEADER_IDLE_MINUTES` [5], `NAV_RESTORE_WAIT_MINUTES` [3]. Lower them for a quick pass; keep the defaults for a real verification.
+Optional timing knobs (defaults in brackets) for the long tests: `SESSION_SOAK_MINUTES` [16], `SESSION_IDLE_MINUTES` [3.5], `HEADER_IDLE_MINUTES` [3.5], `NAV_RESTORE_WAIT_MINUTES` [3], `SESSION_WARNING_MINUTES` [6], `SESSION_CAP_MINUTES` [45]. Keep the idle ones under 4: after 4 minutes idle the app shows its sign-out warning. Lower them for a quick pass; keep the defaults for a real verification.
 
 Never commit `.env` or paste its values into chat, reports or docs.
 

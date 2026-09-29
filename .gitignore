@@ -1,6 +1,7 @@
 node_modules/
 .env
 config/environments/*.env
+config/environments/*.env.disabled
 !config/environments/example.env
 test-results/
 playwright-report/

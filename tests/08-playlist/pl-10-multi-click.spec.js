@@ -54,84 +54,155 @@ test.describe('PL-10 Multiple clicks on the Playlist', () => {
     }
   );
 
+  // Fast clicks on the strip's scroll arrows: the right arrow reaches the last card without the strip going blank
+  // (PL-10-02), the left arrow comes back to the first card (PL-10-05), and no card is lost or duplicated (PL-10-06) --
+  // one test each (split 2026-09-28).
+  // This topic has many cards: keep clicking fast until the strip stops moving (converged), as an impatient teacher
+  // would, up to 100 clicks. Checked every 5 clicks, not every click, so 100 clicks fits the timeout.
+  const clickUntilConverged = async (btn, tracked) => {
+    let lastX = null;
+    for (let i = 0; i < 100; i++) {
+      await btn.click({ force: true, timeout: 3000 }).catch(() => {});
+      if (i % 5 !== 4) continue;
+      const box = await tracked.boundingBox().catch(() => null);
+      const x = box && box.x;
+      if (x !== null && x === lastX) return;
+      lastX = x;
+    }
+  };
+  const scrollRightToEnd = async (pl, page) => {
+    await clickUntilConverged(pl.rightScrollBtn, pl.resourceCards.last());
+    await page.waitForTimeout(1500);
+  };
+  const scrollLeftToStart = async (pl, page) => {
+    await clickUntilConverged(pl.leftScrollBtn, pl.resourceCards.first());
+    await page.waitForTimeout(1500);
+  };
+
   test(
-    'PL-10-02: fast clicks on the strip’s scroll arrows reach both ends and never leave it blank or stuck',
+    'PL-10-02: fast clicks on the strip’s right arrow reach the last card and never leave the strip blank',
     { tag: ['@edge'] },
     async ({ user, page }) => {
-      const pl = user.playlist;
-      const total = await pl.resourceCards.count();
       test.setTimeout(180000);
-      // This topic has many cards: keep clicking fast until the strip stops moving (converged), as an impatient
-      // teacher would, up to 100 clicks. Checked every 5 clicks, not every click, so 100 clicks fits the timeout.
-      const clickUntilConverged = async (btn, tracked) => {
-        let lastX = null;
-        for (let i = 0; i < 100; i++) {
-          await btn.click({ force: true, timeout: 3000 }).catch(() => {});
-          if (i % 5 !== 4) continue;
-          const box = await tracked.boundingBox().catch(() => null);
-          const x = box && box.x;
-          if (x !== null && x === lastX) return;
-          lastX = x;
-        }
-      };
-      await clickUntilConverged(pl.rightScrollBtn, pl.resourceCards.last());
-      await page.waitForTimeout(1500);
+      const pl = user.playlist;
+      await scrollRightToEnd(pl, page);
       const visibleAtEnd = await pl.resourceCards.filter({ visible: true }).count();
       expect(visibleAtEnd, 'cards are still showing after scrolling right past the end').toBeGreaterThan(0);
       await expect(pl.resourceCards.last(), 'the last card can be reached').toBeInViewport({ timeout: 5000 });
-      await clickUntilConverged(pl.leftScrollBtn, pl.resourceCards.first());
-      await page.waitForTimeout(1500);
-      await expect(pl.resourceCards.first(), 'and the first card again').toBeInViewport({ timeout: 5000 });
+    }
+  );
+
+  test(
+    'PL-10-05: after scrolling to the end, fast clicks on the left arrow come back to the first card',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      test.setTimeout(240000);
+      const pl = user.playlist;
+      await scrollRightToEnd(pl, page);
+      await scrollLeftToStart(pl, page);
+      await expect(pl.resourceCards.first(), 'the first card again').toBeInViewport({ timeout: 5000 });
+    }
+  );
+
+  test(
+    'PL-10-06: fast scrolling to both ends of the strip loses or duplicates no card',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      test.setTimeout(240000);
+      const pl = user.playlist;
+      const total = await pl.resourceCards.count();
+      await scrollRightToEnd(pl, page);
+      await scrollLeftToStart(pl, page);
       await expect(pl.resourceCards, 'no card lost or duplicated by scrolling').toHaveCount(total);
     }
   );
 
+  // Double-clicking a topic in Contents: the label shows the chosen topic (PL-10-03), and the Contents window closes and
+  // is not reopened by the second click (PL-10-07) -- one test each (split 2026-09-28).
+  /** Double-click the second topic of the current chapter in Contents; returns the topic's text. */
+  const doubleClickSecondTopic = async (user, page) => {
+    const nav = user.nav;
+    await nav.openChaptersPopup();
+    await page.waitForTimeout(500);
+    // The popup can open with the current chapter's topics already listed; otherwise pick the chapter first.
+    if (
+      !(await nav.topicItems
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false))
+    )
+      await nav.chapterItems.first().click();
+    await nav.topicItems.first().waitFor({ state: 'visible', timeout: 10000 });
+    const count = await nav.topicItems.count();
+    test.skip(count < 2, 'needs a chapter with at least two topics');
+    const topicText = ((await nav.topicItems.nth(1).innerText()) || '').replace(/\s+/g, ' ').trim();
+    await nav.topicItems.nth(1).dblclick({ delay: 40 });
+    await page.waitForTimeout(3000);
+    return topicText;
+  };
+
   test(
-    'PL-10-03: double-clicking a topic in Contents opens that topic once, with its own Playlist',
+    'PL-10-03: double-clicking a topic in Contents opens that topic, and the current-topic label shows it',
     { tag: ['@edge'] },
     async ({ user, page }) => {
-      const nav = user.nav;
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
-      await nav.openChaptersPopup();
-      await page.waitForTimeout(500);
-      // The popup can open with the current chapter's topics already listed; otherwise pick the chapter first.
-      if (
-        !(await nav.topicItems
-          .first()
-          .isVisible({ timeout: 2000 })
-          .catch(() => false))
-      )
-        await nav.chapterItems.first().click();
-      await nav.topicItems.first().waitFor({ state: 'visible', timeout: 10000 });
-      const count = await nav.topicItems.count();
-      test.skip(count < 2, 'needs a chapter with at least two topics');
-      const topicText = ((await nav.topicItems.nth(1).innerText()) || '').replace(/\s+/g, ' ').trim();
-      await nav.topicItems.nth(1).dblclick({ delay: 40 });
-      await page.waitForTimeout(3000);
-      await expect(nav.chapterTpPopup, 'the Contents popup closed (not re-opened by the second click)').toBeHidden();
-      const label = ((await nav.currentChapterTopicBtn.innerText()) || '').replace(/\s+/g, ' ');
+      const topicText = await doubleClickSecondTopic(user, page);
+      const label = ((await user.nav.currentChapterTopicBtn.innerText()) || '').replace(/\s+/g, ' ');
       const number = (topicText.match(/\d+(\.\d+)?/) || [''])[0];
       expect(label, 'the current-topic label shows the chosen topic').toContain(number);
       expect(errors, 'no script errors').toEqual([]);
-      await nav.goToChapterTopic(13, 0); // back to the module's topic
     }
   );
 
   test(
-    'PL-10-04: toggling Edit mode on and off five times fast leaves the Playlist normal and complete',
+    'PL-10-07: after double-clicking a topic in Contents, the Contents window is closed and not reopened',
     { tag: ['@edge'] },
     async ({ user, page }) => {
-      const pl = user.playlist;
-      const total = await pl.resourceCards.count();
-      for (let i = 0; i < 5; i++) {
-        await pl.enterEditMode().catch(() => {});
-        await pl.finishEditing().catch(() => {});
-      }
-      await page.waitForTimeout(2000);
-      await expect(pl.finishEditingBtn, 'not stuck in Edit mode').toBeHidden();
-      await expect(pl.resourceCards, 'no card lost or duplicated').toHaveCount(total);
-      await user.player.openResourceCard(pl.resourceCards.first());
+      await doubleClickSecondTopic(user, page);
+      await expect(
+        user.nav.chapterTpPopup,
+        'the Contents popup closed (not re-opened by the second click)'
+      ).toBeHidden();
+    }
+  );
+
+  // Toggling Edit mode on and off five times fast: not stuck in Edit mode (PL-10-04), no card lost or duplicated
+  // (PL-10-08), and cards still open normally (PL-10-09) -- one test each (split 2026-09-28).
+  const toggleEditFiveTimes = async (user, page) => {
+    const pl = user.playlist;
+    for (let i = 0; i < 5; i++) {
+      await pl.enterEditMode().catch(() => {});
+      await pl.finishEditing().catch(() => {});
+    }
+    await page.waitForTimeout(2000);
+  };
+
+  test(
+    'PL-10-04: toggling Edit mode on and off five times fast leaves the Playlist in normal mode',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      await toggleEditFiveTimes(user, page);
+      await expect(user.playlist.finishEditingBtn, 'not stuck in Edit mode').toBeHidden();
+    }
+  );
+
+  test(
+    'PL-10-08: toggling Edit mode on and off five times fast loses or duplicates no card',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      const total = await user.playlist.resourceCards.count();
+      await toggleEditFiveTimes(user, page);
+      await expect(user.playlist.resourceCards, 'no card lost or duplicated').toHaveCount(total);
+    }
+  );
+
+  test(
+    'PL-10-09: after toggling Edit mode on and off five times fast, cards still open normally',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      await toggleEditFiveTimes(user, page);
+      await user.player.openResourceCard(user.playlist.resourceCards.first());
       await expect(user.player.closeIcon.first(), 'cards still open normally').toBeVisible({ timeout: 20000 });
       await user.player.closePlayer();
     }

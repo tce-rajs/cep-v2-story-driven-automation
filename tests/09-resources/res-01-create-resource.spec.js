@@ -155,34 +155,44 @@ test.describe('RES-01 Create Resource', () => {
   test.describe('a topic with 200+ accumulated resources', () => {
     test.use({ classMap: 'default' });
 
+    // Adding to a 200+ list: the new card appears promptly (RES-01-06), and no card is lost or duplicated (RES-01-17) --
+    // one test each (split 2026-09-28).
+    /** The strip renders progressively (hundreds of cards): the count once it has stopped changing. */
+    const settledCount = async (user) => {
+      let last = -1;
+      for (let i = 0; i < 25; i++) {
+        const now = await user.playlist.resourceCards.count();
+        if (now > 0 && now === last) return now;
+        last = now;
+        await user.page.waitForTimeout(700);
+      }
+      return last;
+    };
+    /** Add one text asset to the long list, run `check(ctx)`, and always remove it again. */
+    const addToLongList = async (user, check) => {
+      const { playlist } = user;
+      await playlist.ensureDrawerVisible();
+      const before = await settledCount(user);
+      test.skip(before < 200, `this topic holds only ${before} cards; the case needs 200 or more`);
+      const firstTitles = (await playlist.cardTitles()).slice(0, 5);
+      const title = unique();
+      const started = Date.now();
+      await user.addResource.createTextAsset(title);
+      const added = playlist.resourceCards.filter({ hasText: title });
+      try {
+        await check({ before, firstTitles, started, added });
+      } finally {
+        await playlist.ensureDrawerVisible().catch(() => {});
+        await removeIfCreated(user, title);
+      }
+    };
+
     test(
-      'RES-01-06: uploading to an account with 200+ accumulated resources does not degrade the resource list',
+      'RES-01-06: uploading to an account with 200+ accumulated resources shows the new card promptly (within 30 s)',
       { tag: ['@performance'] },
       async ({ user }) => {
         test.setTimeout(3 * 60 * 1000);
-        const { playlist } = user;
-        await playlist.ensureDrawerVisible();
-
-        // The strip renders progressively (hundreds of cards), so wait until the count has stopped changing.
-        const settledCount = async () => {
-          let last = -1;
-          for (let i = 0; i < 25; i++) {
-            const now = await playlist.resourceCards.count();
-            if (now > 0 && now === last) return now;
-            last = now;
-            await user.page.waitForTimeout(700);
-          }
-          return last;
-        };
-        const before = await settledCount();
-        test.skip(before < 200, `this topic holds only ${before} cards; the case needs 200 or more`);
-        const firstTitles = (await playlist.cardTitles()).slice(0, 5);
-
-        const title = unique();
-        const started = Date.now();
-        await user.addResource.createTextAsset(title);
-        const added = playlist.resourceCards.filter({ hasText: title });
-        try {
+        await addToLongList(user, async ({ before, started, added }) => {
           await expect(added, 'the new card shows up in the long list').toBeVisible({ timeout: 30000 });
           const appearedMs = Date.now() - started;
           test.info().annotations.push({
@@ -190,16 +200,21 @@ test.describe('RES-01 Create Resource', () => {
             description: `${before} cards before; the new card appeared after ${appearedMs}ms`,
           });
           expect(appearedMs, 'the upload is not slowed down by the size of the list').toBeLessThan(30000);
+        });
+      }
+    );
 
-          const after = await settledCount();
-          expect(after, 'exactly one card was added — none lost or duplicated').toBe(before + 1);
-          const stillThere = await playlist.cardTitles();
+    test(
+      'RES-01-17: uploading to an account with 200+ accumulated resources adds exactly one card, losing none',
+      { tag: ['@performance'] },
+      async ({ user }) => {
+        test.setTimeout(3 * 60 * 1000);
+        await addToLongList(user, async ({ before, firstTitles, added }) => {
+          await expect(added, 'set-up: the new card shows up').toBeVisible({ timeout: 30000 });
+          expect(await settledCount(user), 'exactly one card was added — none lost or duplicated').toBe(before + 1);
+          const stillThere = await user.playlist.cardTitles();
           for (const t of firstTitles) expect(stillThere, `"${t}" is still in the list`).toContain(t);
-        } finally {
-          await playlist.ensureDrawerVisible().catch(() => {});
-          await removeIfCreated(user, title);
-        }
-        expect(await settledCount(), 'the list is back to how it was').toBe(before);
+        });
       }
     );
   });
@@ -262,51 +277,102 @@ test.describe('RES-01 Create Resource', () => {
   const fieldError = (user) =>
     user.addResource.createForm.locator('.invalid-file, mat-error, .error').filter({ visible: true });
 
+  // The Title rule: an error below 3 characters (RES-01-09), cleared at 3 or more (RES-01-18) -- one test each (split
+  // 2026-09-28).
+  const typeShortTitle = async (user) => {
+    await openCreate(user);
+    await user.addResource.titleInput.pressSequentially('ab');
+    await user.addResource.titleInput.blur();
+  };
+
   test(
-    'RES-01-09: a title shorter than 3 characters shows an error while typing, and 3 or more clears it',
+    'RES-01-09: a title shorter than 3 characters shows an error while typing',
     { tag: ['@negative'] },
     async ({ user }) => {
-      await openCreate(user);
-      await user.addResource.titleInput.pressSequentially('ab');
-      await user.addResource.titleInput.blur();
-      await expect(fieldError(user).first(), 'error for a 2-character title').toBeVisible({ timeout: 5000 });
-      await user.addResource.titleInput.pressSequentially('c');
-      await expect(fieldError(user).filter({ hasText: /title|character/i }), 'error gone at 3 characters').toHaveCount(
-        0
-      );
-      await user.addResource.cancelBtn.click();
+      await typeShortTitle(user);
+      try {
+        await expect(fieldError(user).first(), 'error for a 2-character title').toBeVisible({ timeout: 5000 });
+      } finally {
+        await user.addResource.cancelBtn.click();
+      }
     }
   );
 
   test(
-    'RES-01-10: Grade & Subject and Chapter & Topic are filled in from the current topic and cannot be changed',
+    'RES-01-18: typing a title of 3 or more characters clears the error',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      await typeShortTitle(user);
+      try {
+        await expect(fieldError(user).first(), 'set-up: error for a 2-character title').toBeVisible({ timeout: 5000 });
+        await user.addResource.titleInput.pressSequentially('c');
+        await expect(
+          fieldError(user).filter({ hasText: /title|character/i }),
+          'error gone at 3 characters'
+        ).toHaveCount(0);
+      } finally {
+        await user.addResource.cancelBtn.click();
+      }
+    }
+  );
+
+  // Grade & Subject and Chapter & Topic: filled in from the current topic (RES-01-10), and locked (RES-01-19) -- one test
+  // each (split 2026-09-28).
+  test(
+    'RES-01-10: Grade & Subject and Chapter & Topic are filled in from the current topic',
     { tag: ['@functional'] },
     async ({ user }) => {
       const cls = (await user.whiteboard.currentClassBtn.innerText()).replace(/\s+/g, ' ');
       const topic = (await user.whiteboard.currentChapterTopicBtn.innerText()).replace(/\s+/g, ' ');
       await openCreate(user);
       const ar = user.addResource;
-      expect(await ar.gradeSubjectInput.inputValue(), 'Grade & Subject filled').toMatch(
-        new RegExp(cls.split('|').pop().trim().split(' ')[0], 'i')
-      );
-      expect(await ar.chapterTopicInput.inputValue(), 'Chapter & Topic filled').toContain(
-        topic.match(/\d+\.\d+/)?.[0] || ''
-      );
-      for (const field of [ar.gradeSubjectInput, ar.chapterTopicInput]) {
-        const locked = await field.evaluate((el) => el.disabled || el.readOnly);
-        expect(locked, 'cannot be changed').toBe(true);
+      try {
+        expect(await ar.gradeSubjectInput.inputValue(), 'Grade & Subject filled').toMatch(
+          new RegExp(cls.split('|').pop().trim().split(' ')[0], 'i')
+        );
+        expect(await ar.chapterTopicInput.inputValue(), 'Chapter & Topic filled').toContain(
+          topic.match(/\d+\.\d+/)?.[0] || ''
+        );
+      } finally {
+        await ar.cancelBtn.click();
       }
-      await ar.cancelBtn.click();
     }
   );
 
   test(
-    'RES-01-11: Share is on by default, and a resource created with Share off is saved with Share off',
+    'RES-01-19: Grade & Subject and Chapter & Topic cannot be changed in the Create form',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await openCreate(user);
+      const ar = user.addResource;
+      try {
+        for (const field of [ar.gradeSubjectInput, ar.chapterTopicInput]) {
+          const locked = await field.evaluate((el) => el.disabled || el.readOnly);
+          expect(locked, 'cannot be changed').toBe(true);
+        }
+      } finally {
+        await ar.cancelBtn.click();
+      }
+    }
+  );
+
+  // Share: on by default (RES-01-11), and a resource created with it off is saved off (RES-01-20) -- one test each
+  // (split 2026-09-28).
+  test('RES-01-11: Share is on by default in the Create form', { tag: ['@functional'] }, async ({ user }) => {
+    await openCreate(user);
+    try {
+      await expect(user.addResource.shareToggleButton, 'Share on by default').toHaveAttribute('aria-checked', 'true');
+    } finally {
+      await user.addResource.cancelBtn.click();
+    }
+  });
+
+  test(
+    'RES-01-20: a resource created with Share turned off is saved with Share off',
     { tag: ['@functional'] },
     async ({ user, page }) => {
       const ar = user.addResource;
       await openCreate(user);
-      await expect(ar.shareToggleButton, 'Share on by default').toHaveAttribute('aria-checked', 'true');
       await ar.shareToggleButton.click();
       await expect(ar.shareToggleButton).toHaveAttribute('aria-checked', 'false');
       const title = unique();

@@ -4,7 +4,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ classMap: 'default', cleanBoard: true });
+test.use({ classMap: 'default', freshSpace: true });
 
 test.describe('AIN-01 Capture text from the whiteboard into a notice', () => {
   test.afterEach(async ({ app }) => {
@@ -32,25 +32,38 @@ test.describe('AIN-01 Capture text from the whiteboard into a notice', () => {
     }
   );
 
-  test(
-    'AIN-01-03: Discard removes the selection and does not open the composer',
-    { tag: ['@functional'] },
-    async ({ user, page }) => {
-      await user.aiNotices.captureText(user);
-      await user.aiNotices.discardBtn.click({ force: true });
-      await expect(user.aiNotices.selectionControls, 'selection controls gone').toHaveCount(0);
-      await page.waitForTimeout(2000);
-      await expect(user.aiNotices.titleInput, 'no composer').toBeHidden();
-    }
-  );
+  // Discard: removes the selection (AIN-01-03), and does not open the composer (AIN-01-07) -- one test each (split
+  // 2026-09-28).
+  test('AIN-01-03: Discard removes the selection', { tag: ['@functional'] }, async ({ user }) => {
+    await user.aiNotices.captureText(user);
+    await user.aiNotices.discardBtn.click({ force: true });
+    await expect(user.aiNotices.selectionControls, 'selection controls gone').toHaveCount(0);
+  });
 
+  test('AIN-01-07: Discard does not open the notice composer', { tag: ['@functional'] }, async ({ user, page }) => {
+    await user.aiNotices.captureText(user);
+    await user.aiNotices.discardBtn.click({ force: true });
+    await page.waitForTimeout(2000);
+    await expect(user.aiNotices.titleInput, 'no composer').toBeHidden();
+  });
+
+  // Approving a selection over real text: an AI-written title (AIN-01-04), and the captured text as the body
+  // (AIN-01-08) -- one test each (split 2026-09-28).
   test(
-    'AIN-01-04: approving a selection over real text opens the composer with an AI title and the captured text',
+    'AIN-01-04: approving a selection over real text opens the composer with an AI-written title',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       await user.aiNotices.openComposer(user, 'Photosynthesis is important');
       await expect(user.aiNotices.touchedUpToast).toBeVisible({ timeout: 10000 });
       expect((await user.aiNotices.titleInput.inputValue()).trim().length, 'title filled in').toBeGreaterThan(3);
+    }
+  );
+
+  test(
+    'AIN-01-08: approving a selection over real text puts the captured text in the notice body',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      await user.aiNotices.openComposer(user, 'Photosynthesis is important');
       await expect(user.aiNotices.bodyEditor).toContainText(/photosynthesis/i);
     }
   );

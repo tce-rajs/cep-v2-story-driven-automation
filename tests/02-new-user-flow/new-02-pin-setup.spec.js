@@ -29,36 +29,38 @@ test.describe('NEW-02 PIN setup on first successful password login', () => {
     }
   );
 
-  test(
-    'NEW-02-04: a PIN that does not meet the format requirements shows a validation error, not a silent rejection',
-    { tag: ['@negative'] },
-    async ({ app }) => {
-      await app.newUser.signInWithPassword(newPassword);
-      await expect(app.newUser.pinInputs.first()).toBeVisible({ timeout: 20000 });
-      const boxes = app.newUser.pinInputs;
-      const values = () => boxes.evaluateAll((els) => els.map((e) => e.value));
+  // PIN format: too short (NEW-02-04) and letters (NEW-02-05), one test each (split 2026-09-28). Both run while the
+  // PIN-setup page is still shown and set nothing, so the order is unaffected.
+  const openPinSetup = async (app) => {
+    await app.newUser.signInWithPassword(newPassword);
+    await expect(app.newUser.pinInputs.first()).toBeVisible({ timeout: 20000 });
+    const boxes = app.newUser.pinInputs;
+    return { boxes, values: () => boxes.evaluateAll((els) => els.map((e) => e.value)) };
+  };
 
-      // Too short: three digits leave Next disabled, so the PIN cannot be submitted, and the empty boxes are flagged.
-      await app.newUser.typeIntoBoxes(boxes, '123');
-      expect(await values(), 'the three digits are in the boxes').toEqual(['1', '2', '3', '', '']);
-      await expect(app.newUser.pinNextBtn, 'a 3-digit PIN cannot be submitted').toBeDisabled();
-      await expect(app.newUser.pinVerifyInputs, 'and the page does not move on').toHaveCount(0);
-      await expect(app.login.avatar, 'and it did not get through').toBeHidden();
-      test.info().annotations.push({
-        type: 'note',
-        description:
-          'GAP: a too-short PIN is refused only by a disabled Next button and red-outlined empty boxes; there is no text message saying why.',
-      });
+  test('NEW-02-04: a PIN that is too short (3 digits) cannot be submitted', { tag: ['@negative'] }, async ({ app }) => {
+    const { boxes, values } = await openPinSetup(app);
+    // Three digits leave Next disabled, so the PIN cannot be submitted, and the empty boxes are flagged.
+    await app.newUser.typeIntoBoxes(boxes, '123');
+    expect(await values(), 'the three digits are in the boxes').toEqual(['1', '2', '3', '', '']);
+    await expect(app.newUser.pinNextBtn, 'a 3-digit PIN cannot be submitted').toBeDisabled();
+    await expect(app.newUser.pinVerifyInputs, 'and the page does not move on').toHaveCount(0);
+    await expect(app.login.avatar, 'and it did not get through').toBeHidden();
+    test.info().annotations.push({
+      type: 'note',
+      description:
+        'GAP: a too-short PIN is refused only by a disabled Next button and red-outlined empty boxes; there is no text message saying why.',
+    });
+  });
 
-      // Non-numeric: letters are not taken into the boxes, so nothing valid can be submitted. (Only four letters are typed:
-      // see the note at the foot of this file for what the fifth does.)
-      for (const box of await boxes.all()) await box.fill('');
-      await app.newUser.typeIntoBoxes(boxes, 'abcd');
-      expect(await values(), 'letters are not accepted into the boxes').toEqual(['', '', '', '', '']);
-      await expect(app.newUser.pinNextBtn, 'nothing can be submitted').toBeDisabled();
-      await expect(app.login.avatar, 'and it did not get through').toBeHidden();
-    }
-  );
+  test('NEW-02-05: letters are not accepted into the PIN boxes', { tag: ['@negative'] }, async ({ app }) => {
+    const { boxes, values } = await openPinSetup(app);
+    // Only four letters are typed: see the note at the foot of this file for what the fifth does.
+    await app.newUser.typeIntoBoxes(boxes, 'abcd');
+    expect(await values(), 'letters are not accepted into the boxes').toEqual(['', '', '', '', '']);
+    await expect(app.newUser.pinNextBtn, 'nothing can be submitted').toBeDisabled();
+    await expect(app.login.avatar, 'and it did not get through').toBeHidden();
+  });
 
   test('NEW-02-02: setting a new PIN completes successfully', { tag: ['@smoke', '@functional'] }, async ({ app }) => {
     await app.newUser.signInWithPassword(newPassword);

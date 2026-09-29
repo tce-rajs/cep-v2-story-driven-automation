@@ -16,16 +16,15 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     await user.nav.applyClassMap('compassBaseline');
   });
 
+  // "Explore It" (HDR-05-01) and "Analyse It" (HDR-05-15) are one test each (split 2026-09-28). Explore It only renders
+  // where the chapter has widgets, so both use the ExploreIt fixture, not the baseline.
   test(
-    'HDR-05-01: the Compass icon opens with both "Explore It" and "Analyse It" options visible',
+    'HDR-05-01: the Compass icon opens with the "Explore It" option visible',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
-      // ExploreIt only renders where the chapter has widgets, so this needs the ExploreIt fixture, not the baseline.
       await user.nav.applyClassMap('compassExploreIt');
       const { opened } = await user.compass.openTrigger();
-      expect(opened, 'Compass menu opened').toBe(true);
-
-      await expect(user.compass.analyseItItem).toBeVisible();
+      expect(opened, 'set-up: Compass menu opened').toBe(true);
       await expect(
         user.page
           .locator('.compass-menu.open')
@@ -36,9 +35,22 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
   );
 
   test(
+    'HDR-05-15: the Compass icon opens with the "Analyse It" option visible',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      await user.nav.applyClassMap('compassExploreIt');
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'set-up: Compass menu opened').toBe(true);
+      await expect(user.compass.analyseItItem).toBeVisible();
+    }
+  );
+
+  test(
     'HDR-05-02: Compass shows a "Revision Test" section for topics that have one',
     { tag: ['@functional'] },
     async ({ user }) => {
+      // Needs a topic with a Revision Test: 'compassRevisionTest' (none on 172.18.2.85 yet -- fails as DATA MISSING).
+      await user.nav.applyClassMap('compassRevisionTest');
       const { opened } = await user.compass.openTrigger();
       expect(opened, 'Compass menu opened').toBe(true);
       await expect(user.compass.revisionTestsItem).toBeVisible();
@@ -57,16 +69,25 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     }
   );
 
+  // Conditional per topic: absent from the DOM entirely, not just hidden. One test per section (split 2026-09-28).
   test(
-    'HDR-05-04: a topic without a Revision Test or Homework does not show those sections',
+    'HDR-05-04: a topic without Homework does not show the Homework (Analyse It) section',
     { tag: ['@negative'] },
     async ({ user }) => {
       await user.nav.applyClassMap('compassNoAnalyseIt');
       const { opened } = await user.compass.openTrigger();
-      expect(opened, 'Compass menu opened').toBe(true);
-
-      // Conditional per topic: absent from the DOM entirely, not just hidden.
+      expect(opened, 'set-up: Compass menu opened').toBe(true);
       await expect(user.compass.analyseItItem).toHaveCount(0);
+    }
+  );
+
+  test(
+    'HDR-05-16: a topic without a Revision Test does not show the Revision Test section',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      await user.nav.applyClassMap('compassNoAnalyseIt');
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'set-up: Compass menu opened').toBe(true);
       await expect(user.compass.revisionTestsItem).toHaveCount(0);
     }
   );
@@ -75,6 +96,8 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     'HDR-05-06: Revision Test card text does not overlap its own info line/icon (regression)',
     { tag: ['@regression'] },
     async ({ user }) => {
+      // Needs Revision Test cards: 'compassRevisionTest' (none on 172.18.2.85 yet -- fails as DATA MISSING).
+      await user.nav.applyClassMap('compassRevisionTest');
       // Zoho TCN-I16045: a card's title text overlapped other card text, making the details unreadable.
       // compassBaseline's real, existing cards already include one titled "testing title overlap issue" --
       // reused here rather than creating fresh content, since authoring a Revision Test happens in Plan
@@ -124,16 +147,23 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
 
   // --- Added 2026-09-26 (gap-fill from the reference suite's Compass workbook and Zoho bugs) ---
 
+  test("HDR-05-09: Explore It lists the chapter's widgets, each named", { tag: ['@functional'] }, async ({ user }) => {
+    await user.nav.applyClassMap('compassExploreIt');
+    const { opened } = await user.compass.openTrigger();
+    expect(opened, 'set-up: Compass menu opened').toBe(true);
+    await expect(user.compass.exploreItWidgets.first(), 'Explore It lists widgets').toBeVisible();
+    const label = (await user.compass.exploreItWidgets.first().locator('.widget-label').innerText()).trim();
+    expect(label.length, 'each widget is named').toBeGreaterThan(3);
+  });
+
   test(
-    "HDR-05-09: Explore It shows the chapter's widgets, and opening one shows that widget",
+    'HDR-05-17: opening a widget from Explore It shows that widget',
     { tag: ['@functional'] },
     async ({ user, page }) => {
       await user.nav.applyClassMap('compassExploreIt');
       const { opened } = await user.compass.openTrigger();
-      expect(opened, 'Compass menu opened').toBe(true);
-      await expect(user.compass.exploreItWidgets.first(), 'Explore It lists widgets').toBeVisible();
-      const label = (await user.compass.exploreItWidgets.first().locator('.widget-label').innerText()).trim();
-      expect(label.length, 'each widget is named').toBeGreaterThan(3);
+      expect(opened, 'set-up: Compass menu opened').toBe(true);
+      await expect(user.compass.exploreItWidgets.first(), 'set-up: Explore It lists widgets').toBeVisible();
       const shown = () =>
         page
           .locator('iframe, [class*="widget-container"], [class*="widget-player"], [class*="widget-wrapper"]')
@@ -141,8 +171,11 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
           .count();
       const before = await shown();
       await user.compass.exploreItWidgets.first().click();
-      await expect.poll(shown, { message: `the "${label}" widget opened`, timeout: 20000 }).toBeGreaterThan(before);
-      await user.player.closePlayer().catch(() => {});
+      try {
+        await expect.poll(shown, { message: 'the widget opened', timeout: 20000 }).toBeGreaterThan(before);
+      } finally {
+        await user.player.closePlayer().catch(() => {});
+      }
     }
   );
 
@@ -164,36 +197,55 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
   );
 
   test(
-    'HDR-05-11: Analyse It shows a "no homework" message with a link to create homework when the topic has none',
+    'HDR-05-11: Analyse It shows a "no homework" message when the topic has none',
     { tag: ['@functional'] },
     async ({ user }) => {
       const { opened } = await user.compass.openTrigger();
-      expect(opened, 'Compass menu opened').toBe(true);
+      expect(opened, 'set-up: Compass menu opened').toBe(true);
       await expect(user.compass.analyseItItem).toContainText(/no homework/i);
       await expect(user.compass.noHomeworkMessage).toBeVisible({ timeout: 15000 });
       await expect(user.compass.noHomeworkMessage).toContainText(/no homework available/i);
-      await expect(user.compass.noHomeworkCreateLink, 'a link to create homework').toContainText(/homework/i);
     }
   );
 
   test(
-    'HDR-05-12: in Analyse It, "View Questions" and "View Last 5 Homework" open their views (regression, Zoho TCN-I16623)',
-    { tag: ['@regression'] },
+    'HDR-05-18: when the topic has no homework, Analyse It offers a link to create homework',
+    { tag: ['@functional'] },
     async ({ user }) => {
       const { opened } = await user.compass.openTrigger();
-      expect(opened, 'Compass menu opened').toBe(true);
-      // The Analyse It entry itself reads "No Homework" when the topic has none (confirmed live 2026-09-26).
-      const noHomework = /no homework/i.test(await user.compass.analyseItItem.innerText());
-      test.skip(
-        noHomework,
-        'Needs a topic whose Analyse It lists homework; this class/topic has none (see HDR-05-11).'
-      );
-      await user.compass.analyseItItem.click({ force: true });
+      expect(opened, 'set-up: Compass menu opened').toBe(true);
+      await expect(user.compass.noHomeworkMessage, 'set-up: the no-homework view').toBeVisible({ timeout: 15000 });
+      await expect(user.compass.noHomeworkCreateLink, 'a link to create homework').toContainText(/homework/i);
+    }
+  );
+
+  /** Open Analyse It's details, or skip when the topic has no homework to show (see HDR-05-11). */
+  const openAnalyseItDetails = async (user) => {
+    const { opened } = await user.compass.openTrigger();
+    expect(opened, 'set-up: Compass menu opened').toBe(true);
+    // The Analyse It entry itself reads "No Homework" when the topic has none (confirmed live 2026-09-26).
+    const noHomework = /no homework/i.test(await user.compass.analyseItItem.innerText());
+    test.skip(noHomework, 'Needs a topic whose Analyse It lists homework; this class/topic has none (see HDR-05-11).');
+    await user.compass.analyseItItem.click({ force: true });
+  };
+
+  test(
+    'HDR-05-12: in Analyse It, "View Questions" opens the questions view (regression, Zoho TCN-I16623)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      await openAnalyseItDetails(user);
       await user.compass.detailViewQuestionsBtn.click();
       await expect(user.compass.questionToggleAnswerBtn.first(), 'questions view opened').toBeVisible({
         timeout: 15000,
       });
-      await user.compass.detailCancelBtn.click({ force: true }).catch(() => {});
+    }
+  );
+
+  test(
+    'HDR-05-19: in Analyse It, "View Last 5 Homework" opens the list (regression, Zoho TCN-I16623)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      await openAnalyseItDetails(user);
       await user.compass.detailViewListBtn.click();
       await expect(user.compass.listCancelBtn, 'last-5-homework list opened').toBeVisible({ timeout: 15000 });
     }
@@ -213,20 +265,33 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     }
   );
 
+  /** Open Compass's details view, then reload the app. */
+  const reloadWithDetailsOpen = async (user, page) => {
+    const { opened } = await user.compass.openTrigger();
+    expect(opened, 'set-up: Compass menu opened').toBe(true);
+    await user.compass.analyseItItem.click({ force: true });
+    await page.waitForTimeout(2000);
+    await page.reload();
+    await expect(user.login.avatar).toBeVisible({ timeout: 30000 });
+  };
+
   test(
     'HDR-05-14: Compass opens normally again after the app reloads with its details view open',
     { tag: ['@functional'] },
     async ({ user, page }) => {
-      const { opened } = await user.compass.openTrigger();
-      expect(opened, 'Compass menu opened').toBe(true);
-      await user.compass.analyseItItem.click({ force: true });
-      await page.waitForTimeout(2000);
-      await page.reload();
-      await expect(user.login.avatar).toBeVisible({ timeout: 30000 });
-      await expect(user.compass.menu, 'no stale Compass window after reload').toBeHidden();
+      await reloadWithDetailsOpen(user, page);
       const again = await user.compass.openTrigger();
       expect(again.opened, 'Compass opens again').toBe(true);
       await expect(user.compass.analyseItItem).toBeVisible();
+    }
+  );
+
+  test(
+    'HDR-05-20: after the app reloads with the Compass details view open, no stale Compass window is left',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      await reloadWithDetailsOpen(user, page);
+      await expect(user.compass.menu, 'no stale Compass window after reload').toBeHidden();
     }
   );
 });

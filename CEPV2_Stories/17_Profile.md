@@ -33,14 +33,18 @@ changes are undone at the end of each test. Change Password and Change PIN use t
 
 ### PRF-04 — Change password
 
-1. PRF-04-01 — To check Change Password shows Current, New and Repeat New Password fields, the password rules, and a disabled Save
+1. PRF-04-01 — To check Change Password shows Current, New and Repeat New Password fields and the password rules
 2. PRF-04-02 — Negative: to check a new password shorter than 8 characters shows an error while typing
-3. PRF-04-03 — Negative: to check different New and Repeat New Password values are caught and Save stays blocked
-4. PRF-04-04 — Negative: to check a wrong current password is rejected and the password stays the same
+3. PRF-04-03 — Negative: to check different New and Repeat New Password values show a mismatch message
+4. PRF-04-04 — Negative: to check a wrong current password is rejected, so the password stays the same
 5. PRF-04-05 — Negative: to check a new password identical to the current one is rejected
 6. PRF-04-06 — To check Cancel closes the form without changing anything
-7. PRF-04-07 — To check a successful change lets the user sign in with the new password and rejects the old one
+7. PRF-04-07 — To check a successful change lets the user sign in with the new password
 8. PRF-04-08 — Regression: Change Password and Change PIN can't both be open at once
+9. PRF-04-09 — To check Change Password opens with Save disabled _(split from PRF-04-01, 2026-09-28)_
+10. PRF-04-10 — Negative: to check that with different New and Repeat New Password values Save stays blocked _(split from PRF-04-03, 2026-09-28)_
+11. PRF-04-11 — Negative: to check a wrong current password shows a clear error _(split from PRF-04-04, 2026-09-28)_
+12. PRF-04-12 — To check that after a successful change the old password is rejected _(split from PRF-04-07, 2026-09-28)_
 
 ### PRF-05 — Change PIN
 
@@ -50,4 +54,5 @@ changes are undone at the end of each test. Change Password and Change PIN use t
 4. PRF-05-04 — Negative: to check different New and Repeat New PIN values block Save
 5. PRF-05-05 — Negative: to check a new PIN identical to the current one is rejected with a clear message
 6. PRF-05-06 — To check Cancel closes the form without changing the PIN
-7. PRF-05-07 — To check a successful change lets the user sign in with the new PIN and rejects the old one
+7. PRF-05-07 — To check a successful change lets the user sign in with the new PIN
+8. PRF-05-08 — To check that after a successful change the old PIN is rejected _(split from PRF-05-07, 2026-09-28)_

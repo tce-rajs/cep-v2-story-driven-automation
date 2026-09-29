@@ -101,11 +101,13 @@ const MODULE_CLASS_MAP = {
   attendance: {
     label: 'Attendance',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    grade: 'Class 10',
     division: 'A',
-    subject: 'Physics',
+    subject: 'Science',
     chapterIndex: 0,
     topicIndex: 0,
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85: Magnet lists Attendance only for this account (74125) on Class 11A and 10A (not 12A, not on 96325). Class 10A Science also has working AI Homework, so both modules share it.',
     notes:
       "Magnet tool (toolbar-tool-gtMagnet) is per-account+class-teacher-assignment gated, not universal -- confirmed available on this account's Class 12A.",
     knownIssues: [],
@@ -116,13 +118,15 @@ const MODULE_CLASS_MAP = {
 
   // --- Compass ---
   compassBaseline: {
-    label: 'Compass -- AnalyseIt + Revision Tests render (no ExploreIt widgets)',
+    label: 'Compass -- AnalyseIt ("No Homework") renders, alongside ExploreIt',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    grade: 'Class 11',
     division: 'A',
-    subject: 'Physics',
+    subject: 'Mathematics',
     chapterIndex: 0,
     topicIndex: 0,
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85: "1.1 | Big Idea – Sets" -- Compass shows Analyseit (No Homework) and Exploreit (Operations on Sets, Venn Diagrams, Open Widgets). The old QA combo (Class 12A Physics 1.1) shows no Compass at all on .85.',
     notes:
       'CONFIRMED LIVE (2026-09-19): AnalyseIt (with "No Homework") and Revision Tests render here, but ExploreIt does NOT -- it only renders where the chapter has widgets (see compassExploreIt).',
     knownIssues: [],
@@ -154,11 +158,13 @@ const MODULE_CLASS_MAP = {
   compassExploreIt: {
     label: 'Compass -- ExploreIt widgets render alongside AnalyseIt',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    grade: 'Class 11',
     division: 'A',
-    subject: 'Physics',
-    chapterIndex: 3,
-    topicIndex: 1,
+    subject: 'Mathematics',
+    chapterIndex: 0,
+    topicIndex: 0,
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85: same topic as compassBaseline -- the only place found with BOTH Exploreit and Analyseit (Class 12A Physics shows Exploreit alone).',
     notes:
       'CONFIRMED LIVE (2026-09-19): the Compass menu shows AnalyseIt AND an "Exploreit" section ("Force Between Current-Carrying W..." widget with Open Widget). Chapters 2 and 4 (topics 1-2) show it too; chapter 0 has none. The menu label is "Exploreit" (one word) and its item carries no data-qa-id, so match on text.',
     knownIssues: [],
@@ -166,11 +172,13 @@ const MODULE_CLASS_MAP = {
   compassNoAnalyseIt: {
     label: 'Compass -- confirmed to have ZERO AnalyseIt presence (negative case)',
     account: 'VALID_PIN',
-    grade: 'Class 11',
+    grade: 'Class 12',
     division: 'A',
-    subject: 'Mathematics',
-    chapterIndex: 0,
+    subject: 'Physics',
+    chapterIndex: 1,
     topicIndex: 0,
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85: "2.1" -- Compass shows Exploreit (Capacitor, Open Widget) only; no Analyseit, no Revision Test. (Class 11A Mathematics 1.1 DOES show Analyseit on .85.)',
     notes:
       'CONFIRMED LIVE (5/5 repro, including after a full reload): this combo never renders an AnalyseIt entry at all -- only ExploreIt. Useful specifically as a negative-case fixture; do NOT use this combo for any AnalyseIt-dependent test.',
     knownIssues: [
@@ -178,8 +186,25 @@ const MODULE_CLASS_MAP = {
     ],
   },
 
+  // Revision Tests are authored in Plan Mode (manual-only here); none exist on .85.
+  compassRevisionTest: {
+    label: 'Compass -- a topic with a Revision Test',
+    account: 'VALID_PIN',
+    grade: 'Class 12',
+    division: 'A',
+    subject: 'Physics',
+    chapterIndex: 0,
+    topicIndex: 0,
+    unavailable:
+      'no topic with a Revision Test on 172.18.2.85 (all 119 Class 12A Physics topics scanned 2026-09-29; Revision Tests are created in Plan Mode, outside automation)',
+    notes: 'Point this at a real topic once a Revision Test exists on the server, and remove `unavailable`.',
+    knownIssues: [],
+  },
+
   // --- Checkpoints (Players) ---
   checkpoints: {
+    unavailable:
+      'Class 8 division R does not exist on 172.18.2.85 (only division A), and no checkpoint resource was found in the scanned classes (2026-09-29)',
     label: 'Checkpoints Player',
     account: 'VALID_PIN', // CORRECTED 2026-09-09 re-scan: flashcard.spec.js (see its own `flashcard` entry) also uses VALID_PIN for this same chapter, not VALID_PIN_2 as previously noted here.
     grade: 'Class 8',
@@ -224,18 +249,46 @@ const MODULE_CLASS_MAP = {
     ],
   },
   playersDefault: {
-    label: 'Players -- Video/Worksheet/Image/Weblink (shared default topic)',
+    label: 'Players -- Video/Worksheet/Image/Code (shared default topic)',
+    account: 'VALID_PIN_2',
+    grade: 'Class 12',
+    division: 'A',
+    subject: 'Computer Science',
+    chapterIndex: 1,
+    topicIndex: 1,
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85 (all 73 Class 12A Computer Science topics): "2.2 | Raising Exceptions and Need for Exception Handling" -- Worksheet x3, Code x1, Video x1, Image x3, Quiz x1. No topic here has a Web link with the rest: web-link cases use playersWeblink; unsupported files use playersUnsupported. (The old combo, 14.1, has no Image or Web link on .85.)',
+    notes:
+      '"14. Project Based Learning" -- one confirmed Image/Video/Worksheet/Weblink resource each, all in the same topic. Shared across video.spec.js, worksheet.spec.js, image.spec.js, weblink.spec.js.',
+    knownIssues: [
+      'A worksheet, once closed, was observed leaving 13 stale close-icon elements behind in the DOM in one pass -- possible stacking/cleanup bug, flagged for re-confirmation, not yet settled as a hard finding.',
+    ],
+  },
+  playersWeblink: {
+    label: 'Players -- a Web link together with Worksheet/Image/Video (primary account)',
+    account: 'VALID_PIN',
+    grade: 'Class 12',
+    division: 'A',
+    subject: 'Physics',
+    chapterIndex: 0,
+    topicIndex: 0,
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85: "1.1 | Big Idea: Electric Charges and Fields" -- Video x1, Worksheet x11, Image x4, Web link x1, Quiz x19.',
+    notes: 'Same topic as toolbarGeneral/default (its board is cleared by whiteboard tests; its Playlist is shared).',
+    knownIssues: [],
+  },
+  playersUnsupported: {
+    label: 'Players -- unsupported-file resources',
     account: 'VALID_PIN_2',
     grade: 'Class 12',
     division: 'A',
     subject: 'Computer Science',
     chapterIndex: 13,
     topicIndex: 0,
-    notes:
-      '"14. Project Based Learning" -- one confirmed Image/Video/Worksheet/Weblink resource each, all in the same topic. Shared across video.spec.js, worksheet.spec.js, image.spec.js, weblink.spec.js.',
-    knownIssues: [
-      'A worksheet, once closed, was observed leaving 13 stale close-icon elements behind in the DOM in one pass -- possible stacking/cleanup bug, flagged for re-confirmation, not yet settled as a hard finding.',
-    ],
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85: "14.1 | Approaches for Solving Project" -- Unsupported x2, Video, Worksheet, Quiz.',
+    notes: '',
+    knownIssues: [],
   },
   ebook: {
     label: 'Ebook Player',
@@ -262,6 +315,7 @@ const MODULE_CLASS_MAP = {
     knownIssues: [],
   },
   flashcard: {
+    unavailable: 'Class 8 division R ("Foundation Checkpoint") does not exist on 172.18.2.85 (2026-09-29)',
     label: 'Flashcard Player',
     account: 'VALID_PIN', // CORRECTED 2026-09-09 re-scan: flashcard.spec.js's own comment explains VALID_PIN_2 does not have Class 8/Division R reachable at all on this account -- it deliberately uses VALID_PIN instead (the SAME account checkpoints.spec.js uses for this same chapter).
     grade: 'Class 8',
@@ -318,10 +372,14 @@ const MODULE_CLASS_MAP = {
   // --- AI Homework / AI Notices / Learning Shorts (Magnet-gated) ---
   aiHomework: {
     label: 'AI Homework',
-    account: 'VALID_PIN_2',
-    grade: 'Class 11',
+    account: 'VALID_PIN',
+    grade: 'Class 10',
     division: 'A',
-    subject: 'Mathematics',
+    subject: 'Science',
+    chapterIndex: 0,
+    topicIndex: 0,
+    server85:
+      'SCANNED LIVE 2026-09-29 on 172.18.2.85: Class 10A Science is the only class found where Generate is enabled. Class 12A Physics/Mathematics/Chemistry, 11A Mathematics, 9A Mathematics, 8A Science and 6A Mathematics all show "The grade or class you selected seems incorrect" (the old QA class, 11A Mathematics, included).',
     notes:
       'Magnet-gated. The Objective counter\'s real floor is 0, not 1 -- a generate-and-wait helper assuming "at least 1" will hang on a genuine 0-question request.',
     knownIssues: [
@@ -367,6 +425,9 @@ function getClassMap(moduleKey) {
       `moduleClassMap: no entry for "${moduleKey}" -- known keys: ${Object.keys(MODULE_CLASS_MAP).join(', ')}`
     );
   }
+  // The data this key needs is not on the current server: fail with a clear, recognisable reason (the result summary
+  // lists these as DATA MISSING) rather than a confusing locator timeout -- never a silent skip.
+  if (entry.unavailable) throw new Error(`DATA MISSING ON THIS SERVER (${moduleKey}): ${entry.unavailable}`);
   return entry;
 }
 

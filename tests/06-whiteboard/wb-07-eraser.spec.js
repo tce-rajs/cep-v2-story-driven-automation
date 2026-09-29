@@ -4,8 +4,9 @@
 
 const { test, expect } = require('../../fixtures');
 
-// The board persists per topic, so strokes left by other specs would skew the path counts these tests compare.
-test.use({ cleanBoard: true });
+// The board persists per topic: the tests work on fresh space below it and count only their own strokes (the
+// teacher's writing is kept, never cleared -- owner rule 2026-09-29).
+test.use({ freshSpace: true });
 
 test.describe('WB-07 Eraser', () => {
   test(

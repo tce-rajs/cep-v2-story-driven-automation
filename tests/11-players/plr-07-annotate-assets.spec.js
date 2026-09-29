@@ -24,22 +24,11 @@ test.describe('PLR-07 Annotate on Playlist assets', () => {
       })
       .toBeGreaterThan(150);
     await user.page.waitForTimeout(2500);
-    await clearAnnotations(user);
   };
 
-  // Annotations are saved with the asset and pile up across tests and runs (30+ strokes were found stacked in one spot,
-  // so an "empty" spot was not empty and counts drifted). The eraser panel's "Clear annotations" wipes them at once, with
-  // no confirmation (CONFIRMED LIVE: 34 -> 0), so every test starts from, and leaves, a clean asset.
-  const clearAnnotations = async (user) => {
-    await user.toolbar.openToolPanel('gtErase');
-    await user.toolbar.eraserClearAnnotationsBtn.click({ force: true, timeout: 5000 }).catch(() => {});
-    await user.page.waitForTimeout(1200);
-    await user.toolbar.closePanelByTappingOutside();
-  };
-
-  test.afterEach(async ({ user }) => {
-    if (await user.player.isPlayerOpen(1500)) await clearAnnotations(user).catch(() => {});
-  });
+  // Annotations are saved with the asset and pile up across tests and runs. They are NEVER wiped (owner rule
+  // 2026-09-29: "Clear annotations" would also erase a teacher's own writing on the asset), so every check compares
+  // before vs after and looks only at the strokes the test itself drew.
 
   const strokes = (user) => user.player.worksheetAnnotationLayer.first().locator('path');
   const geometry = (user) => strokes(user).evaluateAll((els) => els.map((e) => e.getAttribute('d')));

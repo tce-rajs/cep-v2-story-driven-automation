@@ -92,7 +92,8 @@ test.describe('PLR-05 Play a video resource', () => {
 
   // --- Added 2026-09-26 (gap-fill from the reference suite's Players workbook and Zoho bugs) ---
 
-  test('PLR-05-05: seeking and volume work', { tag: ['@functional'] }, async ({ user }) => {
+  // Seeking (PLR-05-05) and volume/mute (PLR-05-09): one test each (split 2026-09-28).
+  test('PLR-05-05: seeking a video moves playback to the chosen point', { tag: ['@functional'] }, async ({ user }) => {
     await openVideo(user);
     const v = user.player.videoElement;
     const duration = (await user.player.videoState()).duration;
@@ -100,6 +101,12 @@ test.describe('PLR-05 Play a video resource', () => {
     await expect
       .poll(async () => Math.round((await user.player.videoState()).currentTime), { message: 'seeked to the middle' })
       .toBeGreaterThanOrEqual(Math.floor(duration / 2) - 1);
+    await user.player.closePlayer();
+  });
+
+  test('PLR-05-09: a video’s volume can be changed and muted', { tag: ['@functional'] }, async ({ user }) => {
+    await openVideo(user);
+    const v = user.player.videoElement;
     await v.evaluate((el) => (el.volume = 0.3));
     expect(await v.evaluate((el) => el.volume)).toBeCloseTo(0.3, 1);
     await v.evaluate((el) => (el.muted = true));

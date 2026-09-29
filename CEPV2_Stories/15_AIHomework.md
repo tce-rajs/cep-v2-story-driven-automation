@@ -19,33 +19,47 @@ real homework to the chosen class (approved by the owner, 2026-09-26).
 
 ### AIH-02 — Choose the homework type and number of questions
 
-1. AIH-02-01 — To check Homework is selected by default with 15 objective questions, and Revise offers 10 objective and 5 subjective
-2. AIH-02-02 — To check the + and − buttons change a question count by one each click
+1. AIH-02-01 — To check Homework is selected by default with 15 objective questions
+2. AIH-02-02 — To check the + button raises a question count by one
 3. AIH-02-03 — Regression: a fast double-click on + adds two questions, not zero
 4. AIH-02-04 — Edge: to check clicking + and − alternately 20 times returns the count to where it started
 5. AIH-02-05 — Edge: to check the lowest allowed count still generates exactly that many questions
 6. AIH-02-06 — To check Select Chapter changes the chapter shown in the builder's header
+7. AIH-02-07 — To check Revise can be selected and offers 10 objective and 5 subjective questions _(split from AIH-02-01, 2026-09-28)_
+8. AIH-02-08 — To check the − button lowers a question count by one _(split from AIH-02-02, 2026-09-28)_
 
 ### AIH-03 — Generate and review the questions
 
-1. AIH-03-01 — To check Generate produces the chosen number of questions, all about the selected chapter
+1. AIH-03-01 — To check Generate produces the chosen number of questions, each with text
 2. AIH-03-02 — To check moving between the generated questions works, and going past the first or last question doesn't wrap or error
-3. AIH-03-03 — To check Regenerate replaces a single question, and the new question is still there after moving away and back
+3. AIH-03-03 — To check Regenerate replaces the generated questions _(the app regenerates the whole set: there is no per-question Regenerate; confirmed live 2026-09-26)_
 4. AIH-03-04 — Regression: removing a generated question doesn't leave a blank question behind (Zoho TCN-I15460)
 5. AIH-03-05 — Regression: double-clicking Generate starts only one generation
 6. AIH-03-06 — Regression: generated question text doesn't show stray "$" symbols (Zoho TCN-I15320)
+7. AIH-03-07 — To check regenerated questions are still there after going Next and back again _(split from AIH-03-03, 2026-09-28)_
+8. AIH-03-08 — To check the generated questions are about the selected chapter _(split from AIH-03-01, 2026-09-28)_
 
 ### AIH-04 — Assign the homework to classes
 
-1. AIH-04-01 — To check Next opens the assignment form with a pre-filled title, the current class ticked, and "Due in" set to 1 day
+1. AIH-04-01 — To check Next opens the assignment form with a pre-filled title
 2. AIH-04-02 — Negative: to check sending is blocked while the homework title is empty
 3. AIH-04-03 — Negative: to check sending is blocked when no class is ticked
-4. AIH-04-04 — To check Previous returns to the questions with nothing lost, and going forward again keeps the form as filled
-5. AIH-04-05 — To check Discard closes the builder, and opening it again starts fresh
-6. AIH-04-06 — To check Ready to Send assigns the homework and shows a success message
+4. AIH-04-04 — To check Previous returns to the generated questions with nothing lost
+5. AIH-04-05 — To check Discard closes the homework builder
+6. AIH-04-06 — To check Ready to Send assigns the homework
 7. AIH-04-07 — Edge: to check the longest "Due in" option (3 days) is accepted when sending
+8. AIH-04-08 — To check the assignment form has the current class ticked _(split from AIH-04-01, 2026-09-28)_
+9. AIH-04-09 — To check the assignment form has "Due in" set to 1 day _(split from AIH-04-01, 2026-09-28)_
+10. AIH-04-10 — To check that after Previous and Next the assignment form keeps the edited title _(split from AIH-04-04, 2026-09-28)_
+11. AIH-04-11 — To check that after Discard, opening the builder again starts fresh _(split from AIH-04-05, 2026-09-28)_
+12. AIH-04-12 — To check assigning homework shows a success message _(split from AIH-04-06, 2026-09-28)_
+13. AIH-04-13 — To check the assignment form closes after sending _(split from AIH-04-06, 2026-09-28)_
 
 ### AIH-05 — AI Homework when the network or the AI service fails (added 2026-09-27)
 
-1. AIH-05-01 — Negative: when generation fails, the teacher is told, the spinner stops, and pressing Generate again works
-2. AIH-05-02 — Negative: when sending fails, no success message appears and the form stays open with the teacher's title
+1. AIH-05-01 — Negative: when generation fails, the teacher is told
+2. AIH-05-02 — Negative: when sending fails, no success message appears
+3. AIH-05-03 — Negative: when generation fails, the spinner stops _(split from AIH-05-01, 2026-09-28)_
+4. AIH-05-04 — Negative: after generation fails, pressing Generate again generates the questions _(split from AIH-05-01, 2026-09-28)_
+5. AIH-05-06 — Negative: when sending fails, the teacher is told it was not sent _(split from AIH-05-02, 2026-09-28)_
+6. AIH-05-07 — Negative: when sending fails, the form stays open with the teacher's title _(split from AIH-05-02, 2026-09-28)_

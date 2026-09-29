@@ -4,8 +4,8 @@
 
 const { test, expect } = require('../../fixtures');
 
-// Counts and "last path" lookups need a blank board, not the persisted content earlier tests left behind.
-test.use({ cleanBoard: true });
+// Counts and "last path" lookups see only this test's own strokes; the teacher's writing is kept (never cleared).
+test.use({ freshSpace: true });
 
 test.describe('WB-03 Pan', () => {
   test(

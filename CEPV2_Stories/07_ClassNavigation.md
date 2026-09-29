@@ -17,7 +17,7 @@ shown update according to that Division.
 4. NAV-01-04 — To check selecting a class from either section sets the correct Division for that class
 5. NAV-01-05 — To check the Subjects shown update correctly based on the selected class's Division
 6. NAV-01-06 — Regression (Plan Mode, excluded from automation): grade selection carries over correctly across a Teach↔Plan switch
-7. NAV-01-07 — To check choosing a class from Recent Classes switches to it and moves it to the top of the list
+7. NAV-01-07 — To check choosing a class from Recent Classes switches to it
 8. NAV-01-08 — To check a grade with only one division selects that division automatically
 9. NAV-01-09 — To check choosing a subject switches class straight away, with no separate confirm step
 10. NAV-01-10 — To check changing the grade after a subject is chosen clears the subject choice
@@ -25,14 +25,16 @@ shown update according to that Division.
 12. NAV-01-12 — Edge: to check clicking several grades quickly ends on the last grade clicked
 13. NAV-01-13 — Edge: to check switching quickly between Recent Classes and All My Classes always shows the selected tab's list
 14. NAV-01-14 — Edge: to check opening the class window and then the chapter window at once never leaves both open
+15. NAV-01-15 — To check a class chosen from Recent Classes moves to the top of the list _(split from NAV-01-07, 2026-09-28)_
 
 ### NAV-02 — Search Chapter
 
 1. NAV-02-01 — To check searching for a chapter returns accurate results
 2. NAV-02-02 — Negative: to check a search with zero matching results shows an appropriate empty-state message
-3. NAV-02-03 — Edge: to check searching with special characters or a very long query string doesn't break the search
+3. NAV-02-03 — Edge: to check searching with special characters doesn't break the search
 4. NAV-02-04 — Regression: clearing the search brings the full chapter list back, instead of leaving it empty
 5. NAV-02-05 — Edge: to check a search of only spaces is treated as no match, not ignored
+6. NAV-02-06 — Edge: to check searching with a very long (2,000-character) query doesn't break the search _(split from NAV-02-03, 2026-09-28)_
 
 ### NAV-03 — List Chapters
 
@@ -42,8 +44,9 @@ shown update according to that Division.
 
 ### NAV-04 — List Topics
 
-1. NAV-04-01 — To check the topic list displays correctly for a selected chapter
+1. NAV-04-01 — To check the topic list displays correctly for a selected chapter, every topic with a title
 2. NAV-04-02 — Negative: to check a chapter with zero topics shows an appropriate empty state
+3. NAV-04-03 — To check choosing a topic from the list makes it the current topic _(split from NAV-04-01, 2026-09-28)_
 
 ### NAV-05 — Last-accessed topic is restored
 
@@ -59,14 +62,17 @@ the app puts the user back where they were, e.g. Science, Grade 8A, Topic 1.6.
 
 Added 2026-09-26 from the reference suite (Grade/Subject/Division workbook, NAV-E2E-01/02, NAV-EXP-04/07, NAV-STATE-02) and Zoho bugs.
 
-1. NAV-06-01 — To check switching class closes an open player and stops any video that is playing
+1. NAV-06-01 — To check switching class closes an open player
 2. NAV-06-02 — To check switching class while a Magnet panel is open leaves no panel behind
 3. NAV-06-03 — Regression: after switching class, the Playlist shows only the new class's resources, not the previous class's (Zoho CWR-I768, TCN-I15324)
 4. NAV-06-04 — Edge: to check clicking several subjects quickly loads the last subject clicked, not an earlier one
 5. NAV-06-05 — To check opening and closing other panels leaves the current class, chapter and topic unchanged
+6. NAV-06-06 — To check switching class stops any video that is playing _(split from NAV-06-01, 2026-09-28)_
 
 ### NAV-07 — Fast and repeated class switching (added 2026-09-27)
 
-1. NAV-07-01 — Edge: double-clicking a subject switches class once; the label, Playlist and board all belong to the chosen class
+1. NAV-07-01 — Edge: double-clicking a subject switches to that class, and the class label shows it
 2. NAV-07-02 — Negative: switching class while a resource is still uploading keeps the resource in the class it was uploaded to (never in the class switched to)
 3. NAV-07-03 — Regression: switching class five times in a row quickly ends on the last class chosen and stays there (a late answer from an earlier switch does not switch it back)
+4. NAV-07-04 — Edge: after double-clicking a subject, the class window is closed and not reopened _(split from NAV-07-01, 2026-09-28)_
+5. NAV-07-05 — Edge: after double-clicking a subject, the new class's Playlist loads _(split from NAV-07-01, 2026-09-28)_

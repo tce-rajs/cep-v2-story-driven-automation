@@ -43,21 +43,34 @@ test.describe('PRE-04 Whiteboard is usable for all core actions', () => {
     await expect(textBox).toContainText('Hello');
   });
 
-  test('PRE-04-05: the user can open and use a widget', { tag: ['@smoke', '@positive'] }, async ({ page }) => {
-    const app = new WithoutLoginPage(page);
+  // Opening, using and closing a widget are one test each (split 2026-09-28): PRE-04-05, PRE-04-07, PRE-04-08.
+  const openClock = async (app) => {
     await app.openWidgets();
     await app.toolbar.widgetTool('Clock').click({ force: true });
+  };
 
+  test('PRE-04-05: the user can open a widget', { tag: ['@smoke', '@positive'] }, async ({ page }) => {
+    const app = new WithoutLoginPage(page);
+    await openClock(app);
     await expect(app.clockWidget).toBeVisible();
     await expect(app.clockShowTimeBtn).toBeVisible();
+  });
 
-    // Use it: set the hour, then press Show Time -- the widget must stay up and keep the value.
+  test('PRE-04-07: the user can use an open widget', { tag: ['@positive'] }, async ({ page }) => {
+    const app = new WithoutLoginPage(page);
+    await openClock(app);
+    await expect(app.clockWidget, 'set-up: the Clock is open').toBeVisible();
+    // Set the hour, then press Show Time -- the widget must stay up and keep the value.
     await app.clockHourInput.fill('3');
     await app.clockShowTimeBtn.click({ force: true });
     await expect(app.clockHourInput).toHaveValue('3');
     await expect(app.clockWidget).toBeVisible();
+  });
 
-    // ...and it can be dismissed again.
+  test('PRE-04-08: the user can close an open widget', { tag: ['@positive'] }, async ({ page }) => {
+    const app = new WithoutLoginPage(page);
+    await openClock(app);
+    await expect(app.clockWidget, 'set-up: the Clock is open').toBeVisible();
     await app.clockCloseBtn.click({ force: true });
     await expect(app.clockWidget).toHaveCount(0);
   });

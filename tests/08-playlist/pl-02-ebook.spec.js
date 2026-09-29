@@ -61,27 +61,28 @@ test.describe('PL-02 Open & navigate Ebook', () => {
     }
   );
 
+  // The contents panel (PL-02-03) and the linked-resources panel (PL-02-05): one test each (split 2026-09-28).
   test(
-    'PL-02-03: the ebook’s panels (contents, linked resources) open and close correctly',
+    'PL-02-03: the ebook’s contents panel opens and closes correctly',
     { tag: ['@functional'] },
     async ({ user }) => {
       await openEbook(user);
-      const {
-        ebookChapterDrawerToggle: contents,
-        ebookResourceDrawerToggle: linked,
-        ebookChapterItems: chapters,
-        ebookResourceCards: resources,
-      } = user.player;
-
-      // Contents panel: open, then close.
+      const contents = user.player.ebookChapterDrawerToggle;
       await expect.poll(() => visibleChapters(user).count(), { message: 'starts collapsed' }).toBe(0);
       await user.player.domClick(contents);
       await expect.poll(() => visibleChapters(user).count(), { message: 'contents panel opens' }).toBeGreaterThan(1);
       await user.page.waitForTimeout(1000); // let the open animation finish before toggling again
       await user.player.domClick(contents);
       await expect.poll(() => visibleChapters(user).count(), { message: 'contents panel closes' }).toBe(0);
+    }
+  );
 
-      // Linked-resources panel: open, then close.
+  test(
+    'PL-02-05: the ebook’s linked-resources panel opens and closes correctly',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await openEbook(user);
+      const { ebookResourceDrawerToggle: linked, ebookResourceCards: resources } = user.player;
       await user.player.domClick(linked);
       await expect(resources.first().or(user.player.ebookNoResourcesMsg), 'linked-resources panel opens').toBeVisible();
       await user.player.domClick(linked);
@@ -89,17 +90,14 @@ test.describe('PL-02 Open & navigate Ebook', () => {
     }
   );
 
+  // Chapter jumps (PL-02-04) and scrolling (PL-02-06): one test each (split 2026-09-28).
   test(
-    'PL-02-04: chapter-jump, pagination and scroll do not reproduce CEP v1’s recurring ebook navigation weak spot',
+    'PL-02-04: jumping between ebook chapters (forward, to the end, back to the start) always lands on the chapter chosen',
     { tag: ['@regression'] },
-    async ({ user, page }) => {
-      const errors = [];
-      page.on('pageerror', (err) => errors.push(err.message));
+    async ({ user }) => {
       await openEbook(user);
       const chapters = user.player.ebookChapterItems;
       const last = (await chapters.count()) - 1;
-
-      // Jump around: forward, to the far end, back to the start. Each jump must land on the chapter asked for.
       for (const target of [1, last, 0, last, 1]) {
         await ensureContentsOpen(user); // choosing a chapter can collapse the panel again
         await user.player.domClick(chapters.nth(target));
@@ -108,6 +106,21 @@ test.describe('PL-02 Open & navigate Ebook', () => {
           { timeout: 20000 }
         );
       }
+    }
+  );
+
+  test(
+    'PL-02-06: scrolling through an ebook keeps one chapter selected and causes no error',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const errors = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await openEbook(user);
+      await ensureContentsOpen(user);
+      await user.player.domClick(user.player.ebookChapterItems.nth(1));
+      await expect(user.player.ebookChapterItems.nth(1), 'set-up: a chapter selected').toHaveClass(/selected/, {
+        timeout: 20000,
+      });
 
       // Scroll through the page content; nothing may throw or jump chapters.
       const selectedBefore = await user.player.ebookSelectedChapter.count();

@@ -5,6 +5,9 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('WB-04 Background', () => {
+  // Draw below the teacher's writing (never on top of it, never clearing it) and compare only this test's content.
+  test.use({ freshSpace: true });
+
   test(
     'WB-04-01: changing the whiteboard background does not affect existing content',
     { tag: ['@smoke', '@functional'] },

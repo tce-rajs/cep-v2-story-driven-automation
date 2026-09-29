@@ -107,18 +107,30 @@ test.describe('NAV-01 Select Grade', () => {
       )
     );
 
+  // Choosing the second Recent class: it switches to it (NAV-01-07), and it moves to the top of the list (NAV-01-15) --
+  // one test each (split 2026-09-28).
+  /** Choose the second class in Recent Classes; returns its label ("Class 12 | A | Physics") and subject. */
+  const chooseSecondRecent = async (user) => {
+    await user.nav.ensureRecentClasses(3);
+    await user.nav.openClassPopup();
+    await user.nav.recentClassesTab.click({ timeout: 5000 });
+    const second = user.nav.recentClassButtons.nth(1);
+    const label = (await second.innerText()).replace(/\s+/g, ' ').trim();
+    await second.click();
+    return { label, subject: label.split('|').pop().trim() };
+  };
+
+  test('NAV-01-07: choosing a class from Recent Classes switches to it', { tag: ['@functional'] }, async ({ user }) => {
+    const { subject } = await chooseSecondRecent(user);
+    await expect(user.nav.currentClassBtn, 'switched to the chosen class').toContainText(subject, { timeout: 10000 });
+  });
+
   test(
-    'NAV-01-07: choosing a class from Recent Classes switches to it and moves it to the top of the list',
+    'NAV-01-15: a class chosen from Recent Classes moves to the top of the list',
     { tag: ['@functional'] },
     async ({ user }) => {
-      await user.nav.ensureRecentClasses(3);
-      await user.nav.openClassPopup();
-      await user.nav.recentClassesTab.click({ timeout: 5000 });
-      const second = user.nav.recentClassButtons.nth(1);
-      const label = (await second.innerText()).replace(/\s+/g, ' ').trim();
-      const subject = label.split('|').pop().trim();
-      await second.click();
-      await expect(user.nav.currentClassBtn, 'switched to the chosen class').toContainText(subject, { timeout: 10000 });
+      const { label, subject } = await chooseSecondRecent(user);
+      await expect(user.nav.currentClassBtn, 'set-up: switched').toContainText(subject, { timeout: 10000 });
       await user.nav.openClassPopup();
       await user.nav.recentClassesTab.click({ timeout: 5000 });
       const top = user.nav.recentClassButtons.first();

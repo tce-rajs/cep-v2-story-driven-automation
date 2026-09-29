@@ -92,7 +92,9 @@ test.describe('RES-04 DropIt', () => {
   );
 
   test(
-    'RES-04-04: a paired session allows sharing a link, and the shared link opens correctly when accessed',
+    // Whether sharing creates the Playlist resource at all is RES-04-06 (link) / RES-04-13 (file); this case is that the
+    // shared resource OPENS correctly (split 2026-09-28).
+    'RES-04-04: a link shared from a paired device opens correctly from the Playlist',
     { tag: ['@functional'] },
     async ({ user }) => {
       // 150 s: pairing, sharing, opening the player and removing the card again took just over 60 s live (2026-09-26).
@@ -107,9 +109,10 @@ test.describe('RES-04 DropIt', () => {
         // indicator on the phone (that phone-side text is unreadable anyway; see the file header).
         await user.addResource.dropitCloseBtn.click({ force: true, timeout: 5000 }).catch(() => {});
         await user.playlist.ensureDrawerVisible();
-        await expect(user.playlist.resourceCards, 'a new card was added for the shared link').toHaveCount(before + 1, {
-          timeout: 15000,
-        });
+        await expect(user.playlist.resourceCards, 'set-up: a new card was added for the shared link').toHaveCount(
+          before + 1,
+          { timeout: 15000 }
+        );
 
         const added = user.playlist.resourceCards.last();
         const title = ((await added.innerText()) || '').trim();
@@ -132,56 +135,51 @@ test.describe('RES-04 DropIt', () => {
     }
   );
 
-  test(
-    'RES-04-05: a paired session allows sharing a file, and the shared file opens correctly when accessed',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      test.setTimeout(60000);
-      const { browser, phone } = await pairDropit(user);
-      // CONFIRMED LIVE: DropIt only accepts png|jpg|jpeg|gif|bmp|pdf|doc|docx -- a .txt is rejected outright,
-      // no upload attempted, so this deliberately reuses the suite's existing valid PNG fixture.
-      const tmpFile = path.join(os.tmpdir(), PNG_FILE.name);
-      fs.writeFileSync(tmpFile, PNG_FILE.buffer);
-      try {
-        const before = await user.playlist.resourceCards.count();
-        await phone.uploadFile(tmpFile);
+  test('RES-04-05: a file shared from a paired device opens correctly', { tag: ['@functional'] }, async ({ user }) => {
+    test.setTimeout(60000);
+    const { browser, phone } = await pairDropit(user);
+    // CONFIRMED LIVE: DropIt only accepts png|jpg|jpeg|gif|bmp|pdf|doc|docx -- a .txt is rejected outright,
+    // no upload attempted, so this deliberately reuses the suite's existing valid PNG fixture.
+    const tmpFile = path.join(os.tmpdir(), PNG_FILE.name);
+    fs.writeFileSync(tmpFile, PNG_FILE.buffer);
+    try {
+      const before = await user.playlist.resourceCards.count();
+      await phone.uploadFile(tmpFile);
 
-        // CONFIRMED LIVE: a successful upload auto-closes DropIt and auto-opens the image player on the
-        // classroom side (more automatic than the link-share case, which only adds a Playlist card).
-        expect(await user.player.isPlayerOpen(), 'the uploaded file auto-opened').toBe(true);
-        const rendered = user.player.imageWrapper.or(user.player.imageGalleryImg).first();
-        await expect(rendered, 'an image player rendered').toBeVisible({ timeout: 15000 });
-        const box = await rendered.boundingBox();
-        expect(box.width, 'it renders at a real size, not collapsed').toBeGreaterThan(50);
-        expect(box.height).toBeGreaterThan(50);
+      // CONFIRMED LIVE: a successful upload auto-closes DropIt and auto-opens the image player on the
+      // classroom side (more automatic than the link-share case, which only adds a Playlist card).
+      expect(await user.player.isPlayerOpen(), 'the uploaded file auto-opened').toBe(true);
+      const rendered = user.player.imageWrapper.or(user.player.imageGalleryImg).first();
+      await expect(rendered, 'an image player rendered').toBeVisible({ timeout: 15000 });
+      const box = await rendered.boundingBox();
+      expect(box.width, 'it renders at a real size, not collapsed').toBeGreaterThan(50);
+      expect(box.height).toBeGreaterThan(50);
 
-        await user.player.closePlayer();
-        await user.playlist.ensureDrawerVisible();
-        await expect(user.playlist.resourceCards, 'a new card was added for the uploaded file').toHaveCount(
-          before + 1,
-          { timeout: 15000 }
-        );
-        // Closing a player leaves the drawer lowered until re-expanded (see PlaylistPage's own notes); the wait
-        // above is long enough for it to have re-collapsed, so re-confirm right before the hover-sensitive
-        // removal rather than trusting the earlier call to still hold.
-        await user.playlist.ensureDrawerVisible();
-        await user.playlist.removeOwnedAsset(user.playlist.resourceCards.last());
-      } finally {
-        fs.unlinkSync(tmpFile);
-        await browser.close();
-      }
+      await user.player.closePlayer();
+      await user.playlist.ensureDrawerVisible();
+      // (Whether the card was genuinely created is RES-04-13; waited for here only so the right card is removed.)
+      await expect(user.playlist.resourceCards, 'the new card for the uploaded file').toHaveCount(before + 1, {
+        timeout: 15000,
+      });
+      // Closing a player leaves the drawer lowered until re-expanded (see PlaylistPage's own notes); the wait
+      // above is long enough for it to have re-collapsed, so re-confirm right before the hover-sensitive
+      // removal rather than trusting the earlier call to still hold.
+      await user.playlist.ensureDrawerVisible();
+      await user.playlist.removeOwnedAsset(user.playlist.resourceCards.last());
+    } finally {
+      fs.unlinkSync(tmpFile);
+      await browser.close();
     }
-  );
+  });
 
+  // DropIt's "success shown but resource missing" failure mode: the Playlist's own COUNT genuinely increases, not just a
+  // "success"/"Resource Created" indicator appearing somewhere -- for a shared link (RES-04-06) and for a shared file
+  // (RES-04-13), one test each (split 2026-09-28). RES-04-04/05 check the resources also OPEN correctly.
   test(
-    'RES-04-06: DropIt’s "success shown but resource missing" failure mode does not recur',
+    'RES-04-06: sharing a link through DropIt genuinely creates a Playlist resource ("success shown but resource missing" does not recur)',
     { tag: ['@regression'] },
     async ({ user }) => {
       test.setTimeout(90000);
-      // Exercises both share paths in one regression case, checking the one thing the original bug report was
-      // about: the Playlist's own COUNT genuinely increasing, not just a "success"/"Resource Created" indicator
-      // appearing somewhere. RES-04-04/05 already verify each resource also OPENS correctly; this test is
-      // specifically about presence, the exact dimension the bug was in.
       const { browser: linkBrowser, phone: linkPhone } = await pairDropit(user);
       const beforeLink = await user.playlist.resourceCards.count();
       try {
@@ -197,7 +195,14 @@ test.describe('RES-04 DropIt', () => {
       } finally {
         await linkBrowser.close();
       }
+    }
+  );
 
+  test(
+    'RES-04-13: sharing a file through DropIt genuinely creates a Playlist resource ("success shown but resource missing" does not recur)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      test.setTimeout(90000);
       const { browser: fileBrowser, phone: filePhone } = await pairDropit(user);
       const tmpFile = path.join(os.tmpdir(), PNG_FILE.name);
       fs.writeFileSync(tmpFile, PNG_FILE.buffer);
@@ -228,19 +233,39 @@ test.describe('RES-04 DropIt', () => {
     await expect(user.addResource.dropitCloseBtn).toBeHidden();
   });
 
+  // Opening and closing DropIt 8 times: no stuck panel (RES-04-08), no duplicated panel (RES-04-14) -- one test each
+  // (split 2026-09-28).
   test(
-    'RES-04-08: opening and closing DropIt 8 times leaves no stuck or duplicated panel',
+    'RES-04-08: opening and closing DropIt 8 times, every Close really closes it (no stuck panel)',
     { tag: ['@edge'] },
     async ({ user }) => {
       test.setTimeout(180000);
       for (let i = 0; i < 8; i++) {
         await openDropIt(user);
         await user.addResource.dropitCloseBtn.click();
-        await expect(user.addResource.dropitQrCanvas).toBeHidden({ timeout: 10000 });
+        await expect(user.addResource.dropitQrCanvas, `closed after open/close ${i + 1}`).toBeHidden({
+          timeout: 10000,
+        });
+      }
+    }
+  );
+
+  test(
+    'RES-04-14: after opening and closing DropIt 8 times, opening it again shows exactly one panel',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      test.setTimeout(180000);
+      for (let i = 0; i < 8; i++) {
+        await openDropIt(user);
+        await user.addResource.dropitCloseBtn.click();
+        await user.addResource.dropitQrCanvas.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
       }
       await openDropIt(user);
-      await expect(user.addResource.dropitQrCanvas, 'one QR, not several').toHaveCount(1);
-      await user.addResource.dropitCloseBtn.click();
+      try {
+        await expect(user.addResource.dropitQrCanvas, 'one QR, not several').toHaveCount(1);
+      } finally {
+        await user.addResource.dropitCloseBtn.first().click();
+      }
     }
   );
 

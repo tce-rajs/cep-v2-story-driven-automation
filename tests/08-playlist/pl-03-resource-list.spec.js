@@ -9,17 +9,27 @@ test.describe('PL-03 Resource List', () => {
   test.describe('after closing resource previews', () => {
     test.use({ classMap: 'playersDefault' });
 
-    test(
-      'PL-03-01: the Playlist strip, Contents and Add-Resource controls do not become invisible after closing certain resource previews',
-      { tag: ['@regression'] },
-      async ({ user }) => {
-        const { player, playlist, addResource } = user;
-        for (const [name, cards, rendered] of [
-          ['PDF', player.worksheetCards, player.worksheetHeader.or(user.page.locator('canvas').first())],
-          ['video', player.videoCards, player.videoElement],
-          ['image', player.imageCards, player.imageWrapper.or(player.imageGalleryImg).first()],
-          ['weblink', player.weblinkCards, player.weblinkWrapper],
-        ]) {
+    // One test per preview type (split 2026-09-28), so one type failing does not hide the others.
+    const previews = [
+      ['PDF', (p) => p.worksheetCards, (p, page) => p.worksheetHeader.or(page.locator('canvas').first())],
+      ['video', (p) => p.videoCards, (p) => p.videoElement],
+      ['image', (p) => p.imageCards, (p) => p.imageWrapper.or(p.imageGalleryImg).first()],
+      ['weblink', (p) => p.weblinkCards, (p) => p.weblinkWrapper],
+    ];
+    for (const [type, cardsOf, renderedOf] of previews)
+      test(
+        `PL-03-01: the Playlist strip, Contents and Add-Resource controls stay visible after closing a ${type} preview`,
+        { tag: ['@regression'] },
+        async ({ user }) => {
+          const { player, playlist, addResource } = user;
+          // .85: the default Players topic has no Web link; the web-link case uses the one that does (moduleClassMap).
+          if (type === 'weblink') {
+            await user.nav.applyClassMap('playersWeblink');
+            await user.playlist.ensureDrawerVisible();
+          }
+          const name = type;
+          const cards = cardsOf(player);
+          const rendered = renderedOf(player, user.page);
           await expect(cards.first(), `${name} card present`).toBeAttached({ timeout: 10000 });
           await player.openResourceCard(cards);
           expect(await player.isPlayerOpen(), `${name} opened`).toBe(true);
@@ -40,8 +50,7 @@ test.describe('PL-03 Resource List', () => {
           await expect(playlist.resourceCards.first(), `strip visible after closing the ${name}`).toBeVisible();
           await expect(addResource.addResourcesTrigger, `Add Resource visible after closing the ${name}`).toBeVisible();
         }
-      }
-    );
+      );
   });
 
   test.describe('with a split-screen quiz', () => {

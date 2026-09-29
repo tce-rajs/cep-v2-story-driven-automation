@@ -5,23 +5,32 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('NAV-06 Switching class while other work is open', () => {
-  test(
-    'NAV-06-01: switching class closes an open player and stops a playing video',
-    { tag: ['@functional'] },
-    async ({ user, page }) => {
-      await user.nav.applyClassMap('playersDefault');
-      await user.playlist.ensureDrawerVisible();
-      await user.player.openResourceCard(user.player.videoCards);
-      expect(await user.player.isPlayerOpen(), 'video player open').toBe(true);
-      const video = page.locator('video').filter({ visible: true }).first();
-      await video.evaluate((v) => v.play().catch(() => {})).catch(() => {});
+  // With a video playing, switching class: the player closes (NAV-06-01), and the video stops (NAV-06-06) -- one test
+  // each (split 2026-09-28).
+  const switchClassWithVideoPlaying = async (user, page) => {
+    await user.nav.applyClassMap('playersDefault');
+    await user.playlist.ensureDrawerVisible();
+    await user.player.openResourceCard(user.player.videoCards);
+    expect(await user.player.isPlayerOpen(), 'set-up: video player open').toBe(true);
+    const video = page.locator('video').filter({ visible: true }).first();
+    await video.evaluate((v) => v.play().catch(() => {})).catch(() => {});
+    await user.nav.resetToClass('Class 12', 'A', 'Physics');
+  };
 
-      await user.nav.resetToClass('Class 12', 'A', 'Physics');
-      await expect(user.player.closeIcon.first(), 'player closed').toBeHidden({ timeout: 10000 });
-      const playing = await page.locator('video').evaluateAll((vs) => vs.filter((v) => !v.paused && !v.ended).length);
-      expect(playing, 'no video still playing').toBe(0);
-    }
-  );
+  test('NAV-06-01: switching class closes an open player', { tag: ['@functional'] }, async ({ user, page }) => {
+    await switchClassWithVideoPlaying(user, page);
+    await expect(user.player.closeIcon.first(), 'player closed').toBeHidden({ timeout: 10000 });
+  });
+
+  test('NAV-06-06: switching class stops a playing video', { tag: ['@functional'] }, async ({ user, page }) => {
+    await switchClassWithVideoPlaying(user, page);
+    await expect
+      .poll(() => page.locator('video').evaluateAll((vs) => vs.filter((v) => !v.paused && !v.ended).length), {
+        message: 'no video still playing',
+        timeout: 10000,
+      })
+      .toBe(0);
+  });
 
   test(
     'NAV-06-02: switching class while a Magnet panel is open leaves no panel behind',
@@ -95,8 +104,9 @@ test.describe('NAV-06 Switching class while other work is open', () => {
     { tag: ['@functional'] },
     async ({ user }) => {
       await user.nav.applyClassMap('default');
-      const cls = await user.whiteboard.currentClassBtn.innerText();
-      const topic = await user.whiteboard.currentChapterTopicBtn.innerText();
+      const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, '');
+      const cls = await flat(user.whiteboard.currentClassBtn);
+      const topic = await flat(user.whiteboard.currentChapterTopicBtn);
       // Minimap, Add Resource, the Playlist options menu and the User menu, each opened and closed.
       await user.minimap.open(user.toolbar);
       await user.minimap.close();
@@ -106,8 +116,8 @@ test.describe('NAV-06 Switching class while other work is open', () => {
       await user.playlist.closeOptionsMenu();
       await user.userMenu.openProfileMenu();
       await user.page.keyboard.press('Escape');
-      await expect(user.whiteboard.currentClassBtn).toHaveText(cls);
-      await expect(user.whiteboard.currentChapterTopicBtn).toHaveText(topic);
+      expect(await flat(user.whiteboard.currentClassBtn), 'class unchanged').toBe(cls);
+      expect(await flat(user.whiteboard.currentChapterTopicBtn), 'chapter/topic unchanged').toBe(topic);
     }
   );
 });

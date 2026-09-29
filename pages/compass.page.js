@@ -211,7 +211,7 @@ class CompassPage {
     // beforeEach anyway, so navigating straight back to the Teaching base
     // URL is a legitimate, equivalent way to restore a known state for
     // subsequent tests/steps in the same spec file.
-    const base = process.env.BASE_URL || 'https://ce-qa-school.devstudi.com/teach/';
+    const { BASE_URL: base } = require('../config/env');
     await this.page.goto(base).catch(() => {});
     await this.profileAvatar.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
     return { switched: this.page.url().includes('/teach/'), viaFallbackNavigation: true };

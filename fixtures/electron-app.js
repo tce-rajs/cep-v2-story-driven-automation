@@ -15,11 +15,11 @@
 //   2. The client needs `--env=qa` on its command line, or it silently talks
 //      to the prod backend instead of QA.
 //   3. C:\Users\Public\tce_settings.json (external, not part of this project)
-//      is this machine's saved client profile. Its "path" must be
-//      https://ce-qa-school.devstudi.com/teach/ — it was found set to the
-//      http:// (not https://) version, which made the client fail to load the
-//      real app at all. Already fixed on this machine; documented here in
-//      case a fresh machine hits the same thing.
+//      is this machine's saved client profile. Its "path" must be the target
+//      server, http://172.18.2.85/teach/ (owner, 2026-09-28 -- the old QA server
+//      ce-qa-school.devstudi.com must not be used). Set it with
+//      `npm run set-env new-server` (or `npm run set-server -- <url>`), and keep
+//      it to ONE profile (see the BLOCKER check below).
 
 const fs = require('fs');
 const base = require('@playwright/test');

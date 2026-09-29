@@ -194,32 +194,46 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
     }
   );
 
+  // A Worksheet and a Weblink open together: the weblink opens properly alongside (PLR-03-08), and the worksheet keeps
+  // working (PLR-03-14) -- one test each (split 2026-09-28).
+  const openWeblinkOverWorksheet = async (user, page) => {
+    // .85: the only topic found with a Worksheet and a Web link together (moduleClassMap).
+    await user.nav.applyClassMap('playersWeblink');
+    await user.playlist.ensureDrawerVisible();
+    await openWorksheet(user);
+    await expect(user.player.weblinkCards.first()).toBeAttached();
+    await user.player.openResourceCard(user.player.weblinkCards);
+    await page.waitForTimeout(2500);
+  };
+
   test(
-    'PLR-03-08: a Worksheet and a different player type (a Weblink) open simultaneously without conflict',
+    'PLR-03-08: a Weblink opens properly while a Worksheet is already open',
     { tag: ['@concurrency'] },
     async ({ user, page }) => {
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
-      await openWorksheet(user);
-
-      // Open the Weblink while the worksheet is still up.
-      await expect(user.player.weblinkCards.first()).toBeAttached();
-      await user.player.openResourceCard(user.player.weblinkCards);
-      await page.waitForTimeout(2500);
+      await openWeblinkOverWorksheet(user, page);
       await expect(user.player.weblinkWrapper, 'the weblink opened').toBeVisible({ timeout: 15000 });
       // toBeVisible() only proves the wrapper exists, not that it occupies a real amount of screen alongside the
       // worksheet. CONFIRMED LIVE: a correctly-opened weblink wrapper is ~980x760 in this window.
       const weblinkBox = await user.player.weblinkWrapper.boundingBox();
       expect(weblinkBox.width, 'the weblink renders at a real size, not collapsed').toBeGreaterThan(150);
       expect(weblinkBox.height, 'the weblink renders at a real size, not collapsed').toBeGreaterThan(150);
+      expect(errors, 'no uncaught page errors').toEqual([]);
+    }
+  );
 
-      // Neither broke the other: the PDF is still there and still turns pages.
+  test(
+    'PLR-03-14: with a Weblink open over it, the Worksheet still turns pages',
+    { tag: ['@concurrency'] },
+    async ({ user, page }) => {
+      await openWeblinkOverWorksheet(user, page);
+      await expect(user.player.weblinkWrapper, 'set-up: the weblink opened').toBeVisible({ timeout: 15000 });
       const before = await currentPage(user);
       // DOM-level click: with the weblink also open, the pager can sit outside the viewport for a coordinate click.
       await user.player.domClick(user.player.worksheetNextPage.first());
       await page.waitForTimeout(1000);
       expect(await currentPage(user), 'the worksheet still works alongside the weblink').toBe(before + 1);
-      expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
 
@@ -233,19 +247,37 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
     // The story came from the reference suite's PLR-WS-09. Owner to decide: drop the case, or raise a product gap.
   });
 
+  // The answer key button shows the answers (PLR-03-10) and hides them again (PLR-03-15) -- one test each (split
+  // 2026-09-28).
+  /** Open the worksheet, skip if it has no answer key; returns a function reading the page's current render. */
+  const openWithAnswerKey = async (user) => {
+    await openWorksheet(user);
+    const hasKey = await user.player.worksheetAnswerKeyBtn.isVisible().catch(() => false);
+    test.skip(!hasKey, "This topic's worksheet has no answer key.");
+    return () => pdfCanvas(user).evaluate((c) => c.toDataURL());
+  };
+
   test(
-    'PLR-03-10: the answer key button shows and hides the answers, on a worksheet that has one',
+    'PLR-03-10: the answer key button shows the answers, on a worksheet that has one',
     { tag: ['@functional'] },
     async ({ user }) => {
-      await openWorksheet(user);
-      const hasKey = await user.player.worksheetAnswerKeyBtn.isVisible().catch(() => false);
-      test.skip(!hasKey, "This topic's worksheet has no answer key.");
-      // The page is re-rendered on every toggle, so "hidden again" is judged against the answers-shown render, not
-      // against the very first render pixel for pixel.
-      const render = () => pdfCanvas(user).evaluate((c) => c.toDataURL());
+      const render = await openWithAnswerKey(user);
       const before = await render();
       await user.player.worksheetAnswerKeyBtn.click({ force: true });
       await expect.poll(render, { message: 'answers shown', timeout: 10000 }).not.toBe(before);
+    }
+  );
+
+  test(
+    'PLR-03-15: pressing the answer key button again hides the answers',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const render = await openWithAnswerKey(user);
+      const before = await render();
+      await user.player.worksheetAnswerKeyBtn.click({ force: true });
+      await expect.poll(render, { message: 'set-up: answers shown', timeout: 10000 }).not.toBe(before);
+      // The page is re-rendered on every toggle, so "hidden again" is judged against the answers-shown render, not
+      // against the very first render pixel for pixel.
       const shown = await render();
       await user.player.worksheetAnswerKeyBtn.click({ force: true });
       await expect.poll(render, { message: 'answers hidden again', timeout: 10000 }).not.toBe(shown);

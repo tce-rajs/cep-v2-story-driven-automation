@@ -55,38 +55,53 @@ test.describe('PLR-01 Attempt a quiz', () => {
     }
   );
 
+  // The AIR card popup: it appears and goes away by itself after ~5 s (PLR-01-02), and the question only loads once it
+  // is gone (PLR-01-23) -- one test each (split 2026-09-28).
+  /** Open the quiz up to the AIR card popup; returns the popup locator, once it is showing. */
+  const openToAirCard = async (user, page) => {
+    const { player } = user;
+    await player.quizCards.first().waitFor({ state: 'attached', timeout: 10000 });
+    await player.openResourceCard(player.quizCards);
+    if (await player.quizLaunchScreenBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await player.quizLaunchScreenBtn.click({ force: true });
+    }
+    if (await player.quizClassStrengthStartBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await player.quizClassStrengthStartBtn.click({ force: true });
+    }
+    const popup = page
+      .getByText(/air card/i)
+      .filter({ visible: true })
+      .first();
+    await expect(popup, 'the AIR card popup appears').toBeVisible({ timeout: 10000 });
+    return popup;
+  };
+
   test(
-    'PLR-01-02: the AIR card popup appears and disappears after ~5 seconds, with the question only loading once it is gone',
+    'PLR-01-02: the AIR card popup appears and goes away by itself after ~5 seconds',
     { tag: ['@functional'] },
     async ({ user, page }) => {
-      const { player } = user;
-      await player.quizCards.first().waitFor({ state: 'attached', timeout: 10000 });
-      await player.openResourceCard(player.quizCards);
-      if (await player.quizLaunchScreenBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
-        await player.quizLaunchScreenBtn.click({ force: true });
-      }
-      if (await player.quizClassStrengthStartBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
-        await player.quizClassStrengthStartBtn.click({ force: true });
-      }
-
-      const popup = page
-        .getByText(/air card/i)
-        .filter({ visible: true })
-        .first();
-      await expect(popup, 'the AIR card popup appears').toBeVisible({ timeout: 10000 });
+      const popup = await openToAirCard(user, page);
       const shownAt = Date.now();
-      // The question must NOT be loaded while the popup is still up.
-      expect(await player.quizQuestion.isVisible().catch(() => false), 'no question yet, popup still showing').toBe(
-        false
-      );
-
       await expect(popup, 'the popup goes away by itself').toBeHidden({ timeout: 15000 });
       const shownFor = Date.now() - shownAt;
       test.info().annotations.push({ type: 'note', description: `AIR card popup visible for ~${shownFor}ms` });
       expect(shownFor, 'roughly five seconds').toBeGreaterThan(3000);
       expect(shownFor).toBeLessThan(9000);
+    }
+  );
 
-      await expect(player.quizQuestion, 'and only then the first question').toBeVisible({ timeout: 15000 });
+  test(
+    'PLR-01-23: the first question only loads once the AIR card popup is gone',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const popup = await openToAirCard(user, page);
+      // The question must NOT be loaded while the popup is still up.
+      expect(
+        await user.player.quizQuestion.isVisible().catch(() => false),
+        'no question yet, popup still showing'
+      ).toBe(false);
+      await expect(popup, 'set-up: the popup goes away').toBeHidden({ timeout: 15000 });
+      await expect(user.player.quizQuestion, 'and only then the first question').toBeVisible({ timeout: 15000 });
     }
   );
 
@@ -299,20 +314,26 @@ test.describe('PLR-01 Attempt a quiz', () => {
     }
   );
 
-  test(
-    'PLR-01-17: a wrong answer is marked wrong and the correct answer is shown',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      await started(user);
-      const found = await findQuestion(user, async (u) => {
-        await u.player.answerCurrentQuestion(0);
-        return (await u.player.quizIncorrectOptions.count()) > 0;
-      });
-      expect(found, 'a question where the first option is wrong').not.toBeNull();
-      await expect(user.player.quizIncorrectOptions.first(), 'marked wrong').toBeVisible();
-      await expect(user.player.quizCorrectOptions.first(), 'correct answer shown').toBeVisible();
-    }
-  );
+  // After a wrong answer: it is marked wrong (PLR-01-17), and the correct answer is shown (PLR-01-24) -- one test each
+  // (split 2026-09-28).
+  const answerWrongly = async (user) => {
+    await started(user);
+    const found = await findQuestion(user, async (u) => {
+      await u.player.answerCurrentQuestion(0);
+      return (await u.player.quizIncorrectOptions.count()) > 0;
+    });
+    expect(found, 'set-up: a question where the first option is wrong').not.toBeNull();
+  };
+
+  test('PLR-01-17: a wrong answer is marked wrong', { tag: ['@functional'] }, async ({ user }) => {
+    await answerWrongly(user);
+    await expect(user.player.quizIncorrectOptions.first(), 'marked wrong').toBeVisible();
+  });
+
+  test('PLR-01-24: after a wrong answer, the correct answer is shown', { tag: ['@functional'] }, async ({ user }) => {
+    await answerWrongly(user);
+    await expect(user.player.quizCorrectOptions.first(), 'correct answer shown').toBeVisible();
+  });
 
   test('PLR-01-18: Show Answer reveals the correct option', { tag: ['@functional'] }, async ({ user }) => {
     await started(user);

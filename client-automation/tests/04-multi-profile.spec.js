@@ -48,7 +48,7 @@ test.describe('CLIENT-04 Multiple profiles', () => {
 
   test.beforeEach(() => {
     backup = backupSettingsRaw();
-    forceSingleProfile({ title: 'QA-V2', url: 'https://ce-qa-school.devstudi.com/teach/' });
+    forceSingleProfile({ title: 'QA-V2', url: 'http://172.18.2.85/teach/' });
   });
 
   test.afterEach(() => {
@@ -128,7 +128,7 @@ test.describe('CLIENT-04 Multiple profiles', () => {
       await shell.waitForTimeout(4000);
       const teachAfterPick = teachWindowOf(app);
       expect(teachAfterPick, 'picking a tile opens the teach webview').not.toBeUndefined();
-      expect(teachAfterPick.url()).toContain('ce-qa-school.devstudi.com');
+      expect(teachAfterPick.url()).toContain('172.18.2.85');
     } finally {
       await app.close();
     }

@@ -5,7 +5,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ classMap: 'default', cleanBoard: true });
+test.use({ classMap: 'default', freshSpace: true });
 
 function watchNoticePosts(page) {
   const posts = [];
@@ -69,29 +69,50 @@ test.describe('AIN-03 Choose classes and send the notice', () => {
     else await expect(n.classCheckbox(0), 'the current class stays ticked').toBeChecked();
   });
 
+  // Sending: the notice is delivered (AIN-03-03), a success message shows (AIN-03-05), and the composer closes
+  // (AIN-03-06) -- one test each (split 2026-09-28). Each really sends one notice to Class 12 A.
+  /** Fill a title and press Send with only the current class ticked; returns the send response and counted posts. */
+  const sendNotice = async (user, page) => {
+    const n = user.aiNotices;
+    const posts = watchNoticePosts(page);
+    await onlyFirstClass(n);
+    await n.titleInput.fill(`AutoTest notice ${Date.now()}`);
+    await n.hideKeyboard();
+    const response = page.waitForResponse(
+      (r) => r.request().method() === 'POST' && /notice/i.test(r.url()) && !/ocr|check_text/i.test(r.url()),
+      { timeout: 30000 }
+    );
+    await n.sendBtn.click();
+    return { response: await response, posts };
+  };
+
   test(
-    'AIN-03-03: Send delivers the notice and shows a success message (regression, Zoho TCN-I16615)',
+    'AIN-03-03: Send delivers the notice, with exactly one send request (regression, Zoho TCN-I16615)',
     { tag: ['@regression', '@smoke'] },
     async ({ user, page }) => {
-      const n = user.aiNotices;
-      const posts = watchNoticePosts(page);
-      await onlyFirstClass(n);
-      await n.titleInput.fill(`AutoTest notice ${Date.now()}`);
-      await n.hideKeyboard();
-      const response = page.waitForResponse(
-        (r) => r.request().method() === 'POST' && /notice/i.test(r.url()) && !/ocr|check_text/i.test(r.url()),
-        { timeout: 30000 }
-      );
-      await n.sendBtn.click();
-      expect((await response).ok(), 'the send request succeeded').toBe(true);
-      await expect(
-        n.snackbar.filter({ hasText: /sent|success|shared|published/i }).first(),
-        'success message'
-      ).toBeVisible({ timeout: 15000 });
-      await expect(n.titleInput, 'composer closed after sending').toBeHidden({ timeout: 15000 });
-      expect(posts).toHaveLength(1);
+      const { response, posts } = await sendNotice(user, page);
+      expect(response.ok(), 'the send request succeeded').toBe(true);
+      await page.waitForTimeout(2000);
+      expect(posts, 'one send request').toHaveLength(1);
     }
   );
+
+  test(
+    'AIN-03-05: sending a notice shows a success message (regression, Zoho TCN-I16615)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      await sendNotice(user, page);
+      await expect(
+        user.aiNotices.snackbar.filter({ hasText: /sent|success|shared|published/i }).first(),
+        'success message'
+      ).toBeVisible({ timeout: 15000 });
+    }
+  );
+
+  test('AIN-03-06: the notice composer closes after sending', { tag: ['@regression'] }, async ({ user, page }) => {
+    await sendNotice(user, page);
+    await expect(user.aiNotices.titleInput, 'composer closed after sending').toBeHidden({ timeout: 15000 });
+  });
 
   test(
     'AIN-03-04: double-clicking Send sends the notice only once (regression)',

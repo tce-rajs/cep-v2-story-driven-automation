@@ -8,17 +8,32 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('HDR-07 Switch Mode', () => {
+  // Teach -> Plan (HDR-07-01) and Plan -> Teach (HDR-07-05) are one test each (split 2026-09-28).
   test(
-    'HDR-07-01: Switch Mode changes between Teach Mode and Plan Mode and updates the UI',
+    'HDR-07-01: Switch Mode changes from Teach Mode to Plan Mode and updates the UI',
     { tag: ['@smoke', '@functional'] },
     async ({ user, page }) => {
       await expect(page).toHaveURL(/\/teach\//);
+      try {
+        const toPlan = await user.compass.switchToPlanningMode();
+        expect(toPlan.switched, 'switched into Plan Mode').toBe(true);
+        await expect(page).toHaveURL(/\/plan\//);
+        // The Teach UI is gone: no toolbar avatar in the Plan app.
+        await expect(user.login.avatar).toBeHidden();
+      } finally {
+        // Leave the account in Teach Mode for whatever runs next.
+        if (page.url().includes('/plan/')) await user.compass.switchToTeachingMode().catch(() => {});
+      }
+    }
+  );
 
+  test(
+    'HDR-07-05: Switch Mode changes from Plan Mode back to Teach Mode and updates the UI',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user, page }) => {
       const toPlan = await user.compass.switchToPlanningMode();
-      expect(toPlan.switched, 'switched into Plan Mode').toBe(true);
+      expect(toPlan.switched, 'set-up: in Plan Mode').toBe(true);
       await expect(page).toHaveURL(/\/plan\//);
-      // The Teach UI is gone: no toolbar avatar in the Plan app.
-      await expect(user.login.avatar).toBeHidden();
 
       const toTeach = await user.compass.switchToTeachingMode();
       expect(toTeach.switched, 'switched back into Teach Mode').toBe(true);
@@ -87,36 +102,53 @@ test.describe('HDR-07 Switch Mode', () => {
     }
   );
 
+  // With no network: an in-app error is shown (HDR-07-04), and the app stays in Teach Mode instead of crashing
+  // (HDR-07-06) -- one test each (split 2026-09-28).
+  // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): with the network cut, clicking Planning does not show any in-app error
+  // -- the window navigates to Chromium's own error page (chrome-error://chromewebdata/) and the teach app is gone.
+  // Tracked as expected-to-fail so it isn't masked; needs a product decision.
+  const OFFLINE_SWITCH = 'Switch Mode with no network drops to a browser error page instead of an in-app error';
+
+  /** Cut the network and click Planning; runs `check` while still offline, then restores the network. */
+  const switchOffline = async (user, page, check) => {
+    await user.userMenu.openProfileMenu();
+    // context.setOffline() is a no-op in the Electron client (fetch still succeeds, navigator.onLine stays true),
+    // so the network is cut by aborting every request on the page instead.
+    await page.route('**/*', (route) => route.abort('internetdisconnected'));
+    try {
+      await user.compass.planningModeOption.click({ force: true }).catch(() => {});
+      await page.waitForTimeout(3000);
+      await check();
+    } finally {
+      await page.unroute('**/*');
+    }
+  };
+
   test(
-    'HDR-07-04: switching mode with no network shows an appropriate error, not a silent failure or crash',
+    'HDR-07-04: switching mode with no network shows an appropriate in-app error, not a silent failure',
     { tag: ['@negative', '@interruption'] },
     async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): with the network cut, clicking Planning does not show any
-      // in-app error -- the window navigates to Chromium's own error page (chrome-error://chromewebdata/) and the
-      // teach app is gone. Tracked as expected-to-fail so it isn't masked; needs a product decision.
-      test.fail(true, 'Switch Mode with no network drops to a browser error page instead of an in-app error');
-      const errors = [];
-      page.on('pageerror', (err) => errors.push(err.message));
-
-      await user.userMenu.openProfileMenu();
-      // context.setOffline() is a no-op in the Electron client (fetch still succeeds, navigator.onLine stays true),
-      // so the network is cut by aborting every request on the page instead.
-      await page.route('**/*', (route) => route.abort('internetdisconnected'));
-      try {
-        await user.compass.planningModeOption.click({ force: true }).catch(() => {});
-        await page.waitForTimeout(3000);
-
-        // Still alive, still in Teach Mode...
-        expect(page.url()).toContain('/teach/');
-        expect((await page.locator('body').innerText()).trim().length).toBeGreaterThan(20);
-        // ...and it told the user something went wrong.
+      test.fail(true, OFFLINE_SWITCH);
+      await switchOffline(user, page, async () => {
         await expect(
           page.getByText(/offline|no (internet|network|connection)|unable to|couldn.?t|failed|try again/i).first()
         ).toBeVisible({ timeout: 5000 });
+      });
+    }
+  );
+
+  test(
+    'HDR-07-06: switching mode with no network leaves the app alive in Teach Mode, not crashed',
+    { tag: ['@negative', '@interruption'] },
+    async ({ user, page }) => {
+      test.fail(true, OFFLINE_SWITCH);
+      const errors = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await switchOffline(user, page, async () => {
+        expect(page.url(), 'still in Teach Mode').toContain('/teach/');
+        expect((await page.locator('body').innerText()).trim().length, 'page has content').toBeGreaterThan(20);
         expect(errors, 'no uncaught page errors').toEqual([]);
-      } finally {
-        await page.unroute('**/*');
-      }
+      });
     }
   );
 });

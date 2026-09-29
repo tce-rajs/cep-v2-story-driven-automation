@@ -100,27 +100,34 @@ test.describe('PLR-04 Navigate an ebook', () => {
     }
   );
 
+  // Chapter jumps (PLR-04-04) and scrolling (PLR-04-05): one test each (split 2026-09-28).
   test(
-    'PLR-04-04: chapter-jump, pagination and scroll do not reproduce CEP v1’s recurring ebook navigation weak spot',
+    'PLR-04-04: jumping between ebook chapters, back and forth, always lands on the chapter chosen (CEP v1’s weak spot)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      await openEbook(user);
+      const chapters = user.player.ebookChapterItems;
+      const last = (await chapters.count()) - 1;
+      for (const target of [1, last, 0, last, 1, 0]) {
+        await jumpTo(user, target);
+        await expect(chapters.nth(target), `chapter ${target + 1} selected after jumping to it`).toHaveClass(
+          /selected/,
+          { timeout: 20000 }
+        );
+      }
+    }
+  );
+
+  test(
+    'PLR-04-05: scrolling an ebook neither changes chapter by itself nor causes an error',
     { tag: ['@regression'] },
     async ({ user, page }) => {
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
       await openEbook(user);
       const chapters = user.player.ebookChapterItems;
-      const last = (await chapters.count()) - 1;
-
-      // Jump around; each jump must land on the chapter asked for, every time.
-      for (const target of [1, last, 0, last, 1, 0]) {
-        await jumpTo(user, target);
-        await expect(chapters.nth(target), `chapter ${target + 1} selected after jumping to it`).toHaveClass(
-          /selected/,
-          {
-            timeout: 20000,
-          }
-        );
-      }
-      // Then scroll: it must neither throw nor change chapter by itself.
+      await jumpTo(user, 0);
+      await expect(chapters.nth(0), 'set-up: chapter 1 selected').toHaveClass(/selected/, { timeout: 20000 });
       for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 800);
       await page.waitForTimeout(500);
       await expect(chapters.nth(0), 'scrolling did not switch chapter on its own').toHaveClass(/selected/);

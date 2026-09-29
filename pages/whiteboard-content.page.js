@@ -113,13 +113,24 @@ class WhiteboardContent {
     const area = await this.writingArea();
     const top = box.y + area.y;
     const doPan = pan || ((dy) => this.panUp(dy));
+    const everything = this.toolbar.wbContainer.locator('svg path, svg image, svg foreignObject');
     for (let i = 0; i < 40; i++) {
-      const bottom = await this.toolbar.paths.evaluateAll((els) =>
+      const bottom = await everything.evaluateAll((els) =>
         els.reduce((m, e) => Math.max(m, e.getBoundingClientRect().bottom), -Infinity)
       );
       if (!Number.isFinite(bottom) || bottom < top - 10) return;
       await doPan(Math.min(area.height, bottom - top + 60));
     }
+  }
+
+  /** Start a test on empty board space WITHOUT erasing anything (owner rule, 2026-09-29: never clear the teacher's
+   * board). Pans below everything already on the board, then tags that content as existing so the test's own counts,
+   * snapshots and "last stroke" lookups see only what the test adds. Replaces the old Clear-whiteboard set-up. */
+  async startOnFreshSpace() {
+    await this.toolbar.waitForBoardToSettle();
+    await this.panBelowExistingWriting();
+    await this.toolbar.markExisting();
+    await this.toolbar.selectTool('gtSelect');
   }
 
   /** Start recording every autosave message ("Saving whiteboard …" / "Whiteboard Saved! N stroke(s)") with the time
@@ -152,14 +163,16 @@ class WhiteboardContent {
   async snapshot() {
     await this.toolbar.wbSvg.waitFor({ state: 'visible', timeout: 15000 });
     await this.toolbar.waitForBoardToSettle();
+    // Only what the test added: content tagged by startOnFreshSpace() as already on the board is left out.
     return this.page.evaluate(() => {
       const svg = document.querySelector('[data-qa-id="wb-drawing-container"] svg');
-      const texts = [...svg.querySelectorAll('foreignObject.text-element')]
+      const own = ':not([data-autotest-existing])';
+      const texts = [...svg.querySelectorAll(`foreignObject.text-element${own}`)]
         .map((el) => (el.textContent || '').trim())
         .sort();
       return {
-        paths: svg.querySelectorAll('path').length,
-        images: svg.querySelectorAll('image').length,
+        paths: svg.querySelectorAll(`path${own}`).length,
+        images: svg.querySelectorAll(`image${own}`).length,
         texts,
       };
     });
@@ -167,6 +180,8 @@ class WhiteboardContent {
 
   /** The `d` attribute of every drawn path — a fingerprint of the exact geometry on the board. */
   async pathGeometry() {
+    // The app can re-render the board (zoom, reload, class switch): tag the teacher's existing strokes again first.
+    await this.toolbar.remarkExisting();
     return this.toolbar.paths.evaluateAll((els) => els.map((e) => e.getAttribute('d')));
   }
 

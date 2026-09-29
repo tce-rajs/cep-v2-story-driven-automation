@@ -19,7 +19,7 @@ test.describe('CLIENT-08 Settings: Add Web URL / Advanced Options / clear-cache'
 
   test.beforeEach(() => {
     backup = backupSettingsRaw();
-    forceSingleProfile({ title: 'QA-V2', url: 'https://ce-qa-school.devstudi.com/teach/' });
+    forceSingleProfile({ title: 'QA-V2', url: 'http://172.18.2.85/teach/' });
   });
 
   test.afterEach(() => {

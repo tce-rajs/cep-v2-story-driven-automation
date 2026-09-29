@@ -46,25 +46,26 @@ test.describe('RES-06 Add Resource menu', () => {
     );
   }
 
-  test(
-    "RES-06-03: closing an option's screen returns cleanly to the whiteboard",
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      for (const name of ['create', 'library', 'gallery']) {
+  // One test per option (split 2026-09-28), so one option failing does not hide the others: the screen closes, no menu
+  // is left open, and the whiteboard takes a stroke again.
+  for (const name of ['create', 'library', 'gallery']) {
+    test(
+      `RES-06-03: closing an option's screen returns cleanly to the whiteboard (${name})`,
+      { tag: ['@functional'] },
+      async ({ user }) => {
         const s = screens(user.addResource)[name];
         await user.addResource.openAction(name);
-        await expect(s.shown).toBeVisible({ timeout: 20000 });
+        await expect(s.shown, 'set-up: the screen opened').toBeVisible({ timeout: 20000 });
         await s.close.click({ force: true });
         await expect(s.shown, `${name} closed`).toBeHidden({ timeout: 10000 });
         await expect(user.addResource.actions.create, 'no menu left open').toBeHidden();
+        const before = await user.toolbar.pathCount();
+        await user.toolbar.penStroke({ x: 400, y: 400 }, { x: 600, y: 420 });
+        expect(await user.toolbar.pathCount(), 'the whiteboard is usable again').toBeGreaterThan(before);
+        await user.toolbar.tool('gtUndo').click({ force: true });
       }
-      // The whiteboard is usable again.
-      const before = await user.toolbar.pathCount();
-      await user.toolbar.penStroke({ x: 400, y: 400 }, { x: 600, y: 420 });
-      expect(await user.toolbar.pathCount()).toBeGreaterThan(before);
-      await user.toolbar.tool('gtUndo').click({ force: true });
-    }
-  );
+    );
+  }
 
   test(
     'RES-06-04: pressing "+" while an option\'s screen is open does not open a second menu on top (regression)',

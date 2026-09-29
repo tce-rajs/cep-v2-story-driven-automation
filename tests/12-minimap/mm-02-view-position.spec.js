@@ -4,7 +4,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 async function setZoom(user, clicksIn, clicksOut = 0) {
   const tb = user.toolbar;
@@ -38,14 +38,14 @@ test.describe('MM-02 See where the current view is on the board', () => {
     }
   );
 
+  // Zooming the main canvas: the Minimap's percentage follows it (MM-02-02), and the viewport rectangle shrinks
+  // (MM-02-07) -- one test each (split 2026-09-28).
   test(
-    'MM-02-02: zooming the main canvas resizes the viewport rectangle and updates the zoom percentage',
+    'MM-02-02: zooming the main canvas updates the Minimap’s zoom percentage to match',
     { tag: ['@functional'] },
     async ({ user }) => {
       await user.minimap.open(user.toolbar);
-      const before = await user.minimap.readCanvas();
       const pctBefore = await user.minimap.zoomPercent();
-
       await setZoom(user, 2);
       await expect
         .poll(() => user.minimap.zoomPercent(), { message: 'Minimap percentage went up' })
@@ -53,8 +53,21 @@ test.describe('MM-02 See where the current view is on the board', () => {
       expect(await user.minimap.zoomPercent(), 'Minimap percentage matches the main zoom').toBe(
         await user.content.zoomPercent()
       );
-      const after = await user.minimap.readCanvas();
-      expect(after.rect.width, 'zooming in shrinks the viewport rectangle').toBeLessThan(before.rect.width);
+    }
+  );
+
+  test(
+    'MM-02-07: zooming in on the main canvas shrinks the Minimap’s viewport rectangle',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await user.minimap.open(user.toolbar);
+      const before = await user.minimap.readCanvas();
+      await setZoom(user, 2);
+      await expect
+        .poll(async () => (await user.minimap.readCanvas()).rect.width, {
+          message: 'zooming in shrinks the viewport rectangle',
+        })
+        .toBeLessThan(before.rect.width);
     }
   );
 
@@ -119,23 +132,24 @@ test.describe('MM-02 See where the current view is on the board', () => {
     }
   );
 
-  test(
-    'MM-02-06: at minimum and maximum zoom the viewport rectangle stays inside the Minimap frame',
-    { tag: ['@edge'] },
-    async ({ user }) => {
-      await user.minimap.open(user.toolbar);
-      for (const [label, clicksIn, clicksOut] of [
-        ['maximum', 12, 0],
-        ['minimum', 0, 12],
-      ]) {
+  // At the maximum (MM-02-06) and the minimum (MM-02-08) zoom: one test each (split 2026-09-28).
+  for (const [id, label, clicksIn, clicksOut] of [
+    ['MM-02-06', 'maximum', 12, 0],
+    ['MM-02-08', 'minimum', 0, 12],
+  ]) {
+    test(
+      `${id}: at the ${label} zoom the viewport rectangle stays inside the Minimap frame`,
+      { tag: ['@edge'] },
+      async ({ user }) => {
+        await user.minimap.open(user.toolbar);
         await setZoom(user, clicksIn, clicksOut);
         const drawn = await user.minimap.readCanvas();
         expect(drawn.rect, `rectangle drawn at ${label} zoom`).not.toBeNull();
-        expect(drawn.rect.x, `${label}: left edge inside`).toBeGreaterThanOrEqual(0);
-        expect(drawn.rect.y, `${label}: top edge inside`).toBeGreaterThanOrEqual(0);
-        expect(drawn.rect.x + drawn.rect.width, `${label}: right edge inside`).toBeLessThanOrEqual(drawn.width);
-        expect(drawn.rect.y + drawn.rect.height, `${label}: bottom edge inside`).toBeLessThanOrEqual(drawn.height);
+        expect(drawn.rect.x, 'left edge inside').toBeGreaterThanOrEqual(0);
+        expect(drawn.rect.y, 'top edge inside').toBeGreaterThanOrEqual(0);
+        expect(drawn.rect.x + drawn.rect.width, 'right edge inside').toBeLessThanOrEqual(drawn.width);
+        expect(drawn.rect.y + drawn.rect.height, 'bottom edge inside').toBeLessThanOrEqual(drawn.height);
       }
-    }
-  );
+    );
+  }
 });

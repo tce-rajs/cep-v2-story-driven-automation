@@ -36,10 +36,27 @@ const reloadApp = async (user) => {
   await user.toolbar.waitForBoardToSettle();
 };
 
+/** Start a pen stroke, reload the app before lifting the pen; returns the board's geometry before and after. */
+const reloadMidStroke = async (user, page) => {
+  const tb = user.toolbar;
+  await user.content.waitForSaved().catch(() => {});
+  const before = await user.content.pathGeometry();
+  await tb.selectTool('gtPen');
+  const box = await tb.wbSvg.boundingBox();
+  await page.mouse.move(box.x + 400, box.y + 650);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + 400 + i * 20, box.y + 650);
+  await reloadApp(user);
+  await page.mouse.up().catch(() => {});
+  return { before, after: await user.content.pathGeometry() };
+};
+
 test.describe('WB-06 Annotation', () => {
   test.beforeEach(async ({ user }) => {
     await user.nav.applyClassMap('toolbarGeneral');
     await goTo(user, TOPIC_A);
+    // Write below what is already on topic A, never on top of it (owner, 2026-09-29: data must not overlap).
+    await user.content.startOnFreshSpace();
   });
 
   test('WB-06-01: each topic has its own separate whiteboard', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
@@ -53,6 +70,7 @@ test.describe('WB-06 Annotation', () => {
     await goTo(user, TOPIC_B);
     const openedB = await user.content.snapshot();
     expect(openedB.texts.join('|'), 'topic A content does not appear on topic B').not.toContain(tagA);
+    await user.content.panBelowExistingWriting(); // topic B keeps its writing too: add below it
     await user.content.addLines(tagB);
     await user.content.waitForSaved();
     const snapB = await user.content.snapshot();
@@ -64,18 +82,35 @@ test.describe('WB-06 Annotation', () => {
     expect(snapB).not.toEqual(snapA);
   });
 
-  test.describe('WB-06-02: each content type triggers the success message and survives a refresh', () => {
-    const kinds = [
-      ['lines / sentence', (user, tag) => user.content.addLines(tag)],
-      ['Gallery image', (user) => user.content.addGalleryImage()],
-      ['shape', (user) => user.content.addShape()],
-    ];
+  const kinds = [
+    ['lines / sentence', (user, tag) => user.content.addLines(tag)],
+    ['Gallery image', (user) => user.content.addGalleryImage()],
+    ['shape', (user) => user.content.addShape()],
+  ];
+
+  // Two expected results, each its own test per content type: the success message appears (WB-06-16), and the content
+  // survives a refresh (WB-06-02).
+  test.describe('WB-06-16: each content type triggers the top-centre success message on save', () => {
+    for (const [label, add] of kinds) {
+      test(`WB-06-16: ${label}`, { tag: ['@functional'] }, async ({ user }) => {
+        const before = await user.content.snapshot();
+        await add(user, `savemsg${Date.now()}`);
+        const added = await user.content.snapshot();
+        expect(added.paths + added.images + added.texts.length, 'content was added').toBeGreaterThan(
+          before.paths + before.images + before.texts.length
+        );
+        await user.content.waitForSaved(); // fails if the top-centre success message never appears
+      });
+    }
+  });
+
+  test.describe('WB-06-02: each content type survives a refresh', () => {
     for (const [label, add] of kinds) {
       test(`WB-06-02: ${label}`, { tag: ['@functional'] }, async ({ user }) => {
         const before = await user.content.snapshot();
 
         await add(user, `refresh${Date.now()}`);
-        await user.content.waitForSaved(); // the top-centre success message
+        await user.content.waitForSaved(); // the save must finish before the refresh (whether the message shows is WB-06-16)
 
         const saved = await user.content.snapshot();
         expect(saved.paths + saved.images + saved.texts.length, 'content was added').toBeGreaterThan(
@@ -166,6 +201,7 @@ test.describe('WB-06 Annotation', () => {
       await user.content.addLines(tagA);
       await user.content.waitForSaved();
       await goTo(user, TOPIC_B);
+      await user.content.panBelowExistingWriting(); // topic B keeps its writing too: add below it
       await user.content.addLines(tagB);
       await user.content.waitForSaved();
       await goTo(user, TOPIC_A);
@@ -245,6 +281,8 @@ test.describe('WB-06 Annotation', () => {
     { tag: ['@performance', '@regression'] },
     async ({ user }) => {
       test.setTimeout(8 * 60 * 1000);
+      // Topic A keeps what earlier runs added: pan to fresh space first, so new strokes do not land on old content.
+      await user.content.panBelowExistingWriting();
       const before = await user.toolbar.pathCount();
       await user.toolbar.selectTool('gtPen');
       for (let i = 0; i < 150; i++) {
@@ -268,6 +306,8 @@ test.describe('WB-06 Annotation', () => {
       test.setTimeout(10 * 60 * 1000);
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
+      // Pan to fresh space first, so the 520 strokes do not land on what earlier runs left on topic A.
+      await user.content.panBelowExistingWriting();
       const before = await user.toolbar.pathCount();
 
       await user.toolbar.selectTool('gtPen');
@@ -304,6 +344,7 @@ test.describe('WB-06 Annotation', () => {
         await tab2.goto('./');
         await second.login.avatar.waitFor({ state: 'visible', timeout: 20000 }).catch(async () => second.signIn());
         await second.toolbar.waitForBoardToSettle();
+        await second.content.panBelowExistingWriting(); // the second tab writes below existing content too
 
         const before = await user.toolbar.pathCount();
         await Promise.all([
@@ -347,6 +388,7 @@ test.describe('WB-06 Annotation', () => {
         await tab2.goto('./');
         await second.login.avatar.waitFor({ state: 'visible', timeout: 20000 }).catch(async () => second.signIn());
         await second.toolbar.waitForBoardToSettle();
+        await second.content.panBelowExistingWriting(); // the second tab writes below existing content too
 
         for (let round = 0; round < 12; round++) {
           await Promise.all([
@@ -391,23 +433,20 @@ test.describe('WB-06 Annotation', () => {
     'WB-06-15: reloading part-way through drawing a stroke leaves no broken half-stroke behind (regression)',
     { tag: ['@regression'] },
     async ({ user, page }) => {
-      const tb = user.toolbar;
-      await user.content.waitForSaved().catch(() => {});
-      const before = await user.content.pathGeometry();
-      await tb.selectTool('gtPen');
-      const box = await tb.wbSvg.boundingBox();
-      await page.mouse.move(box.x + 400, box.y + 650);
-      await page.mouse.down();
-      for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + 400 + i * 20, box.y + 650);
-      await reloadApp(user);
-      await page.mouse.up().catch(() => {});
-      const after = await user.content.pathGeometry();
+      const { before, after } = await reloadMidStroke(user, page);
       const added = after.filter((d) => !before.includes(d));
       expect(added.length, 'at most the one interrupted stroke').toBeLessThanOrEqual(1);
       for (const d of added) expect(d, 'no empty or broken path data').toMatch(/^M[\d.\-\s,]+[LCQ]/i);
-      // The board still works after the reload.
-      await tb.penStroke({ x: 400, y: 700 }, { x: 600, y: 710 });
-      expect((await user.content.pathGeometry()).length).toBeGreaterThan(after.length);
+    }
+  );
+
+  test(
+    'WB-06-17: after reloading part-way through drawing a stroke, the board still takes new strokes (regression)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const { after } = await reloadMidStroke(user, page);
+      await user.toolbar.penStroke({ x: 400, y: 700 }, { x: 600, y: 710 });
+      expect((await user.content.pathGeometry()).length, 'a new stroke lands').toBeGreaterThan(after.length);
     }
   );
 });

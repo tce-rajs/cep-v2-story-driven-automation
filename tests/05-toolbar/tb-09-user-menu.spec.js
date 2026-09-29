@@ -67,19 +67,31 @@ test.describe('TB-09 User menu', () => {
     }
   );
 
-  test('TB-09-04: Classroom Mode toggles correctly', { tag: ['@functional'] }, async ({ user, page }) => {
+  // Classroom Mode: to Planning (TB-09-04) and back to Teaching (TB-09-15) -- one test each (split 2026-09-28).
+  test('TB-09-04: Classroom Mode switches to Planning', { tag: ['@functional'] }, async ({ user, page }) => {
     await user.userMenu.openProfileMenu();
     await expect(user.userMenu.classroomModeSwitcher).toBeVisible();
     await page.keyboard.press('Escape');
-
-    const toPlan = await user.compass.switchToPlanningMode();
-    expect(toPlan.switched, 'switched to Planning').toBe(true);
-    await expect(page).toHaveURL(/\/plan\//);
-
-    const toTeach = await user.compass.switchToTeachingMode();
-    expect(toTeach.switched, 'switched back to Teaching').toBe(true);
-    await expect(page).toHaveURL(/\/teach\//);
+    try {
+      const toPlan = await user.compass.switchToPlanningMode();
+      expect(toPlan.switched, 'switched to Planning').toBe(true);
+      await expect(page).toHaveURL(/\/plan\//);
+    } finally {
+      if (page.url().includes('/plan/')) await user.compass.switchToTeachingMode().catch(() => {});
+    }
   });
+
+  test(
+    'TB-09-15: Classroom Mode switches back from Planning to Teaching',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const toPlan = await user.compass.switchToPlanningMode();
+      expect(toPlan.switched, 'set-up: in Planning').toBe(true);
+      const toTeach = await user.compass.switchToTeachingMode();
+      expect(toTeach.switched, 'switched back to Teaching').toBe(true);
+      await expect(page).toHaveURL(/\/teach\//);
+    }
+  );
 
   test('TB-09-05: Theme changes the app’s visual theme', { tag: ['@functional'] }, async ({ user, page }) => {
     const look = () =>
@@ -100,23 +112,36 @@ test.describe('TB-09 User menu', () => {
     await user.userMenu.darkModeToggle.click({ force: true });
   });
 
+  // Feedback: a form with a message field opens (TB-09-06), and it accepts input and offers Submit (TB-09-16) -- one test
+  // each (split 2026-09-28). Never submitted: that would send real mail from the QA account.
+  // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): clicking "Share your feedBack!" does nothing observable -- no dialog,
+  // no window.open, no new window, no network request, and the menu simply stays open. Tracked as expected-to-fail
+  // so it isn't masked; needs a product decision (dead control, or it hands off somewhere a test cannot see).
+  const openFeedback = async (user, page) => {
+    await user.userMenu.openProfileMenu();
+    await user.userMenu.feedbackBtn.click({ force: true });
+    const dialog = page.locator('mat-dialog-container, [role="dialog"]').filter({ visible: true }).first();
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+    return dialog;
+  };
+
   test(
-    'TB-09-06: Feedback opens a working submission form',
+    'TB-09-06: Feedback opens a submission form with a message field',
     { tag: ['@functional', '@bug'] },
     async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): clicking "Share your feedBack!" does nothing observable -- no dialog,
-      // no window.open, no new window, no network request, and the menu simply stays open. Tracked as expected-to-fail
-      // so it isn't masked; needs a product decision (dead control, or it hands off somewhere a test cannot see).
       test.fail(true, 'Feedback opens nothing when clicked');
-      await user.userMenu.openProfileMenu();
-      await user.userMenu.feedbackBtn.click({ force: true });
+      const dialog = await openFeedback(user, page);
+      await expect(dialog.locator('textarea, input[type="text"]').first(), 'a message field is offered').toBeVisible();
+    }
+  );
 
-      const dialog = page.locator('mat-dialog-container, [role="dialog"]').filter({ visible: true }).first();
-      await expect(dialog).toBeVisible({ timeout: 10000 });
+  test(
+    'TB-09-16: the Feedback form accepts a message and offers a way to submit it',
+    { tag: ['@functional', '@bug'] },
+    async ({ user, page }) => {
+      test.fail(true, 'Feedback opens nothing when clicked, so there is no form to fill');
+      const dialog = await openFeedback(user, page);
       const field = dialog.locator('textarea, input[type="text"]').first();
-      await expect(field, 'a message field is offered').toBeVisible();
-
-      // "Working": it accepts input and offers a way to submit. (Deliberately not submitted.)
       await field.fill('Automated check — please ignore');
       await expect(field).toHaveValue('Automated check — please ignore');
       await expect(dialog.getByRole('button', { name: /submit|send/i }).first()).toBeVisible();
@@ -133,46 +158,62 @@ test.describe('TB-09 User menu', () => {
     await expect(page.getByText(headerVersion).first(), `build ${headerVersion} shown`).toBeVisible({ timeout: 10000 });
   });
 
+  // Virtual Keyboard in the chapter search box: it is on screen (TB-09-08), and typing on it fills the box (TB-09-17) --
+  // one test each (split 2026-09-28).
+  // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223, screenshot-verified): with Virtual Keyboard on and the CHAPTER SEARCH box
+  // focused, the keyboard is in the DOM but NOT on screen -- it is drawn entirely below the visible window (top = window
+  // height, 230px tall). Other boxes are fine: the whiteboard text box and the Add Resource title show it on screen
+  // (TB-09-12/18), so this is specific to the search box inside the Chapters popup. A teacher sees no keyboard there.
+  // Tracked as expected-to-fail so it isn't masked; needs a product decision.
+  const CHAPTER_SEARCH_KEYBOARD = 'Virtual Keyboard is rendered below the visible window for the chapter search box';
+
+  /** Turn Virtual Keyboard on, focus the chapter search box, run `body(keyboard)`, then restore the setting. */
+  const withChapterSearchKeyboard = async (user, page, body) => {
+    const menu = user.userMenu;
+    const isOn = () => menu.virtualKeyboardToggle.evaluate((el) => el.checked);
+    // The toggle is ON by default: put it in a known state (on) rather than blindly flipping it, and restore the
+    // account's original setting afterwards.
+    await menu.openProfileMenu();
+    const wasOn = await isOn();
+    if (!wasOn) await menu.virtualKeyboardToggle.click({ force: true });
+    await page.keyboard.press('Escape');
+    try {
+      await user.nav.openChaptersPopup();
+      await user.nav.chapterTpSearchToggle.click({ force: true });
+      await user.nav.chapterTpSearchInput.click({ force: true });
+      // The keyboard is the inner .simple-keyboard (its .keyboard-wrapper parent has zero height).
+      await body(page.locator('.simple-keyboard').filter({ hasText: 'Tab' }));
+    } finally {
+      await page.keyboard.press('Escape').catch(() => {});
+      await menu.openProfileMenu().catch(() => {});
+      if ((await isOn().catch(() => wasOn)) !== wasOn)
+        await menu.virtualKeyboardToggle.click({ force: true }).catch(() => {});
+    }
+  };
+
   test(
-    'TB-09-08: Virtual Keyboard opens and accepts input correctly',
+    'TB-09-08: with Virtual Keyboard on, the on-screen keyboard opens inside the window for the chapter search box',
     { tag: ['@functional', '@bug'] },
     async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223, screenshot-verified): with Virtual Keyboard on and the CHAPTER SEARCH box
-      // focused, the keyboard is in the DOM but NOT on screen -- it is drawn entirely below the visible window (top = window
-      // height, 230px tall). Other boxes are fine: the whiteboard text box and the Add Resource title show it on screen
-      // (TB-09-12), so this is specific to the search box inside the Chapters popup. A teacher sees no keyboard there.
-      // Tracked as expected-to-fail so it isn't masked; needs a product decision.
-      test.fail(true, 'Virtual Keyboard is rendered below the visible window for the chapter search box');
-      const menu = user.userMenu;
-      const isOn = () => menu.virtualKeyboardToggle.evaluate((el) => el.checked);
-
-      // The toggle is ON by default: put it in a known state (on) rather than blindly flipping it, and restore the
-      // account's original setting afterwards.
-      await menu.openProfileMenu();
-      const wasOn = await isOn();
-      if (!wasOn) await menu.virtualKeyboardToggle.click({ force: true });
-      await page.keyboard.press('Escape');
-
-      try {
-        // Focus a real text field (the chapter search box) and type through the on-screen keys.
-        await user.nav.openChaptersPopup();
-        await user.nav.chapterTpSearchToggle.click({ force: true });
-        await user.nav.chapterTpSearchInput.click({ force: true });
-
-        // The keyboard is the inner .simple-keyboard (its .keyboard-wrapper parent has zero height).
-        const keyboard = page.locator('.simple-keyboard').filter({ hasText: 'Tab' });
+      test.fail(true, CHAPTER_SEARCH_KEYBOARD);
+      await withChapterSearchKeyboard(user, page, async (keyboard) => {
         await expect(keyboard, 'the on-screen keyboard is inside the visible window').toBeInViewport({
           timeout: 10000,
         });
-        await keyboard.getByText('a', { exact: true }).first().click();
+      });
+    }
+  );
+
+  test(
+    'TB-09-17: typing on the on-screen keyboard fills the chapter search box',
+    { tag: ['@functional', '@bug'] },
+    async ({ user, page }) => {
+      test.fail(true, `${CHAPTER_SEARCH_KEYBOARD}, so its keys cannot be pressed`);
+      await withChapterSearchKeyboard(user, page, async (keyboard) => {
+        await keyboard.getByText('a', { exact: true }).first().click({ timeout: 10000 });
         await keyboard.getByText('b', { exact: true }).first().click();
         await expect(user.nav.chapterTpSearchInput).toHaveValue(/ab/i);
-      } finally {
-        await page.keyboard.press('Escape').catch(() => {});
-        await menu.openProfileMenu().catch(() => {});
-        if ((await isOn().catch(() => wasOn)) !== wasOn)
-          await menu.virtualKeyboardToggle.click({ force: true }).catch(() => {});
-      }
+      });
     }
   );
 
@@ -221,11 +262,8 @@ test.describe('TB-09 User menu', () => {
   // The setting resets to ON after a reload, so every test sets it explicitly.
   // ---------------------------------------------------------------------------------------------------------------------
   test.describe('Virtual Keyboard across input boxes', () => {
-    test.use({ classMap: 'default', cleanBoard: true });
-
-    test.afterEach(async ({ user }) => {
-      await user.toolbar.clearBoard(user.whiteboard).catch(() => {});
-    });
+    // Fresh space below the teacher's writing; nothing is erased before or after (owner rule 2026-09-29).
+    test.use({ classMap: 'default', freshSpace: true });
 
     const setKeyboard = async (user, on) => {
       const { userMenu, page } = user;
@@ -271,40 +309,58 @@ test.describe('TB-09 User menu', () => {
       await closeAddResource(user);
     });
 
-    test('TB-09-12: the on-screen keyboard opens for other kinds of input box too', async ({ user }) => {
+    // One input box per test (split 2026-09-28): the whiteboard text box and the Add Resource title, with the keyboard ON
+    // (TB-09-12, TB-09-18) and OFF (TB-09-19, TB-09-13).
+    test('TB-09-12: with Virtual Keyboard on, the on-screen keyboard opens for a whiteboard text box', async ({
+      user,
+    }) => {
       await setKeyboard(user, true);
-
       await focusWhiteboardText(user);
       await expect
         .poll(() => keyboardShown(user), { message: 'whiteboard text box: the keyboard is on screen', timeout: 8000 })
         .toBe(true);
       await user.page.keyboard.press('Escape');
-      await user.page.mouse.click(200, 400);
+    });
 
+    test('TB-09-18: with Virtual Keyboard on, the on-screen keyboard opens for the Add Resource title', async ({
+      user,
+    }) => {
+      await setKeyboard(user, true);
       await focusAddResourceTitle(user);
-      await expect
-        .poll(() => keyboardShown(user), { message: 'Add Resource title: the keyboard is on screen', timeout: 8000 })
-        .toBe(true);
-      await closeAddResource(user);
+      try {
+        await expect
+          .poll(() => keyboardShown(user), { message: 'Add Resource title: the keyboard is on screen', timeout: 8000 })
+          .toBe(true);
+      } finally {
+        await closeAddResource(user);
+      }
     });
 
     test(
-      'TB-09-13: with Virtual Keyboard OFF, clicking a text input box does not open the on-screen keyboard',
-      { tag: ['@negative', '@bug'] },
+      'TB-09-19: with Virtual Keyboard OFF, clicking a whiteboard text box does not open the on-screen keyboard',
+      { tag: ['@negative'] },
       async ({ user }) => {
-        // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): OFF is honoured by the whiteboard text box (keyboard hidden) but NOT by
-        // the Add Resource title, which still opens the keyboard. Tracked as expected-to-fail so it isn't masked.
-        test.fail(true, 'Virtual Keyboard OFF is ignored by the Add Resource title box');
         await setKeyboard(user, false);
-
         await focusWhiteboardText(user);
         expect(await keyboardShown(user), 'whiteboard text box: no keyboard').toBe(false);
         await user.page.keyboard.press('Escape');
-        await user.page.mouse.click(200, 400);
+      }
+    );
 
+    test(
+      'TB-09-13: with Virtual Keyboard OFF, clicking the Add Resource title does not open the on-screen keyboard',
+      { tag: ['@negative', '@bug'] },
+      async ({ user }) => {
+        // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): OFF is honoured by the whiteboard text box (keyboard hidden, TB-09-19)
+        // but NOT by the Add Resource title, which still opens the keyboard. Tracked as expected-to-fail so it isn't masked.
+        test.fail(true, 'Virtual Keyboard OFF is ignored by the Add Resource title box');
+        await setKeyboard(user, false);
         await focusAddResourceTitle(user);
-        expect(await keyboardShown(user), 'Add Resource title: no keyboard').toBe(false);
-        await closeAddResource(user);
+        try {
+          expect(await keyboardShown(user), 'Add Resource title: no keyboard').toBe(false);
+        } finally {
+          await closeAddResource(user);
+        }
       }
     );
   });

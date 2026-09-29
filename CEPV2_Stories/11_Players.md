@@ -15,7 +15,7 @@ options, can each be text or an image. The user navigates back and forward acros
 multiple questions, selects an answer, then submits.
 
 1. PLR-01-01 — To check clicking on the quiz loads the quiz player
-2. PLR-01-02 — To check the AIR card popup appears and disappears after ~5 seconds, with the question only loading once it's gone
+2. PLR-01-02 — To check the AIR card popup appears and goes away by itself after ~5 seconds
 3. PLR-01-03 — To check a text-based question renders correctly
 4. PLR-01-04 — To check an image-based question renders correctly
 5. PLR-01-05 — To check text-based options render correctly
@@ -30,12 +30,14 @@ multiple questions, selects an answer, then submits.
 14. PLR-01-14 — Regression: in AIR card mode, navigating back to question 1 shows question 1 again (not the question just left)
 15. PLR-01-15 — To check Submit Answer stays disabled until an option is chosen
 16. PLR-01-16 — To check choosing a second option clears the first (one answer per question)
-17. PLR-01-17 — To check a wrong answer is marked wrong and the correct answer is shown
+17. PLR-01-17 — To check a wrong answer is marked wrong
 18. PLR-01-18 — To check Show Answer reveals the correct option
 19. PLR-01-19 — Regression: the numbered dots jump straight to that question, every time (Zoho TCN-I15835)
 20. PLR-01-20 — To check closing and reopening the quiz starts again from question 1
 21. PLR-01-21 — Regression: double-clicking a quiz card opens only one quiz
 22. PLR-01-22 — Regression: no question appears more than once in the quiz (Zoho TCN-I16397)
+23. PLR-01-23 — To check the first question only loads once the AIR card popup is gone _(split from PLR-01-02, 2026-09-28)_
+24. PLR-01-24 — To check that after a wrong answer, the correct answer is shown _(split from PLR-01-17, 2026-09-28)_
 
 ### PLR-02 — Review quiz results
 
@@ -55,19 +57,22 @@ to a specific page using "Go to Page" with its up/down buttons.
 5. PLR-03-05 — Negative: an out-of-range page number in "Go to Page" is handled gracefully
 6. PLR-03-06 — Regression: a malformed/zero-page worksheet resource is handled without crashing
 7. PLR-03-07 — Performance: a very large/long worksheet doesn't degrade responsiveness
-8. PLR-03-08 — Concurrency: a Worksheet and a different player type (e.g. a Weblink) open simultaneously don't conflict
+8. PLR-03-08 — Concurrency: a Weblink opens properly while a Worksheet is already open
 9. PLR-03-09 — To check the zoom buttons change the worksheet's zoom
-10. PLR-03-10 — To check the answer key button shows and hides the answers, on a worksheet that has one
+10. PLR-03-10 — To check the answer key button shows the answers, on a worksheet that has one
 11. PLR-03-11 — To check the orientation button changes the page orientation
 12. PLR-03-12 — Negative: to check Next on the last page stays on the last page
 13. PLR-03-13 — To check closing the worksheet exits cleanly
+14. PLR-03-14 — Concurrency: with a Weblink open over it, the Worksheet still turns pages _(split from PLR-03-08, 2026-09-28)_
+15. PLR-03-15 — To check pressing the answer key button again hides the answers _(split from PLR-03-10, 2026-09-28)_
 
 ### PLR-04 — Navigate an ebook
 
 1. PLR-04-01 — To check opening a chapter-specific ebook resource and navigating to a new chapter works
 2. PLR-04-02 — To check scrolling/paginating through ebook pages works correctly
 3. PLR-04-03 — To check closing a linked resource from the ebook closes it cleanly
-4. PLR-04-04 — Regression: chapter-jump, pagination, and scroll don't reproduce CEP v1's recurring ebook navigation weak spot
+4. PLR-04-04 — Regression: jumping between ebook chapters, back and forth, always lands on the chapter chosen (CEP v1's recurring ebook navigation weak spot)
+5. PLR-04-05 — Regression: scrolling an ebook neither changes chapter by itself nor causes an error _(split from PLR-04-04, 2026-09-28)_
 
 ### PLR-05 — Play a video resource
 
@@ -75,10 +80,11 @@ to a specific page using "Go to Page" with its up/down buttons.
 2. PLR-05-02 — To check pausing the video works correctly
 3. PLR-05-03 — To check closing the video works correctly
 4. PLR-05-04 — Regression: the hybrid-player crash on Video doesn't recur
-5. PLR-05-05 — To check seeking and volume work
+5. PLR-05-05 — To check seeking a video moves playback to the chosen point
 6. PLR-05-06 — Regression: the teacher can annotate over a playing video (Zoho TCN-I15547)
 7. PLR-05-07 — To check opening something else stops the video
 8. PLR-05-08 — Regression: double-clicking a video card opens only one player
+9. PLR-05-09 — To check a video's volume can be changed and muted _(split from PLR-05-05, 2026-09-28)_
 
 ### PLR-06 — View an image resource
 
@@ -114,8 +120,9 @@ Added 2026-09-26 from the reference suite (Players workbook, PLR-CHK-01..12). La
 
 1. PLR-09-01 — To check the checkpoint list shows the current topic's checkpoints
 2. PLR-09-02 — To check a checkpoint's details show its summary
-3. PLR-09-03 — To check launching and starting a checkpoint moves it to Started, and End finishes it
+3. PLR-09-03 — To check launching and starting a checkpoint moves it to Started, with the student roster shown
 4. PLR-09-04 — Negative: to check a second checkpoint can't be started in the class while one is already running
+5. PLR-09-05 — To check End on a started checkpoint finishes it, and after a reload it is no longer running _(split from PLR-09-03, 2026-09-28)_
 
 ### PLR-10 — Use the Code Editor
 
@@ -148,31 +155,114 @@ Added 2026-09-26 from the reference suite (Players workbook, PLR-BREAK-01/02/04,
 Teachers double- and triple-tap on interactive panels; a slow tap on a touch screen can register as two clicks. Each
 asset kind (video, worksheet/PDF, image, web link, code editor, unsupported file, quiz) is checked the same four ways:
 
-1. PLR-13-xxa — Edge: double-clicking the asset's Playlist card opens exactly one player
-2. PLR-13-xxb — Edge: triple-clicking the asset's Playlist card opens exactly one player
-3. PLR-13-xxc — Edge: double-clicking the player's close button closes it cleanly, with no script error, and the card opens again afterwards
-4. PLR-13-xxd — Regression: opening and closing the asset five times fast leaves no player behind and no script error
+One case per asset kind and check (listed 2026-09-28 so the workbook has one row per test; xx = 01 video, 02
+worksheet, 03 image, 04 web link, 05 code editor, 06 unsupported file, 07 quiz):
 
-(xx = 01 video, 02 worksheet, 03 image, 04 web link, 05 code editor, 06 unsupported file, 07 quiz.)
+1. PLR-13-01a — Double-clicking a video card opens exactly one player
+2. PLR-13-01b — Triple-clicking a video card opens exactly one player
+3. PLR-13-01c — Double-clicking the video player's close button closes it cleanly
+4. PLR-13-01d — Opening and closing a video five times fast leaves nothing behind
+5. PLR-13-02a — Double-clicking a worksheet (PDF) card opens exactly one player
+6. PLR-13-02b — Triple-clicking a worksheet (PDF) card opens exactly one player
+7. PLR-13-02c — Double-clicking the worksheet (PDF) player's close button closes it cleanly
+8. PLR-13-02d — Opening and closing a worksheet (PDF) five times fast leaves nothing behind
+9. PLR-13-03a — Double-clicking a image card opens exactly one player
+10. PLR-13-03b — Triple-clicking a image card opens exactly one player
+11. PLR-13-03c — Double-clicking the image player's close button closes it cleanly
+12. PLR-13-03d — Opening and closing a image five times fast leaves nothing behind
+13. PLR-13-04a — Double-clicking a web link card opens exactly one player
+14. PLR-13-04b — Triple-clicking a web link card opens exactly one player
+15. PLR-13-04c — Double-clicking the web link player's close button closes it cleanly
+16. PLR-13-04d — Opening and closing a web link five times fast leaves nothing behind
+17. PLR-13-05a — Double-clicking a code editor card opens exactly one player
+18. PLR-13-05b — Triple-clicking a code editor card opens exactly one player
+19. PLR-13-05c — Double-clicking the code editor player's close button closes it cleanly
+20. PLR-13-05d — Opening and closing a code editor five times fast leaves nothing behind
+21. PLR-13-06a — Double-clicking a unsupported file card opens exactly one player
+22. PLR-13-06b — Triple-clicking a unsupported file card opens exactly one player
+23. PLR-13-06c — Double-clicking the unsupported file player's close button closes it cleanly
+24. PLR-13-06d — Opening and closing a unsupported file five times fast leaves nothing behind
+25. PLR-13-07a — Double-clicking a quiz card opens exactly one player
+26. PLR-13-07b — Triple-clicking a quiz card opens exactly one player
+27. PLR-13-07c — Double-clicking the quiz player's close button closes it cleanly
+28. PLR-13-07d — Opening and closing a quiz five times fast leaves nothing behind
 
 ### PLR-14 — Annotating on every kind of asset, as a teacher really uses it (added 2026-09-27)
 
 Each asset kind (worksheet/PDF, image, video, web link, code editor, unsupported file, quiz) is used the same real-life ways:
 
-1. PLR-14-xxa — The teacher can write on the open asset, and the stroke is on the asset
-2. PLR-14-xxb — Edge: zoom in, write, pan, write again: both strokes stay (none lost to the zoom or the pan) and move with the asset
-3. PLR-14-xxc — Every tool works on the asset: pen, shape, text box, eraser, Undo, Redo
-4. PLR-14-xxd — Regression: annotations on the asset are still there after closing it and opening it again
-5. PLR-14-xxe — Regression: after closing the asset, its annotations are not left behind on the whiteboard
+One case per asset kind and check (listed 2026-09-28 so the workbook has one row per test; "every tool works" was
+split into one case per tool: xxc shape, xxf text box, xxg eraser, xxh Undo, xxi Redo -- the pen is xxa; xx = 01
+worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file, 07 quiz):
 
-Video, while it plays:
+1. PLR-14-01a — The teacher can write on an open worksheet (PDF), and the stroke is on the asset
+2. PLR-14-01b — Zoom in, write, pan, write again on a worksheet (PDF): both strokes stay, none lost to the zoom or the pan
+3. PLR-14-01c — A shape can be drawn on a worksheet (PDF)
+4. PLR-14-01d — Annotations on a worksheet (PDF) are still there after closing and opening it again
+5. PLR-14-01e — After closing a worksheet (PDF), its annotations are not left on the whiteboard
+6. PLR-14-01f — A text box can be added on a worksheet (PDF)
+7. PLR-14-01g — The eraser removes a stroke on a worksheet (PDF)
+8. PLR-14-01h — Undo brings back a stroke erased on a worksheet (PDF)
+9. PLR-14-01i — Redo erases the stroke on a worksheet (PDF) again after Undo
+10. PLR-14-02a — The teacher can write on an open image, and the stroke is on the asset
+11. PLR-14-02b — Zoom in, write, pan, write again on a image: both strokes stay, none lost to the zoom or the pan
+12. PLR-14-02c — A shape can be drawn on a image
+13. PLR-14-02d — Annotations on a image are still there after closing and opening it again
+14. PLR-14-02e — After closing a image, its annotations are not left on the whiteboard
+15. PLR-14-02f — A text box can be added on a image
+16. PLR-14-02g — The eraser removes a stroke on a image
+17. PLR-14-02h — Undo brings back a stroke erased on a image
+18. PLR-14-02i — Redo erases the stroke on a image again after Undo
+19. PLR-14-03a — The teacher can write on an open video, and the stroke is on the asset
+20. PLR-14-03b — Zoom in, write, pan, write again on a video: both strokes stay, none lost to the zoom or the pan
+21. PLR-14-03c — A shape can be drawn on a video
+22. PLR-14-03d — Annotations on a video are still there after closing and opening it again
+23. PLR-14-03e — After closing a video, its annotations are not left on the whiteboard
+24. PLR-14-03f — A text box can be added on a video
+25. PLR-14-03g — The eraser removes a stroke on a video
+26. PLR-14-03h — Undo brings back a stroke erased on a video
+27. PLR-14-03i — Redo erases the stroke on a video again after Undo
+28. PLR-14-04a — The teacher can write on an open web link, and the stroke is on the asset
+29. PLR-14-04b — Zoom in, write, pan, write again on a web link: both strokes stay, none lost to the zoom or the pan
+30. PLR-14-04c — A shape can be drawn on a web link
+31. PLR-14-04d — Annotations on a web link are still there after closing and opening it again
+32. PLR-14-04e — After closing a web link, its annotations are not left on the whiteboard
+33. PLR-14-04f — A text box can be added on a web link
+34. PLR-14-04g — The eraser removes a stroke on a web link
+35. PLR-14-04h — Undo brings back a stroke erased on a web link
+36. PLR-14-04i — Redo erases the stroke on a web link again after Undo
+37. PLR-14-05a — The teacher can write on an open code editor, and the stroke is on the asset
+38. PLR-14-05b — Zoom in, write, pan, write again on a code editor: both strokes stay, none lost to the zoom or the pan
+39. PLR-14-05c — A shape can be drawn on a code editor
+40. PLR-14-05d — Annotations on a code editor are still there after closing and opening it again
+41. PLR-14-05e — After closing a code editor, its annotations are not left on the whiteboard
+42. PLR-14-05f — A text box can be added on a code editor
+43. PLR-14-05g — The eraser removes a stroke on a code editor
+44. PLR-14-05h — Undo brings back a stroke erased on a code editor
+45. PLR-14-05i — Redo erases the stroke on a code editor again after Undo
+46. PLR-14-06a — The teacher can write on an open unsupported file, and the stroke is on the asset
+47. PLR-14-06b — Zoom in, write, pan, write again on a unsupported file: both strokes stay, none lost to the zoom or the pan
+48. PLR-14-06c — A shape can be drawn on a unsupported file
+49. PLR-14-06d — Annotations on a unsupported file are still there after closing and opening it again
+50. PLR-14-06e — After closing a unsupported file, its annotations are not left on the whiteboard
+51. PLR-14-06f — A text box can be added on a unsupported file
+52. PLR-14-06g — The eraser removes a stroke on a unsupported file
+53. PLR-14-06h — Undo brings back a stroke erased on a unsupported file
+54. PLR-14-06i — Redo erases the stroke on a unsupported file again after Undo
+55. PLR-14-07a — The teacher can write on an open quiz, and the stroke is on the asset
+56. PLR-14-07b — Zoom in, write, pan, write again on a quiz: both strokes stay, none lost to the zoom or the pan
+57. PLR-14-07c — A shape can be drawn on a quiz
+58. PLR-14-07d — Annotations on a quiz are still there after closing and opening it again
+59. PLR-14-07e — After closing a quiz, its annotations are not left on the whiteboard
+60. PLR-14-07f — A text box can be added on a quiz
+61. PLR-14-07g — The eraser removes a stroke on a quiz
+62. PLR-14-07h — Undo brings back a stroke erased on a quiz
+63. PLR-14-07i — Redo erases the stroke on a quiz again after Undo
 
-6. PLR-14-V1 — Regression: an annotation drawn on a paused video stays when the video is played
-7. PLR-14-V2 — Regression: the annotation stays when the teacher seeks to another point and pauses
-8. PLR-14-V3 — The teacher can annotate again after playing and pausing
+Video, while it plays, and two assets open at once:
 
-Two assets open at once:
-
-9. PLR-14-M1 — Edge: with an image and a worksheet open, each keeps its own annotation, and closing one keeps the other's
-
-(xx = 01 worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file, 07 quiz.)
+64. PLR-14-M1 — With an image and a worksheet open and both annotated, closing the image keeps the worksheet’s annotation
+65. PLR-14-M2 — With an image and a worksheet open and both annotated, closing the image takes the image’s annotation with it
+66. PLR-14-V1 — An annotation drawn on a paused video stays when the video is played
+67. PLR-14-V2 — The annotation stays when the teacher seeks to another point and pauses
+68. PLR-14-V3 — The teacher can annotate again after playing and pausing

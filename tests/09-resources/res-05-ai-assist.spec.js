@@ -78,21 +78,35 @@ test.describe('RES-05 AI Assist', () => {
     }
   );
 
+  // Switching tabs: to Videos (RES-05-02), to Teaching Tips (RES-05-16), and back to Exercise (RES-05-17) -- one test
+  // each (split 2026-09-28). Each opens on Exercise, which lists selectable questions.
+  const openOnExercise = async (user) => {
+    await openAiAssist(user);
+    await expect(user.addResource.aiAssistExerciseCheckboxes.first(), 'set-up: Exercise lists questions').toBeVisible({
+      timeout: 20000,
+    });
+  };
+
   test(
-    'RES-05-02: switching between the three tabs shows the correct content for each',
+    'RES-05-02: switching to the Videos tab shows its video thumbnails in place of the questions',
     { tag: ['@functional'] },
     async ({ user }) => {
       const ar = user.addResource;
-      await openAiAssist(user);
-
-      await expect(ar.aiAssistExerciseCheckboxes.first(), 'Exercise lists selectable questions').toBeVisible({
-        timeout: 20000,
-      });
-
+      await openOnExercise(user);
       await ar.aiAssistTabVideos.click({ force: true });
       await expect(ar.aiAssistVideoThumbs.first(), 'Videos lists video thumbnails').toBeVisible({ timeout: 20000 });
       await expect(ar.aiAssistExerciseCheckboxes.first()).toBeHidden();
+    }
+  );
 
+  test(
+    'RES-05-16: switching to the Teaching Tips tab shows teaching tips in place of the videos',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const ar = user.addResource;
+      await openOnExercise(user);
+      await ar.aiAssistTabVideos.click({ force: true });
+      await expect(ar.aiAssistVideoThumbs.first(), 'set-up: on Videos').toBeVisible({ timeout: 20000 });
       await ar.aiAssistTabTeachingTips.click({ force: true });
       // CONFIRMED LIVE: the tab shows labelled teaching content ("Activities: ...", "Explanation: ..."); the words tip /
       // teaching / suggest only appear in the tab's own label, so they say nothing about the content.
@@ -100,7 +114,19 @@ test.describe('RES-05 AI Assist', () => {
         timeout: 20000,
       });
       await expect(ar.aiAssistVideoThumbs.first()).toBeHidden();
+    }
+  );
 
+  test(
+    'RES-05-17: switching back to the Exercise tab shows the questions again',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const ar = user.addResource;
+      await openOnExercise(user);
+      await ar.aiAssistTabTeachingTips.click({ force: true });
+      await expect(user.page.getByText(/^\s*Explanation:/).first(), 'set-up: on Teaching Tips').toBeVisible({
+        timeout: 20000,
+      });
       await ar.aiAssistTabExercise.click({ force: true });
       await expect(ar.aiAssistExerciseCheckboxes.first(), 'back on Exercise').toBeVisible();
     }
@@ -254,19 +280,34 @@ test.describe('RES-05 AI Assist', () => {
     }
   );
 
-  test('RES-05-11: Minimize and Maximize work', { tag: ['@functional'] }, async ({ user }) => {
-    // CONFIRMED LIVE (2026-09-26): Minimize slides the panel down to a bar at the bottom of the window (the close button
-    // moved from y~795 to y~945); the second click brings it back.
+  // Minimize (RES-05-11) and Maximize (RES-05-18): one test each (split 2026-09-28).
+  // CONFIRMED LIVE (2026-09-26): Minimize slides the panel down to a bar at the bottom of the window (the close button
+  // moved from y~795 to y~945); the second click brings it back.
+  /** Open AI Assist, then Minimize it; returns the close button's y while it was open. */
+  const openThenMinimize = async (user) => {
     const ar = user.addResource;
-    await openAiAssist(user);
-    await expect(ar.aiAssistExerciseCheckboxes.first()).toBeVisible({ timeout: 20000 });
+    await openOnExercise(user);
     await expect(ar.aiAssistExerciseCheckboxes.first()).toBeInViewport();
     const openY = (await ar.aiAssistCloseBtn.boundingBox()).y;
     await ar.aiAssistMinimizeBtn.click();
+    return openY;
+  };
+
+  test('RES-05-11: Minimize slides AI Assist down out of the way', { tag: ['@functional'] }, async ({ user }) => {
+    const ar = user.addResource;
+    const openY = await openThenMinimize(user);
     await expect
       .poll(async () => (await ar.aiAssistCloseBtn.boundingBox()).y, { message: 'panel slid down' })
       .toBeGreaterThan(openY + 50);
     await expect(ar.aiAssistExerciseCheckboxes.first(), 'questions out of view when minimized').not.toBeInViewport();
+  });
+
+  test('RES-05-18: Maximize brings a minimized AI Assist back up', { tag: ['@functional'] }, async ({ user }) => {
+    const ar = user.addResource;
+    const openY = await openThenMinimize(user);
+    await expect
+      .poll(async () => (await ar.aiAssistCloseBtn.boundingBox()).y, { message: 'set-up: panel slid down' })
+      .toBeGreaterThan(openY + 50);
     await ar.aiAssistMinimizeBtn.click();
     await expect
       .poll(async () => (await ar.aiAssistCloseBtn.boundingBox()).y, { message: 'panel back up' })

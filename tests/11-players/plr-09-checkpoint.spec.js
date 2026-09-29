@@ -60,13 +60,24 @@ test.describe('PLR-09 Run a checkpoint', () => {
     await expect(dialog, 'summary: questions / duration / concepts').toContainText(/question|min|concept|marks/i);
   });
 
+  // Starting a checkpoint (PLR-09-03) and ending it (PLR-09-05): one test each (split 2026-09-28), in this order -- the
+  // checkpoint is real, shared data: PLR-09-03 leaves it Started and PLR-09-05 ends it again.
   test(
-    'PLR-09-03: launching and starting a checkpoint moves it to Started, and End finishes it',
+    'PLR-09-03: launching and starting a checkpoint moves it to Started, with the student roster shown',
     { tag: ['@functional'] },
     async ({ user }) => {
       await openFirst(user);
       await reachStarted(user);
       await expect(user.player.checkpointStudentRows.first(), 'student roster shown').toBeVisible({ timeout: 15000 });
+    }
+  );
+
+  test(
+    'PLR-09-05: End on a started checkpoint finishes it, and after a reload it is no longer running',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await openFirst(user);
+      await reachStarted(user); // set-up: from whatever state PLR-09-03 left it in
       // CONFIRMED LIVE (2026-09-26): End -> "N of M students submitted ... Lock the current Test?" (Lock Test) -> "Lock Test?"
       // confirmation (player-checkpoint-confirm-pause-btn). A timer overlay sits over End, so it is clicked in the DOM.
       // The start-up timer overlay (with its Hide Timer link) can appear a few seconds after Start and covers the page.

@@ -1,7 +1,7 @@
 # CEP v2 Playwright Automation
 
 Playwright (JavaScript / CommonJS) end-to-end tests for Tata ClassEdge CEP v2's teach
-webapp (`https://ce-qa-school.devstudi.com/teach/`), written page-object-model (POM) style
+webapp (`http://172.18.2.85/teach/`; the old QA server is no longer used), written page-object-model (POM) style
 and organised by the CEP v2 stories, one module at a time.
 
 Tests drive the real **Tata ClassEdge School** Windows desktop client (Electron), not a

@@ -45,23 +45,36 @@ test.describe('MM-01 Open and close the Minimap', () => {
     }
   );
 
+  // Opening and closing the Minimap 8 times quickly: one clean closed panel (MM-01-04), and it still opens normally
+  // afterwards (MM-01-06) -- one test each (split 2026-09-28).
+  const openCloseEightTimes = async (user) => {
+    // The Zoom panel closes once the Minimap opens, so each round goes through the full open path again.
+    for (let i = 0; i < 8; i++) {
+      await user.minimap.open(user.toolbar);
+      await user.minimap.closeBtn.click({ force: true });
+    }
+  };
+
   test(
-    'MM-01-04: opening and closing the Minimap 8 times quickly leaves one clean panel',
+    'MM-01-04: opening and closing the Minimap 8 times quickly leaves one clean, closed panel',
     { tag: ['@edge'] },
     async ({ user, page }) => {
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
-      // The Zoom panel closes once the Minimap opens, so each round goes through the full open path again.
-      for (let i = 0; i < 8; i++) {
-        await user.minimap.open(user.toolbar);
-        await user.minimap.closeBtn.click({ force: true });
-      }
-      await expect(user.minimap.container).toHaveCount(1);
+      await openCloseEightTimes(user);
+      await expect(user.minimap.container, 'one panel, not duplicated').toHaveCount(1);
       await user.minimap.waitOpen(false);
-      // Still works normally afterwards.
+      expect(errors, 'no uncaught page errors').toEqual([]);
+    }
+  );
+
+  test(
+    'MM-01-06: after opening and closing it 8 times quickly, the Minimap still opens normally',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      await openCloseEightTimes(user);
       await user.minimap.open(user.toolbar);
       await expect(user.minimap.canvas).toBeVisible();
-      expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
 

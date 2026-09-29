@@ -19,7 +19,7 @@ test.describe('CLIENT-01 Cold launch (single profile)', () => {
 
   test.beforeEach(() => {
     backup = backupSettingsRaw();
-    forceSingleProfile({ title: 'QA-V2', url: 'https://ce-qa-school.devstudi.com/teach/' });
+    forceSingleProfile({ title: 'QA-V2', url: 'http://172.18.2.85/teach/' });
   });
 
   test.afterEach(() => {
@@ -35,7 +35,7 @@ test.describe('CLIENT-01 Cold launch (single profile)', () => {
 
       const teachWindow = teachWindowOf(app);
       expect(teachWindow, 'the teach webview opened directly').not.toBeUndefined();
-      expect(teachWindow.url()).toContain('ce-qa-school.devstudi.com');
+      expect(teachWindow.url()).toContain('172.18.2.85');
     } finally {
       await app.close();
     }

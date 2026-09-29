@@ -56,23 +56,37 @@ test.describe('ATT-04 Leave before submitting', () => {
     }
   );
 
+  // Confirming the close part-way through: no error (ATT-04-03), and the register opens normally again (ATT-04-06) --
+  // one test each (split 2026-09-28).
+  const confirmCloseMidway = async (att) => {
+    await att.closeBtn.first().click({ force: true });
+    await att.closeDialogConfirmBtn.click({ force: true, timeout: 5000 }).catch(() => {});
+    await expect(att.container, 'set-up: register closed').toBeHidden({ timeout: 10000 });
+  };
+
   test(
-    'ATT-04-03: confirming the close part-way through shows no error, and the register opens normally again (regression, Zoho TCN-I16577)',
+    'ATT-04-03: confirming the close part-way through shows no error (regression, Zoho TCN-I16577)',
     { tag: ['@regression'] },
     async ({ user, page }) => {
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
-      const att = user.attendance;
-      await att.closeBtn.first().click({ force: true });
-      await att.closeDialogConfirmBtn.click({ force: true, timeout: 5000 }).catch(() => {});
-      await expect(att.container).toBeHidden({ timeout: 10000 });
+      await confirmCloseMidway(user.attendance);
       await expect(page.getByText(/error|went wrong|failed/i).filter({ visible: true }), 'no error shown').toHaveCount(
         0
       );
+      expect(errors, 'no uncaught page errors').toEqual([]);
+    }
+  );
+
+  test(
+    'ATT-04-06: after confirming the close part-way through, the register opens normally again (regression, Zoho TCN-I16577)',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const att = user.attendance;
+      await confirmCloseMidway(att);
       await att.open(user.magnet);
       await att.startMarking();
       expect(await att.cells.count()).toBeGreaterThan(0);
-      expect(errors).toEqual([]);
     }
   );
 
@@ -92,8 +106,10 @@ test.describe('ATT-04 Leave before submitting', () => {
     }
   );
 
+  // Switching class before submitting: no register is left behind (ATT-04-05), and the original class's Attendance still
+  // opens (ATT-04-07) -- one test each (split 2026-09-28).
   test(
-    "ATT-04-05: switching class before submitting leaves no register behind, and the original class's Attendance still opens",
+    'ATT-04-05: switching class before submitting leaves no register behind',
     { tag: ['@bug', '@functional'] },
     async ({ user }) => {
       // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): same defect as ATT-01-04 -- after switching class the
@@ -101,6 +117,15 @@ test.describe('ATT-04 Leave before submitting', () => {
       test.fail(true, 'The Attendance register stays on screen over the new class after a class switch');
       await user.nav.applyClassMap('navigationGeneral');
       await expect(user.attendance.container).toBeHidden({ timeout: 10000 });
+    }
+  );
+
+  test(
+    "ATT-04-07: after switching class before submitting, the original class's Attendance still opens normally",
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await user.nav.applyClassMap('navigationGeneral');
+      await user.attendance.closeAll().catch(() => {}); // the register may be left over the new class (ATT-04-05)
       await user.nav.applyClassMap('attendance');
       await user.attendance.open(user.magnet);
       await user.attendance.startMarking();

@@ -113,16 +113,33 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
       .filter({ hasText: /^\s*filter resources\s*$/i })
       .first();
 
+  // Unticking Filter Resources (PL-04-05) and ticking it again (PL-04-11): one test each (split 2026-09-28). Both leave
+  // the filter ticked.
+  test('PL-04-05: unticking Filter Resources hides every card', { tag: ['@functional'] }, async ({ user, page }) => {
+    const pl = user.playlist;
+    expect((await pl.cardTitles()).length, 'set-up: cards showing').toBeGreaterThan(0);
+    await pl.openOptionsMenu();
+    await masterFilter(page).click();
+    try {
+      await expect(pl.resourceCards.filter({ visible: true }), 'every card hidden').toHaveCount(0, { timeout: 5000 });
+    } finally {
+      await masterFilter(page).click();
+      await pl.closeOptionsMenu();
+    }
+  });
+
   test(
-    'PL-04-05: unticking Filter Resources hides every card, and ticking it again brings them all back',
+    'PL-04-11: ticking Filter Resources again brings every card back',
     { tag: ['@functional'] },
     async ({ user, page }) => {
       const pl = user.playlist;
       const before = await pl.cardTitles();
-      expect(before.length).toBeGreaterThan(0);
+      expect(before.length, 'set-up: cards showing').toBeGreaterThan(0);
       await pl.openOptionsMenu();
       await masterFilter(page).click();
-      await expect(pl.resourceCards.filter({ visible: true }), 'every card hidden').toHaveCount(0, { timeout: 5000 });
+      await expect(pl.resourceCards.filter({ visible: true }), 'set-up: every card hidden').toHaveCount(0, {
+        timeout: 5000,
+      });
       await masterFilter(page).click();
       await expect.poll(() => pl.cardTitles(), { message: 'all cards back' }).toEqual(before);
       await pl.closeOptionsMenu();
@@ -171,21 +188,35 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
     }
   );
 
-  test(
-    'PL-04-08: Reset asks for confirmation first, and cancelling it changes nothing',
-    { tag: ['@functional'] },
-    async ({ user, page }) => {
-      const pl = user.playlist;
-      const before = await pl.cardTitles();
-      await pl.openOptionsMenu();
-      await pl.filterResetBtn.click();
-      await expect(page.getByText(/are you sure you want to reset your playlist/i)).toBeVisible({ timeout: 5000 });
-      await pl.filterCancelBtn.first().click();
-      await expect(page.getByText(/are you sure you want to reset your playlist/i)).toBeHidden();
-      expect(await pl.cardTitles()).toEqual(before);
+  // Reset asks for confirmation (PL-04-08), and cancelling changes nothing (PL-04-12): one test each (split 2026-09-28).
+  const resetQuestion = (page) => page.getByText(/are you sure you want to reset your playlist/i);
+
+  test('PL-04-08: Reset asks for confirmation first', { tag: ['@functional'] }, async ({ user, page }) => {
+    const pl = user.playlist;
+    await pl.openOptionsMenu();
+    await pl.filterResetBtn.click();
+    try {
+      await expect(resetQuestion(page)).toBeVisible({ timeout: 5000 });
+    } finally {
+      await pl.filterCancelBtn
+        .first()
+        .click({ timeout: 3000 })
+        .catch(() => {});
       await pl.closeOptionsMenu();
     }
-  );
+  });
+
+  test('PL-04-12: cancelling Reset changes nothing', { tag: ['@functional'] }, async ({ user, page }) => {
+    const pl = user.playlist;
+    const before = await pl.cardTitles();
+    await pl.openOptionsMenu();
+    await pl.filterResetBtn.click();
+    await expect(resetQuestion(page), 'set-up: the confirmation is shown').toBeVisible({ timeout: 5000 });
+    await pl.filterCancelBtn.first().click();
+    await expect(resetQuestion(page)).toBeHidden();
+    expect(await pl.cardTitles(), 'the Playlist is unchanged').toEqual(before);
+    await pl.closeOptionsMenu();
+  });
 
   test(
     'PL-04-09: entering Edit and finishing without changes leaves the Playlist exactly as it was',

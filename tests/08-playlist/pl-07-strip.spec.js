@@ -7,13 +7,21 @@ test.describe('PL-07 Playlist strip', () => {
   // Class 12A Physics 1.1 has an ebook, so its strip shows the E-Books tile (12A Computer Science ch 14 has none).
   test.use({ classMap: 'playlistGeneral' });
 
+  // The E-Books tile (PL-07-01), the Contents tile (PL-07-05) and the cards' type icons (PL-07-06): one test each
+  // (split 2026-09-28).
+  test('PL-07-01: the strip shows the E-Books tile', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
+    await expect(user.playlist.eBooksTile).toBeVisible();
+  });
+
+  test('PL-07-05: the strip shows the Contents tile', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
+    await expect(user.playlist.contentsTile).toBeVisible();
+  });
+
   test(
-    'PL-07-01: the strip shows E-Books, Contents and the resource cards, each card with its type icon',
+    'PL-07-06: the strip shows the resource cards, each card with its type icon',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const pl = user.playlist;
-      await expect(pl.eBooksTile).toBeVisible();
-      await expect(pl.contentsTile).toBeVisible();
       await expect(pl.resourceCards.first()).toBeVisible({ timeout: 15000 });
       const types = await pl.cardTypes();
       expect(types.length).toBeGreaterThan(0);

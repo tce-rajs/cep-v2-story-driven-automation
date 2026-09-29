@@ -85,6 +85,9 @@ module.exports = defineConfig({
     ['html', { outputFolder: 'playwright-report' }],
     ['html', { outputFolder: archiveFolder, open: 'never' }],
     ['./scripts/archive-readme-reporter.js', { outputFolder: archiveFolder }],
+    // Plain-language summary at the end of every run (works / known bug / known bug gone? / new failure /
+    // environment / skipped), also saved as test-results/RESULT-SUMMARY.md.
+    ['./scripts/result-summary-reporter.js'],
   ],
 
   use: {

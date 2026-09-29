@@ -1,7 +1,8 @@
 // WB-09 — Whiteboard data integrity (what the teacher sees is what is saved)
 // Source: CEPV2_Stories/06_Whiteboard.md
 // Data: 'toolbarGeneral' (Class 12A Physics, 1.1) and, for the class-switch case, Class 11A Mathematics 1.1 (its board
-// is only read, never written). The 12A board is cleared before each test and again at the end.
+// is only read, never written). The 12A board is never cleared (owner rule 2026-09-29): each test writes on fresh
+// space below the teacher's writing, and compares only its own strokes.
 //
 // Every case compares the board's exact geometry (each stroke's `d`, in board coordinates, independent of zoom and pan)
 // before and after a reload, so a stroke that comes back moved, resized, duplicated or missing is caught.
@@ -34,26 +35,50 @@ const saved = async (user) => {
     .toBe(true);
 };
 
+/** Note the other class's board (Class 11A Mathematics, 1.1, read only), write on 12A, then switch to 11A at once --
+ * no wait for the save, as a teacher moving to the next period. Returns the other board before, and what was written. */
+const writeThenSwitchClass = async (user) => {
+  await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
+  await user.nav.goToChapterTopic(0, 0);
+  await user.toolbar.waitForBoardToSettle();
+  const otherBefore = await user.content.pathGeometry();
+
+  await user.nav.applyClassMap('toolbarGeneral');
+  await user.content.startOnFreshSpace();
+  await write(user, 15, 36);
+  const mine = await user.content.pathGeometry();
+  await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
+  await user.nav.goToChapterTopic(0, 0);
+  await user.page.waitForTimeout(12000);
+  await user.toolbar.waitForBoardToSettle();
+  return { otherBefore, mine };
+};
+
 test.describe('WB-09 Whiteboard data integrity', () => {
-  test.use({ classMap: 'toolbarGeneral', cleanBoard: true });
+  test.use({ classMap: 'toolbarGeneral', freshSpace: true });
   test.describe.configure({ timeout: 10 * 60 * 1000 });
 
   test.afterEach(async ({ app }) => {
     await app.nav.applyClassMap('toolbarGeneral').catch(() => {});
-    await app.toolbar.clearBoard(app.whiteboard).catch(() => {});
   });
+
+  // Owner rule (2026-09-29): tests never wipe the teacher's board. These two are ABOUT Clear Whiteboard, which wipes
+  // the whole topic, so they wait for the owner to decide how Clear may be tested.
+  const CLEAR_WIPES_BOARD =
+    "Clear Whiteboard erases the teacher's whole board; owner rule 2026-09-29 forbids it. Waiting for the owner to decide how Clear may be tested (e.g. a dedicated scratch topic).";
 
   test(
     'WB-09-01: after Clear Whiteboard and a reload, nothing comes back',
     { tag: ['@regression'] },
     async ({ user }) => {
+      test.fixme(true, CLEAR_WIPES_BOARD);
       await write(user, 25, 31);
       await saved(user);
-      await user.toolbar.clearBoard(user.whiteboard);
-      expect(await user.toolbar.pathCount(), 'the board is empty on screen').toBe(0);
+      await user.toolbar.pressClearWhiteboard(user.whiteboard);
+      await expect(user.toolbar.allPaths, 'the board is empty on screen').toHaveCount(0);
       await user.page.waitForTimeout(12000); // let the clear autosave
       await reload(user);
-      expect(await user.toolbar.pathCount(), 'no strokes come back after a reload').toBe(0);
+      await expect(user.toolbar.allPaths, 'no strokes come back after a reload').toHaveCount(0);
     }
   );
 
@@ -61,9 +86,10 @@ test.describe('WB-09 Whiteboard data integrity', () => {
     'WB-09-02: Undo straight after Clear Whiteboard leaves the saved board matching what is on screen',
     { tag: ['@edge'] },
     async ({ user }) => {
+      test.fixme(true, CLEAR_WIPES_BOARD);
       await write(user, 20, 32);
       await saved(user);
-      await user.toolbar.clearBoard(user.whiteboard);
+      await user.toolbar.pressClearWhiteboard(user.whiteboard);
       await user.toolbar.tool('gtUndo').click({ force: true });
       await user.page.waitForTimeout(12000);
       const onScreen = await user.content.pathGeometry();
@@ -139,47 +165,25 @@ test.describe('WB-09 Whiteboard data integrity', () => {
     'WB-09-06: switching class straight after writing does not put the strokes on the other class’s board',
     { tag: ['@regression', '@negative'] },
     async ({ user }) => {
-      // Two separate outcomes (the other board is not touched; the strokes are on their own board), each checked softly
-      // in its own step so one failing does not hide the other.
-      let otherBefore;
-      let mine;
+      const { otherBefore, mine } = await writeThenSwitchClass(user);
+      const otherAfter = await user.content.pathGeometry();
+      expect(
+        otherAfter.filter((d) => mine.includes(d)),
+        'none of the new strokes are on the other class’s board'
+      ).toEqual([]);
+      expect(otherAfter, 'the other class’s board is unchanged').toEqual(otherBefore);
+    }
+  );
 
-      await test.step('baseline of the other class’s board (Class 11A Mathematics, 1.1), read only', async () => {
-        await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
-        await user.nav.goToChapterTopic(0, 0);
-        await user.toolbar.waitForBoardToSettle();
-        otherBefore = await user.content.pathGeometry();
-      });
-
-      await test.step('write, then switch class at once (no wait for the save)', async () => {
-        await user.nav.applyClassMap('toolbarGeneral');
-        await user.toolbar.waitForBoardToSettle();
-        await write(user, 15, 36);
-        mine = await user.content.pathGeometry();
-        // As a teacher moving to the next period.
-        await user.nav.resetToClass('Class 11', 'A', 'Mathematics');
-        await user.nav.goToChapterTopic(0, 0);
-        await user.page.waitForTimeout(12000);
-        await user.toolbar.waitForBoardToSettle();
-      });
-
-      await test.step('the other class’s board is untouched', async () => {
-        const otherAfter = await user.content.pathGeometry();
-        expect
-          .soft(
-            otherAfter.filter((d) => mine.includes(d)),
-            'none of the new strokes are on the other class’s board'
-          )
-          .toEqual([]);
-        expect.soft(otherAfter, 'the other class’s board is unchanged').toEqual(otherBefore);
-      });
-
-      await test.step('the strokes are on their own board', async () => {
-        await user.nav.applyClassMap('toolbarGeneral');
-        await expect
-          .poll(() => user.content.pathGeometry(), { message: 'the strokes are on their own board', timeout: 30000 })
-          .toEqual(mine);
-      });
+  test(
+    'WB-09-08: after switching class straight after writing, the strokes are on their own board when the teacher comes back',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      const { mine } = await writeThenSwitchClass(user);
+      await user.nav.applyClassMap('toolbarGeneral');
+      await expect
+        .poll(() => user.content.pathGeometry(), { message: 'the strokes are on their own board', timeout: 30000 })
+        .toEqual(mine);
     }
   );
 

@@ -5,7 +5,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 const onBoard = (page) =>
   page
@@ -58,24 +58,34 @@ test.describe('TB-11 Widgets', () => {
     }
   );
 
+  // Inserting the Ruler (TB-11-03) and moving it (TB-11-07): one test each (split 2026-09-28).
+  const insertRuler = async (user, page) => {
+    await user.toolbar.openToolPanel('gtWidgets');
+    const before = await onBoard(page).count();
+    await user.toolbar.widgetTool('Ruler').click({ force: true });
+    await expect.poll(() => onBoard(page).count(), { message: 'ruler on the board' }).toBeGreaterThan(before);
+  };
+
   test(
-    'TB-11-03: inserting the Ruler places a ruler on the board that can be moved',
+    'TB-11-03: inserting the Ruler places a ruler on the board',
     { tag: ['@functional'] },
     async ({ user, page }) => {
-      await user.toolbar.openToolPanel('gtWidgets');
-      const before = await onBoard(page).count();
-      await user.toolbar.widgetTool('Ruler').click({ force: true });
-      await expect.poll(() => onBoard(page).count(), { message: 'ruler on the board' }).toBeGreaterThan(before);
-      const ruler = onBoard(page).last();
-      const a = await ruler.boundingBox();
-      await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(a.x + a.width / 2 + 150, a.y + a.height / 2 + 80, { steps: 10 });
-      await page.mouse.up();
-      const b = await ruler.boundingBox();
-      expect(Math.abs(b.x - a.x) + Math.abs(b.y - a.y), 'the ruler moved').toBeGreaterThan(40);
+      await insertRuler(user, page);
+      await expect(onBoard(page).last()).toBeVisible();
     }
   );
+
+  test('TB-11-07: a Ruler placed on the board can be moved', { tag: ['@functional'] }, async ({ user, page }) => {
+    await insertRuler(user, page);
+    const ruler = onBoard(page).last();
+    const a = await ruler.boundingBox();
+    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(a.x + a.width / 2 + 150, a.y + a.height / 2 + 80, { steps: 10 });
+    await page.mouse.up();
+    const b = await ruler.boundingBox();
+    expect(Math.abs(b.x - a.x) + Math.abs(b.y - a.y), 'the ruler moved').toBeGreaterThan(40);
+  });
 
   test('TB-11-04: closing a widget removes it from the board', { tag: ['@functional'] }, async ({ user, page }) => {
     await user.toolbar.openToolPanel('gtWidgets');

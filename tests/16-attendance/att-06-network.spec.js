@@ -34,19 +34,34 @@ test.describe('ATT-06 Submitting attendance when the network fails', () => {
     return marks;
   };
 
+  // A failed submit: the teacher is told (ATT-06-01), the register stays open (ATT-06-03), and the marks are kept
+  // (ATT-06-04) -- one test each (split 2026-09-28).
   test(
-    'ATT-06-01: a failed submit says so and keeps the register open with the marks made',
+    'ATT-06-01: a failed submit tells the teacher it was not submitted',
     { tag: ['@negative'] },
     async ({ user, page }) => {
-      const marks = await submitWhileDown(user, page);
-      await expect(
-        user.attendance.container,
-        'the register stays open (it does not close as if submitted)'
-      ).toBeVisible();
+      await submitWhileDown(user, page);
       await expect(
         page.getByText(/fail|error|could not|couldn.t|unable|try again|network|offline/i).first(),
         'the teacher is told the attendance was not submitted'
       ).toBeVisible({ timeout: 10000 });
+    }
+  );
+
+  test(
+    'ATT-06-03: after a failed submit the register stays open (it does not close as if submitted)',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      await submitWhileDown(user, page);
+      await expect(user.attendance.container, 'the register stays open').toBeVisible();
+    }
+  );
+
+  test(
+    'ATT-06-04: after a failed submit the marks the teacher made are kept',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const marks = await submitWhileDown(user, page);
       await page.unroute('**/*');
       if (await user.attendance.editBtn.isVisible().catch(() => false))
         await user.attendance.editBtn.click({ force: true });

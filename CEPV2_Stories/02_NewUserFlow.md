@@ -14,18 +14,20 @@ than logging straight in; (5) set the new password; (6) after setting it, the us
 returned to the sign-in page — not auto-logged-in; (7) sign in again with the username
 and the newly-set password.
 
-1. NEW-01-01 — To check the school is either pre-selected by default or can be selected manually, and both paths reach the username field
+1. NEW-01-01 — To check that with the school as pre-selected (if at all), the username field is reachable
 2. NEW-01-02 — To check entering the given username and the default password `classedge` triggers a forced "set new password" step, not a normal login
 3. NEW-01-03 — To check setting the new password succeeds and returns the user to the sign-in page, rather than logging them in directly
 4. NEW-01-04 — To check signing in again with the username and the newly-set password succeeds
 5. NEW-01-05 — Negative: to check the old default password (`classedge`) no longer works once the new password is set
+6. NEW-01-06 — To check choosing the school by hand shows the chosen school and the username field is reachable _(split from NEW-01-01, 2026-09-28)_
 
 ### NEW-02 — PIN setup on first successful password login
 
 1. NEW-02-01 — To check that successfully signing in with the new password (immediately after NEW-01) presents a PIN setup page before entering the app
 2. NEW-02-02 — To check setting a new PIN completes successfully
 3. NEW-02-03 — To check the user can subsequently log in using the PIN, as an alternative to the password
-4. NEW-02-04 — Negative: to check setting a PIN that doesn't meet format requirements (too short, non-numeric) shows a validation error, not a silent rejection
+4. NEW-02-04 — Negative: to check a PIN that is too short (3 digits) cannot be submitted, not a silent rejection
+5. NEW-02-05 — Negative: to check letters are not accepted into the PIN boxes _(split from NEW-02-04, 2026-09-28)_
 
 ### NEW-03 — Welcome screen and first-time class selection
 

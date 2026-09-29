@@ -5,8 +5,13 @@
 
 const { test, expect } = require('../../fixtures');
 
-// Counts and "last path" lookups need a blank board, not the persisted content earlier tests left behind.
-test.use({ cleanBoard: true });
+// Counts and "last path" lookups see only this test's own strokes; the teacher's writing is kept (never cleared).
+test.use({ freshSpace: true });
+
+// Owner rule (2026-09-29): tests never wipe the teacher's board. Confirming "Clear whiteboard" wipes everything on
+// the topic, so the tests whose subject is that confirmation wait for the owner to decide how Clear may be tested.
+const CLEAR_WIPES_BOARD =
+  'Confirming "Clear whiteboard" erases the teacher\'s whole board; owner rule 2026-09-29 forbids it. Waiting for the owner to decide how Clear may be tested (e.g. a dedicated scratch topic).';
 
 test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
   test(
@@ -81,8 +86,8 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
       // removed. Cut one long vertical stroke with a horizontal pass and measure how much of its height is gone:
       // 0 if it was left whole, the gap if it was cut in two, all of it if the pass wiped it out.
       const removedAt = async (fraction) => {
-        // Each size starts from the same blank board and the same picture.
-        await tb.clearBoard(user.whiteboard);
+        // Each size starts on fresh space (below the previous size's stroke) with the same picture; nothing is erased.
+        await user.content.startOnFreshSpace();
         await tb.selectTool('gtPen');
         await tb.drawStroke({ x: 600, y: 300 }, { x: 600, y: 560 }, 20);
         const fullHeight = (await tb.paths.first().boundingBox()).height;
@@ -126,27 +131,34 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
     }
   );
 
+  // "Clear": it asks for confirmation first (TB-05-06), and confirming removes everything (TB-05-10) -- one test each
+  // (split 2026-09-28).
+  const pressClear = async (user) => {
+    await user.toolbar.drawLetters(3, { x: 400, y: 400, gap: 100 });
+    expect(await user.toolbar.pathCount(), 'set-up: content drawn').toBeGreaterThanOrEqual(3);
+    await user.toolbar.openToolPanel('gtErase');
+    await user.whiteboard.clearWhiteboardBtn.click({ force: true });
+  };
+
   test(
-    'TB-05-06: "Clear" removes all whiteboard content, with a confirmation step first',
+    'TB-05-06: "Clear" asks for confirmation first, and removes nothing before it is confirmed',
     { tag: ['@functional'] },
     async ({ user }) => {
-      const tb = user.toolbar;
       const wb = user.whiteboard;
-      await tb.drawLetters(3, { x: 400, y: 400, gap: 100 });
-      expect(await tb.pathCount()).toBeGreaterThanOrEqual(3);
-
-      await tb.openToolPanel('gtErase');
-      await wb.clearWhiteboardBtn.click({ force: true });
-
-      // Confirmation first: nothing is gone yet.
+      await pressClear(user);
       await expect(wb.clearConfirmDialogConfirmBtn).toBeVisible();
       await expect(wb.clearConfirmDialogCancelBtn).toBeVisible();
-      expect(await tb.pathCount(), 'content untouched until confirmed').toBeGreaterThanOrEqual(3);
-
-      await wb.clearConfirmDialogConfirmBtn.click({ force: true });
-      await expect.poll(() => tb.pathCount()).toBe(0);
+      expect(await user.toolbar.pathCount(), 'content untouched until confirmed').toBeGreaterThanOrEqual(3);
+      await wb.clearConfirmDialogCancelBtn.click({ force: true });
     }
   );
+
+  test('TB-05-10: confirming "Clear" removes all whiteboard content', { tag: ['@functional'] }, async ({ user }) => {
+    test.fixme(true, CLEAR_WIPES_BOARD);
+    await pressClear(user);
+    await user.whiteboard.clearConfirmDialogConfirmBtn.click({ force: true });
+    await expect.poll(() => user.toolbar.allPaths.count()).toBe(0);
+  });
 
   test(
     'TB-05-07: the eraser does not leave small fragments behind after a single drag pass',
@@ -190,16 +202,18 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
     'TB-05-09: cleared content stays cleared after the app reloads (regression, Zoho TCN-I16689)',
     { tag: ['@regression'] },
     async ({ user, page }) => {
+      test.fixme(true, CLEAR_WIPES_BOARD);
       const tb = user.toolbar;
       await tb.drawLetters(3, { x: 400, y: 400, gap: 100 });
       await user.content.waitForSaved();
-      await tb.clearBoard(user.whiteboard);
-      expect(await tb.pathCount()).toBe(0);
+      await tb.pressClearWhiteboard(user.whiteboard);
+      await expect(tb.allPaths).toHaveCount(0);
       await user.content.waitForSaved().catch(() => {});
       await page.reload();
       await tb.wbSvg.waitFor({ state: 'visible', timeout: 30000 });
       await page.waitForTimeout(3000);
-      expect(await tb.waitForBoardToSettle(), 'still empty after reload').toBe(0);
+      await tb.waitForBoardToSettle();
+      await expect(tb.allPaths, 'still empty after reload').toHaveCount(0);
     }
   );
 });

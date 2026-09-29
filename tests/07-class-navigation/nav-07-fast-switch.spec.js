@@ -11,28 +11,50 @@ const NEAR_LIMIT_VIDEO = path.join(__dirname, '..', '..', 'test-data', 'positive
 test.describe('NAV-07 Fast class switching', () => {
   test.use({ classMap: 'playersDefault' });
 
+  // Double-clicking a subject: the label shows the chosen class (NAV-07-01), the class window closes and is not reopened
+  // (NAV-07-04), and the new class's Playlist loads (NAV-07-05) -- one test each (split 2026-09-28).
+  const doubleClickSubject = async (user, page) => {
+    const nav = user.nav;
+    await nav.openClassPopup();
+    await page.waitForTimeout(800);
+    await nav.allMyClassesTab.click();
+    await nav.gradeButton('Class 11').click();
+    await nav.divisionButton('A').click();
+    await nav.subjectButton('Accountancy').dblclick({ delay: 40 });
+    await expect(nav.currentClassBtn, 'the label shows the chosen class').toContainText('Accountancy', {
+      timeout: 30000,
+    });
+  };
+
   test(
-    'NAV-07-01: double-clicking a subject switches class once, and the label, Playlist and board all belong to it',
+    'NAV-07-01: double-clicking a subject switches to that class, and the class label shows it',
     { tag: ['@edge'] },
     async ({ user, page }) => {
-      const nav = user.nav;
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
-      await nav.openClassPopup();
-      await page.waitForTimeout(800);
-      await nav.allMyClassesTab.click();
-      await nav.gradeButton('Class 11').click();
-      await nav.divisionButton('A').click();
-      await nav.subjectButton('Accountancy').dblclick({ delay: 40 });
-      await expect(nav.currentClassBtn, 'the label shows the chosen class').toContainText('Accountancy', {
-        timeout: 30000,
-      });
+      await doubleClickSubject(user, page);
+      expect(errors, 'no script errors').toEqual([]);
+    }
+  );
+
+  test(
+    'NAV-07-04: after double-clicking a subject, the class window is closed and not reopened',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      await doubleClickSubject(user, page);
       await page.waitForTimeout(3000);
-      await expect(nav.allMyClassesTab, 'the class popup is closed, not re-opened').toBeHidden();
+      await expect(user.nav.allMyClassesTab, 'the class popup is closed, not re-opened').toBeHidden();
+    }
+  );
+
+  test(
+    'NAV-07-05: after double-clicking a subject, the new class’s Playlist loads',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      await doubleClickSubject(user, page);
       await expect(user.playlist.resourceCards.first(), 'the new class’s Playlist loaded').toBeAttached({
         timeout: 20000,
       });
-      expect(errors, 'no script errors').toEqual([]);
     }
   );
 

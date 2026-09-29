@@ -17,9 +17,9 @@ const KINDS = [
   { id: '01', kind: 'video', selector: icon('ic.AVMediaVideo'), map: 'playersDefault' },
   { id: '02', kind: 'worksheet (PDF)', selector: icon('ic.Worksheet'), map: 'playersDefault' },
   { id: '03', kind: 'image', selector: icon('ic.Image'), map: 'playersDefault' },
-  { id: '04', kind: 'web link', selector: icon('ic.Weblink'), map: 'playersDefault' },
+  { id: '04', kind: 'web link', selector: icon('ic.Weblink'), map: 'playersWeblink' },
   { id: '05', kind: 'code editor', selector: icon('ic.code'), map: 'playersDefault' },
-  { id: '06', kind: 'unsupported file', selector: icon('ic.unsupport'), map: 'playersDefault' },
+  { id: '06', kind: 'unsupported file', selector: icon('ic.unsupport'), map: 'playersUnsupported' },
   { id: '07', kind: 'quiz', selector: '[data-qa-id="playlist-quiz-card"] .resource-card', map: 'quiz' },
 ];
 

@@ -3,7 +3,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 const THICKNESS_LABELS = ['Thin', 'Normal', 'Thick', 'Strong'];
 
@@ -104,61 +104,66 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
     }
   );
 
-  test(
-    'TB-04-04: a 2000-character text object and emoji/RTL text render correctly in a text box',
-    { tag: ['@regression'] },
-    async ({ user, page }) => {
+  // A 2000-character text (TB-04-04), emoji (TB-04-08) and right-to-left text (TB-04-09): one test each (split
+  // 2026-09-28).
+  for (const [id, name, text] of [
+    ['TB-04-04', 'a 2000-character text', 'The quick brown fox jumps over the lazy dog. '.repeat(45).slice(0, 2000)],
+    ['TB-04-08', 'emoji text', 'Great work 😀👍🎉'],
+    ['TB-04-09', 'right-to-left (Arabic/Hebrew) text', 'مرحبا بالعالم שלום עולם'],
+  ]) {
+    test(`${id}: ${name} renders correctly in a text box`, { tag: ['@regression'] }, async ({ user, page }) => {
       const wb = user.whiteboard;
-      const cases = {
-        long: 'The quick brown fox jumps over the lazy dog. '.repeat(45).slice(0, 2000),
-        emoji: 'Great work 😀👍🎉',
-        rtl: 'مرحبا بالعالم שלום עולם',
-      };
-      let x = 300;
-      for (const [name, text] of Object.entries(cases)) {
-        const before = await wb.textObjects.count();
-        const box = await wb.insertTextAndType(x, 300, text);
-        await page.waitForTimeout(500);
-
-        await expect(wb.textObjects, `${name}: a text object was created`).toHaveCount(before + 1);
-        const rendered = (await box.textContent()) || '';
-        expect(rendered, `${name}: full text present`).toContain(text.trim());
-        if (name === 'long') expect(rendered.length).toBeGreaterThanOrEqual(2000);
-        await user.toolbar.selectTool('gtSelect');
-        x += 350;
-      }
-    }
-  );
+      const before = await wb.textObjects.count();
+      const box = await wb.insertTextAndType(300, 300, text);
+      await page.waitForTimeout(500);
+      await expect(wb.textObjects, 'set-up: a text object was created').toHaveCount(before + 1);
+      const rendered = (await box.textContent()) || '';
+      expect(rendered, 'the full text is present').toContain(text.trim());
+      await user.toolbar.selectTool('gtSelect');
+    });
+  }
 
   // --- Added 2026-09-26 (gap-fill from the reference suite's Toolbar workbook and Zoho bugs) ---
+
+  /** Start a Pen drag, switch to the Eraser half-way, finish the drag; returns how many paths it added. */
+  const switchToEraserMidDrag = async (user, page) => {
+    const tb = user.toolbar;
+    await tb.selectTool('gtPen');
+    const before = await tb.pathCount();
+    const box = await tb.wbSvg.boundingBox();
+    await page.mouse.move(box.x + 400, box.y + 400);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + 400 + i * 15, box.y + 400);
+    await tb.tool('gtErase').dispatchEvent('click');
+    for (let i = 9; i <= 16; i++) await page.mouse.move(box.x + 400 + i * 15, box.y + 400);
+    await page.mouse.up();
+    await page.waitForTimeout(800);
+    return { before, added: (await tb.pathCount()) - before };
+  };
 
   test(
     'TB-04-05: switching from Pen to Eraser part-way through a drag leaves no stray half-drawn stroke (regression)',
     { tag: ['@regression'] },
     async ({ user, page }) => {
-      const errors = [];
-      page.on('pageerror', (err) => errors.push(err.message));
-      const tb = user.toolbar;
-      await tb.selectTool('gtPen');
-      const before = await tb.pathCount();
-      const box = await tb.wbSvg.boundingBox();
-      await page.mouse.move(box.x + 400, box.y + 400);
-      await page.mouse.down();
-      for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + 400 + i * 15, box.y + 400);
-      await tb.tool('gtErase').dispatchEvent('click');
-      for (let i = 9; i <= 16; i++) await page.mouse.move(box.x + 400 + i * 15, box.y + 400);
-      await page.mouse.up();
-      await page.waitForTimeout(800);
-      const added = (await tb.pathCount()) - before;
+      const { added } = await switchToEraserMidDrag(user, page);
       expect(added, 'at most the one stroke that was being drawn').toBeLessThanOrEqual(1);
       if (added === 1) {
-        const b = await tb.lastPathBox();
+        const b = await user.toolbar.lastPathBox();
         expect(b.width, 'no tiny stray fragment').toBeGreaterThan(20);
       }
-      // The board still works.
-      await tb.penStroke({ x: 400, y: 550 }, { x: 600, y: 560 });
-      expect(await tb.pathCount()).toBeGreaterThan(before + added);
-      expect(errors).toEqual([]);
+    }
+  );
+
+  test(
+    'TB-04-10: after switching from Pen to Eraser part-way through a drag, the board still works (regression)',
+    { tag: ['@regression'] },
+    async ({ user, page }) => {
+      const errors = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      const { before, added } = await switchToEraserMidDrag(user, page);
+      await user.toolbar.penStroke({ x: 400, y: 550 }, { x: 600, y: 560 });
+      expect(await user.toolbar.pathCount(), 'a new stroke lands').toBeGreaterThan(before + added);
+      expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
 

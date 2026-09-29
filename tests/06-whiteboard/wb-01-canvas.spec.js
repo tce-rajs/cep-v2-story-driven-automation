@@ -3,7 +3,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 test.describe('WB-01 Canvas', () => {
   test(

@@ -11,8 +11,8 @@ stories and the process behind them).
 
 ## 1. What this project is
 
-Automated end-to-end tests for **Tata ClassEdge CEP v2**, the teacher-facing "teach" web app (QA server
-`https://ce-qa-school.devstudi.com/teach/`).
+Automated end-to-end tests for **Tata ClassEdge CEP v2**, the teacher-facing "teach" web app (target server
+`http://172.18.2.85/teach/` since 2026-09-28; the old QA server `ce-qa-school.devstudi.com` is no longer used).
 
 - The tests drive the real **Tata ClassEdge School Windows desktop client** (an Electron app), not a browser. A browser
   mode exists (`RUN_IN_BROWSER=1`) but the client is the reference.

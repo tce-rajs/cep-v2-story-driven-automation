@@ -21,6 +21,9 @@ const TOOL_IDS = [
   'gtRedo',
 ];
 
+// Marks board content that was there before the test started (see markExisting).
+const EXISTING_ATTR = 'data-autotest-existing';
+
 class ToolbarPage {
   constructor(page) {
     this.page = page;
@@ -35,7 +38,11 @@ class ToolbarPage {
     // --- Whiteboard drawing surface ---
     this.wbContainer = page.locator('[data-qa-id="wb-drawing-container"]');
     this.wbSvg = this.wbContainer.locator('svg').first();
-    this.paths = this.wbContainer.locator('svg path');
+    // Owner rule (2026-09-29): tests never clear the teacher's board. What was already on it is tagged with
+    // EXISTING_ATTR (markExisting) and left alone, so `paths` -- and every count built on it -- sees only what the test
+    // itself adds. `allPaths` is everything on the board.
+    this.allPaths = this.wbContainer.locator('svg path');
+    this.paths = this.wbContainer.locator(`svg path:not([${EXISTING_ATTR}])`);
 
     // --- Pen panel ---
     this.penColorOptions = page.locator('.penColorOption');
@@ -131,7 +138,67 @@ class ToolbarPage {
   }
 
   async pathCount() {
+    await this.remarkExisting();
     return this.paths.count();
+  }
+
+  /** Tag everything now on the board (strokes, shapes, images, text boxes) as the teacher's existing content, so the
+   * test's own counts and "last stroke" lookups ignore it -- without erasing it. The keys are kept on the Playwright
+   * page, so the tags are put back after a reload or a class switch re-renders the board (remarkExisting). */
+  async markExisting() {
+    const keys = await this.page.evaluate((attr) => {
+      const svg = document.querySelector('[data-qa-id="wb-drawing-container"] svg');
+      if (!svg) return [];
+      const keyOf = (e) =>
+        [
+          e.tagName,
+          e.getAttribute('d'),
+          e.getAttribute('xlink:href') || e.getAttribute('href'),
+          e.getAttribute('x'),
+          e.getAttribute('y'),
+          (e.textContent || '').trim(),
+        ].join('|');
+      const els = [...svg.querySelectorAll('path, image, foreignObject')];
+      els.forEach((e) => e.setAttribute(attr, ''));
+      window.__autotestExisting = new Set(els.map(keyOf));
+      return [...window.__autotestExisting];
+    }, EXISTING_ATTR);
+    this.page.__autotestExisting = keys;
+    return keys.length;
+  }
+
+  /** Re-apply markExisting's tags to elements the app re-rendered (after a reload the page forgets them). */
+  async remarkExisting() {
+    const keys = this.page.__autotestExisting;
+    if (!keys || !keys.length) return;
+    await this.page
+      .evaluate(
+        ({ attr, list }) => {
+          const svg = document.querySelector('[data-qa-id="wb-drawing-container"] svg');
+          if (!svg) return;
+          if (list) window.__autotestExisting = new Set(list);
+          const known = window.__autotestExisting;
+          const keyOf = (e) =>
+            [
+              e.tagName,
+              e.getAttribute('d'),
+              e.getAttribute('xlink:href') || e.getAttribute('href'),
+              e.getAttribute('x'),
+              e.getAttribute('y'),
+              (e.textContent || '').trim(),
+            ].join('|');
+          for (const e of svg.querySelectorAll(
+            `path:not([${attr}]), image:not([${attr}]), foreignObject:not([${attr}])`
+          ))
+            if (known.has(keyOf(e))) e.setAttribute(attr, '');
+        },
+        // Send the (possibly large) key list only when the page lost it.
+        {
+          attr: EXISTING_ATTR,
+          list: (await this.page.evaluate(() => !!window.__autotestExisting).catch(() => false)) ? null : keys,
+        }
+      )
+      .catch(() => {});
   }
 
   /** Confirmed live: right after login, pathCount() can briefly read 0
@@ -150,16 +217,16 @@ class ToolbarPage {
     return last;
   }
 
-  /** Empty the board through the app's own Eraser -> Clear whiteboard -> confirm flow, so a test starts from a
-   * known-blank canvas with nothing selected. The board is persisted per class/topic, so content (and a leftover
-   * selection) from earlier tests would otherwise skew every absolute count and "last path" lookup.
+  /** Press the app's own Eraser -> Clear whiteboard -> confirm. This WIPES the teacher's board: owner rule
+   * (2026-09-29) -- only a test whose subject is the Clear feature itself may call it, and it must restore the
+   * content afterwards. To start a test on empty space, use WhiteboardContent.startOnFreshSpace() instead.
    * `whiteboard` is the WhiteboardPage, which owns the Clear button and its confirm dialog. */
-  async clearBoard(whiteboard) {
+  async pressClearWhiteboard(whiteboard) {
     await this.waitForBoardToSettle();
     await this.openToolPanel('gtErase');
     await whiteboard.clearWhiteboardBtn.click({ force: true });
     await whiteboard.clearConfirmDialogConfirmBtn.click({ force: true, timeout: 5000 });
-    for (let i = 0; i < 10 && (await this.pathCount()) > 0; i++) await this.page.waitForTimeout(500);
+    for (let i = 0; i < 10 && (await this.allPaths.count()) > 0; i++) await this.page.waitForTimeout(500);
     await this.closePanelByTappingOutside();
   }
 

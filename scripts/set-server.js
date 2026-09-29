@@ -13,7 +13,7 @@
 // instead, which reads a named profile from config/environments/.
 //
 // Usage:
-//   node scripts/set-server.js https://ce-qa-school.devstudi.com/teach/
+//   node scripts/set-server.js http://172.18.2.85/teach/
 //   node scripts/set-server.js http://172.18.2.85/teach/
 
 const fs = require('fs');
@@ -32,12 +32,12 @@ function main() {
   const url = process.argv[2];
   if (!url) {
     fail(
-      'missing URL argument.\n\n  Usage: node scripts/set-server.js <teach-url>\n  Example: node scripts/set-server.js https://ce-qa-school.devstudi.com/teach/'
+      'missing URL argument.\n\n  Usage: node scripts/set-server.js <teach-url>\n  Example: node scripts/set-server.js http://172.18.2.85/teach/'
     );
   }
   if (!/^https?:\/\/.+\/teach\/?$/i.test(url)) {
     fail(
-      `"${url}" doesn't look like a teach URL (expected something ending in /teach/, e.g. https://ce-qa-school.devstudi.com/teach/).`
+      `"${url}" doesn't look like a teach URL (expected something ending in /teach/, e.g. http://172.18.2.85/teach/).`
     );
   }
   const normalized = url.endsWith('/') ? url : `${url}/`;

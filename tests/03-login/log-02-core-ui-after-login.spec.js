@@ -1,41 +1,76 @@
 // LOG-02 — All core UI components load after a valid login
 // Source: CEPV2_Stories/03_Login.md
-// Each component is asserted on its own so one failing piece cannot hide behind the others.
+// One test per component and per check (split 2026-09-28), so one failing piece cannot hide behind the others.
 
 const { test, expect } = require('../../fixtures');
 const { TOOL_IDS } = require('../../pages/toolbar.page');
 const { HeaderPage } = require('../../pages/header.page');
 
+/** The element is in the top-left corner of the window. */
+const expectTopLeft = async (header, el) => {
+  const { width, height } = await header.viewportSize();
+  const box = await el.boundingBox();
+  expect(box.x, 'left of centre').toBeLessThan(width * 0.15);
+  expect(box.y, 'top of screen').toBeLessThan(height * 0.2);
+};
+
+/** The calendar is in the top-right corner; returns what it shows next to the app's own clock. */
+const readCalendar = async (header) => {
+  await expect(header.calendar).toBeVisible();
+  const { width, height } = await header.viewportSize();
+  const box = await header.calendar.boundingBox();
+  expect(box.x + box.width, 'right edge near right of screen').toBeGreaterThan(width * 0.9);
+  expect(box.y, 'top of screen').toBeLessThan(height * 0.15);
+  return header.readDateTime();
+};
+
 test.describe('LOG-02 All core UI components load after a valid login', () => {
   test(
-    'LOG-02-01: the full toolbar, including Magnet, is visible and functional',
+    'LOG-02-01: the full toolbar, including Magnet, is visible',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
-      // Class 12A Physics is a class where Magnet lists its entries.
-      await user.nav.applyClassMap('default');
-
       for (const id of TOOL_IDS) {
         await expect.soft(user.toolbar.tool(id), id).toBeVisible();
       }
-      // Unlike signed-out (PRE-03-02), Magnet exists and opens a menu.
+      // Unlike signed-out (PRE-03-02), Magnet exists.
       await expect(user.magnet.tool).toBeVisible();
-      await user.magnet.open();
-      await expect(user.magnet.noticeItem).toBeVisible();
     }
   );
 
+  test('LOG-02-09: Magnet opens its menu', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
+    // Class 12A Physics is a class where Magnet lists its entries.
+    await user.nav.applyClassMap('default');
+    await user.magnet.open();
+    await expect(user.magnet.noticeItem).toBeVisible();
+  });
+
   test(
-    'LOG-02-02: class / curriculum navigation (grade, chapter, topic) is visible and functional',
+    'LOG-02-02: class / curriculum navigation (class, chapter and topic buttons) is visible',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       await expect(user.nav.currentClassBtn).toBeVisible();
       await expect(user.nav.currentChapterTopicBtn).toBeVisible();
+    }
+  );
 
+  test(
+    'LOG-02-10: the class button opens the class list (Recent and All My Classes)',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
       await user.nav.openClassPopup();
-      await expect(user.nav.recentClassesTab).toBeVisible();
-      await expect(user.nav.allMyClassesTab).toBeVisible();
-      await user.nav.openClassPopup(); // toggles closed
+      try {
+        await expect(user.nav.recentClassesTab).toBeVisible();
+        await expect(user.nav.allMyClassesTab).toBeVisible();
+      } finally {
+        await user.nav.openClassPopup(); // toggles closed
+      }
+    }
+  );
 
+  test(
+    'LOG-02-11: the chapter/topic button opens the chapter list, and a chapter shows its topics',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
       await user.nav.openChaptersPopup();
       await expect(user.nav.chapterItems.first()).toBeVisible();
       await user.nav.chapterItems.first().click({ timeout: 10000 });
@@ -43,14 +78,20 @@ test.describe('LOG-02 All core UI components load after a valid login', () => {
     }
   );
 
-  test('LOG-02-03: Playlist is visible and functional', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
+  test('LOG-02-03: Playlist is visible', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
     await user.playlist.ensureDrawerVisible();
     await expect(user.playlist.contentsTile).toBeVisible();
     await expect(user.playlist.optionsMenuBtn).toBeVisible();
+  });
 
+  test('LOG-02-12: the Playlist options menu opens', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
+    await user.playlist.ensureDrawerVisible();
     await user.playlist.openOptionsMenu();
-    await expect(user.playlist.filterOptions.first()).toBeVisible();
-    await user.playlist.closeOptionsMenu();
+    try {
+      await expect(user.playlist.filterOptions.first()).toBeVisible();
+    } finally {
+      await user.playlist.closeOptionsMenu();
+    }
   });
 
   test('LOG-02-04: Add Resource is visible and functional', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
@@ -63,37 +104,42 @@ test.describe('LOG-02 All core UI components load after a valid login', () => {
   });
 
   test(
-    'LOG-02-05: the header logo and version display in the top-left corner',
+    'LOG-02-05: the header logo displays in the top-left corner',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const header = user.header;
       await expect(header.logoContainer).toBeVisible();
       await expect(header.logoImage).toBeVisible();
-      await expect(header.versionText).toHaveText(/^v\s*\d+\.\d+\.\d+/);
-
-      const { width, height } = await header.viewportSize();
-      const box = await header.logoContainer.boundingBox();
-      expect(box.x).toBeLessThan(width * 0.15);
-      expect(box.y).toBeLessThan(height * 0.2);
+      await expectTopLeft(header, header.logoContainer);
     }
   );
 
   test(
-    'LOG-02-06: the header date and time display in the top-right corner',
+    'LOG-02-13: the header version number displays in the top-left corner',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const header = user.header;
-      await expect(header.calendar).toBeVisible();
+      await expect(header.versionText).toHaveText(/^v\s*\d+\.\d+\.\d+/);
+      await expectTopLeft(header, header.versionText);
+    }
+  );
 
-      const { width, height } = await header.viewportSize();
-      const box = await header.calendar.boundingBox();
-      expect(box.x + box.width).toBeGreaterThan(width * 0.9);
-      expect(box.y).toBeLessThan(height * 0.15);
-
-      const shown = await header.readDateTime();
+  test(
+    'LOG-02-06: the header shows the current time in the top-right corner',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      const shown = await readCalendar(user.header);
       expect(shown.shownMinutes, `time in "${shown.shown}"`).not.toBeNull();
       expect(HeaderPage.minuteGap(shown.shownMinutes, shown.nowMinutes)).toBeLessThanOrEqual(2);
-      expect(shown.shownDate).toBe(shown.nowDate);
+    }
+  );
+
+  test(
+    'LOG-02-14: the header shows the current date in the top-right corner',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      const shown = await readCalendar(user.header);
+      expect(shown.shownDate, `date in "${shown.shown}"`).toBe(shown.nowDate);
     }
   );
 

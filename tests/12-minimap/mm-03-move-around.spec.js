@@ -3,7 +3,7 @@
 
 const { test, expect } = require('../../fixtures');
 
-test.use({ cleanBoard: true });
+test.use({ freshSpace: true });
 
 async function zoomIn(user, clicks) {
   await user.toolbar.openToolPanel('gtZoom');
@@ -56,19 +56,33 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
     }
   );
 
+  // Reset View after zooming and panning away: 100% zoom (MM-03-02), and the content back in view (MM-03-06) -- one
+  // test each (split 2026-09-28).
+  const zoomPanAwayThenReset = async (user) => {
+    await user.toolbar.penStroke({ x: 500, y: 400 }, { x: 700, y: 460 });
+    await user.toolbar.lastPathBox(); // content exists before zooming away
+    await zoomIn(user, 4);
+    await user.minimap.open(user.toolbar);
+    await user.minimap.clickAt(0.05, 0.05);
+    await user.minimap.resetBtn.click({ force: true });
+  };
+
   test(
-    'MM-03-02: Reset View restores 100% zoom and brings the original content back into view',
+    'MM-03-02: Reset View restores 100% zoom after zooming and panning away',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
-      await user.toolbar.penStroke({ x: 500, y: 400 }, { x: 700, y: 460 });
-      await user.toolbar.lastPathBox(); // content exists before zooming away
-      await zoomIn(user, 4);
-      await user.minimap.open(user.toolbar);
-      await user.minimap.clickAt(0.05, 0.05);
-
-      await user.minimap.resetBtn.click({ force: true });
+      await zoomPanAwayThenReset(user);
       await expect.poll(() => user.minimap.zoomPercent()).toBe(100);
       expect(await user.content.zoomPercent()).toBe(100);
+    }
+  );
+
+  test(
+    'MM-03-06: Reset View brings the original content back into view after zooming and panning away',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      await zoomPanAwayThenReset(user);
+      await expect.poll(() => user.minimap.zoomPercent(), { message: 'set-up: reset done' }).toBe(100);
       const back = await user.toolbar.lastPathBox();
       const vp = await user.header.viewportSize();
       expect(back.x + back.width, 'content back in view (x)').toBeGreaterThan(0);
@@ -89,23 +103,36 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
     expect(errors).toEqual([]);
   });
 
+  // Clicking 10 points in the Minimap quickly: it ends on the last point (MM-03-04), and the canvas stays responsive
+  // (MM-03-07) -- one test each (split 2026-09-28).
+  const point = (box, i) => ({ x: box.x + box.width * (0.1 + 0.08 * i), y: box.y + box.height * (0.2 + 0.06 * i) });
+  const clickTenPoints = async (user) => {
+    await zoomIn(user, 2);
+    await user.minimap.open(user.toolbar);
+    const box = await user.minimap.canvas.boundingBox();
+    for (let i = 0; i < 10; i++) await user.page.mouse.click(point(box, i).x, point(box, i).y);
+    await user.page.waitForTimeout(1000);
+    return box;
+  };
+
   test(
-    'MM-03-04: clicking 10 points in the Minimap quickly keeps the canvas responsive and ends on the last point',
+    'MM-03-04: clicking 10 points in the Minimap quickly ends on the last point clicked',
     { tag: ['@edge'] },
     async ({ user }) => {
-      await zoomIn(user, 2);
-      await user.minimap.open(user.toolbar);
-      const box = await user.minimap.canvas.boundingBox();
-      for (let i = 0; i < 10; i++) {
-        await user.page.mouse.click(box.x + box.width * (0.1 + 0.08 * i), box.y + box.height * (0.2 + 0.06 * i));
-      }
-      await user.page.waitForTimeout(1000);
+      const box = await clickTenPoints(user);
       const afterBurst = (await user.minimap.readCanvas()).rect;
       // Ended on the last point: clicking that point once more changes nothing.
-      await user.page.mouse.click(box.x + box.width * (0.1 + 0.08 * 9), box.y + box.height * (0.2 + 0.06 * 9));
+      await user.page.mouse.click(point(box, 9).x, point(box, 9).y);
       await user.page.waitForTimeout(1000);
       expect((await user.minimap.readCanvas()).rect, 'already at the last clicked point').toEqual(afterBurst);
-      // Still responsive: drawing still works.
+    }
+  );
+
+  test(
+    'MM-03-07: after clicking 10 points in the Minimap quickly, the canvas still takes a stroke',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      await clickTenPoints(user);
       const before = await user.toolbar.pathCount();
       await user.toolbar.penStroke({ x: 600, y: 500 }, { x: 700, y: 520 });
       expect(await user.toolbar.pathCount()).toBeGreaterThan(before);

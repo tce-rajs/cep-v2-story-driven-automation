@@ -34,11 +34,12 @@ class WhiteboardPage {
     // --- Drawing surface (kept here too for convenience; canonical copy on ToolbarPage) ---
     this.wbContainer = page.locator('[data-qa-id="wb-drawing-container"]');
     this.wbSvg = this.wbContainer.locator('svg').first();
-    this.paths = this.wbContainer.locator('svg path');
+    // The test's own content only: what was on the board before is tagged by ToolbarPage.markExisting and left alone.
+    this.paths = this.wbContainer.locator('svg path:not([data-autotest-existing])');
     this.panGroup = this.wbContainer.locator('g.svg-pan-zoom_viewport, g#panGroup');
 
     // --- Text objects (foreignObject + contenteditable, WB-TEXT-01/02) ---
-    this.textObjects = this.wbContainer.locator('foreignObject.text-element');
+    this.textObjects = this.wbContainer.locator('foreignObject.text-element:not([data-autotest-existing])');
     this.textEditor = this.wbContainer.locator('.text-input-container[contenteditable="true"]');
 
     // --- Clear Whiteboard (via Eraser panel) ---

@@ -3,60 +3,92 @@
 
 const { test, expect } = require('../../fixtures');
 
-// Counts and "last path" lookups need a blank board, not the persisted content earlier tests left behind.
-test.use({ cleanBoard: true });
+// Counts and "last path" lookups see only this test's own strokes; the teacher's writing is kept (never cleared).
+test.use({ freshSpace: true });
 
 test.describe('TB-03 Background', () => {
+  // Changing the background: it becomes the active one (TB-03-01), and existing content is untouched (TB-03-05) -- one
+  // test each (split 2026-09-28). Every test leaves the board on the plain background.
   test(
-    'TB-03-01: changing the whiteboard background updates it without affecting existing content',
+    'TB-03-01: choosing a whiteboard background makes it the active background',
+    { tag: ['@smoke', '@functional'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      try {
+        await tb.chooseBackground('gtGraphCms');
+        await tb.openToolPanel('gtBackground');
+        await expect(tb.backgroundActive, 'chosen background is marked active').toHaveCount(1);
+        await expect(tb.backgroundActive).toHaveAttribute('data-qa-id', 'toolbar-background-gtGraphCms');
+        await tb.closePanelByTappingOutside();
+      } finally {
+        await tb.chooseBackground('gtBlankPage');
+      }
+    }
+  );
+
+  test(
+    'TB-03-05: changing the whiteboard background does not affect existing content',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const tb = user.toolbar;
       await tb.penStroke({ x: 400, y: 400 }, { x: 600, y: 470 });
       const objectsBefore = await tb.objectCount();
       const geometryBefore = await tb.paths.last().getAttribute('d');
+      try {
+        await tb.chooseBackground('gtGraphCms');
+        expect(await tb.objectCount(), 'no content lost or added').toBe(objectsBefore);
+        await expect(tb.paths.last(), 'content unchanged').toHaveAttribute('d', geometryBefore);
+      } finally {
+        await tb.chooseBackground('gtBlankPage');
+      }
+    }
+  );
 
-      await tb.chooseBackground('gtGraphCms');
-      await tb.openToolPanel('gtBackground');
-      await expect(tb.backgroundActive, 'chosen background is marked active').toHaveCount(1);
-      await expect(tb.backgroundActive).toHaveAttribute('data-qa-id', 'toolbar-background-gtGraphCms');
-      await tb.closePanelByTappingOutside();
+  // A background chosen at random: every UI element is still visible (TB-03-02), and the board can still be drawn on
+  // (TB-03-06) -- one test each (split 2026-09-28).
+  const chooseRandomBackground = async (user) => {
+    const tb = user.toolbar;
+    await tb.openToolPanel('gtBackground');
+    const ids = await tb.backgroundOptions.evaluateAll((els) =>
+      els.map((e) => e.getAttribute('data-qa-id').replace('toolbar-background-', ''))
+    );
+    await tb.closePanelByTappingOutside();
+    const pick = ids[Math.floor(Math.random() * ids.length)];
+    test.info().annotations.push({ type: 'note', description: `Random background chosen: ${pick}` });
+    await tb.chooseBackground(pick);
+  };
 
-      expect(await tb.objectCount(), 'no content lost or added').toBe(objectsBefore);
-      await expect(tb.paths.last(), 'content unchanged').toHaveAttribute('d', geometryBefore);
-
-      await tb.chooseBackground('gtBlankPage'); // leave the board as found
+  test(
+    'TB-03-02: a randomly chosen background leaves every UI element visible',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await chooseRandomBackground(user);
+      try {
+        await expect(user.header.logoContainer).toBeVisible();
+        await expect(user.header.calendar).toBeVisible();
+        await expect(user.toolbar.container).toBeVisible();
+        await expect(user.playlist.contentsTile).toBeVisible();
+        await expect(user.addResource.addResourcesTrigger).toBeVisible();
+        await expect(user.nav.currentClassBtn).toBeVisible();
+      } finally {
+        await user.toolbar.chooseBackground('gtBlankPage');
+      }
     }
   );
 
   test(
-    'TB-03-02: a randomly chosen background leaves every UI element visible and usable',
+    'TB-03-06: on a randomly chosen background the board can still be drawn on',
     { tag: ['@functional'] },
     async ({ user }) => {
       const tb = user.toolbar;
-      await tb.openToolPanel('gtBackground');
-      const ids = await tb.backgroundOptions.evaluateAll((els) =>
-        els.map((e) => e.getAttribute('data-qa-id').replace('toolbar-background-', ''))
-      );
-      await tb.closePanelByTappingOutside();
-      const pick = ids[Math.floor(Math.random() * ids.length)];
-      test.info().annotations.push({ type: 'note', description: `Random background chosen: ${pick}` });
-
-      await tb.chooseBackground(pick);
-
-      // Not just "the background rendered": everything else must still be there and work.
-      await expect(user.header.logoContainer).toBeVisible();
-      await expect(user.header.calendar).toBeVisible();
-      await expect(tb.container).toBeVisible();
-      await expect(user.playlist.contentsTile).toBeVisible();
-      await expect(user.addResource.addResourcesTrigger).toBeVisible();
-      await expect(user.nav.currentClassBtn).toBeVisible();
-
-      const before = await tb.pathCount();
-      await tb.penStroke({ x: 400, y: 400 }, { x: 560, y: 470 });
-      expect(await tb.pathCount(), 'still drawable on this background').toBeGreaterThan(before);
-
-      await tb.chooseBackground('gtBlankPage');
+      await chooseRandomBackground(user);
+      try {
+        const before = await tb.pathCount();
+        await tb.penStroke({ x: 400, y: 400 }, { x: 560, y: 470 });
+        expect(await tb.pathCount(), 'still drawable on this background').toBeGreaterThan(before);
+      } finally {
+        await tb.chooseBackground('gtBlankPage');
+      }
     }
   );
 

@@ -16,19 +16,28 @@ test.describe('ATT-02 Mark students present or absent', () => {
     await app.attendance.closeAll();
   });
 
+  // Tapping a present student marks them absent (ATT-02-01); tapping again marks them present (ATT-02-06) -- one test
+  // each (split 2026-09-28).
   test(
-    'ATT-02-01: tapping a student switches them between present and absent',
+    'ATT-02-01: tapping a present student marks them absent',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const att = user.attendance;
       await att.markAllPresent();
-      await expect.poll(() => att.cellState(0)).toBe('present');
+      await expect.poll(() => att.cellState(0), { message: 'set-up: present' }).toBe('present');
       await att.tap(0);
       await expect.poll(() => att.cellState(0), { message: 'tap marks absent' }).toBe('absent');
-      await att.tap(0);
-      await expect.poll(() => att.cellState(0), { message: 'tap again marks present' }).toBe('present');
     }
   );
+
+  test('ATT-02-06: tapping an absent student marks them present again', { tag: ['@functional'] }, async ({ user }) => {
+    const att = user.attendance;
+    await att.markAllPresent();
+    await att.tap(0);
+    await expect.poll(() => att.cellState(0), { message: 'set-up: absent' }).toBe('absent');
+    await att.tap(0);
+    await expect.poll(() => att.cellState(0), { message: 'tap again marks present' }).toBe('present');
+  });
 
   test('ATT-02-02: Mark All Present marks every student present', { tag: ['@functional'] }, async ({ user }) => {
     const att = user.attendance;
@@ -81,16 +90,33 @@ test.describe('ATT-02 Mark students present or absent', () => {
     }
   );
 
+  // Marking every student absent: the register accepts it (ATT-02-05), and the summary shows it (ATT-02-07) -- one test
+  // each (split 2026-09-28).
+  /** Mark everyone present, then tap each student once; returns how many students there are. */
+  const markEveryoneAbsent = async (att) => {
+    await att.markAllPresent();
+    const total = await att.cells.count();
+    for (let i = 0; i < total; i++) await att.cells.nth(i).click({ force: true });
+    return total;
+  };
+
+  test('ATT-02-05: every student can be marked absent', { tag: ['@edge'] }, async ({ user }) => {
+    test.setTimeout(240000);
+    const att = user.attendance;
+    const total = await markEveryoneAbsent(att);
+    await expect.poll(async () => (await att.gridCounts()).absent, { timeout: 15000 }).toBe(total);
+  });
+
   test(
-    'ATT-02-05: marking every student absent is accepted and shown in the summary',
+    'ATT-02-07: with every student marked absent, the summary shows nobody present',
     { tag: ['@edge'] },
     async ({ user }) => {
       test.setTimeout(240000);
       const att = user.attendance;
-      await att.markAllPresent();
-      const total = await att.cells.count();
-      for (let i = 0; i < total; i++) await att.cells.nth(i).click({ force: true });
-      await expect.poll(async () => (await att.gridCounts()).absent, { timeout: 15000 }).toBe(total);
+      const total = await markEveryoneAbsent(att);
+      await expect
+        .poll(async () => (await att.gridCounts()).absent, { message: 'set-up: all absent', timeout: 15000 })
+        .toBe(total);
       const s = await att.summary();
       expect(s.boys.p + s.girls.p, 'nobody present').toBe(0);
       expect(s.boys.ab + s.girls.ab, 'everyone absent').toBe(total);
