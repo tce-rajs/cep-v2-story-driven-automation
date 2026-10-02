@@ -42,7 +42,9 @@ class HeaderPage {
     return {
       shown,
       shownMinutes,
-      shownDate: date ? `${date[1]}, ${date[2]} ${date[3]}` : null,
+      // The header pads the day ("Oct 01"); the clock's format does not ("Oct 1"). Compare the day as a number
+      // (seen 2026-10-01: the first single-digit day this suite ran on).
+      shownDate: date ? `${date[1]}, ${date[2]} ${Number(date[3])}` : null,
       nowMinutes: now.minutes,
       nowDate: now.date,
     };

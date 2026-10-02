@@ -13,6 +13,11 @@ A story is **one specific, distinct goal** a user is trying to accomplish.
 
 Format: _"As a `<role>`, I want `<goal>`, so that `<benefit>`."_
 
+In the module files (since 2026-09-30) each `### <ID> — <Title>` heading is followed by a `**User story:**` line in
+this format and an `**Acceptance criteria:**` list (`- AC1: ...`): the outcomes that must hold for the story to be
+done. Every acceptance criterion must be covered by at least one numbered test case below it; a case added only to
+cover a criterion says so. `scripts/build-workbook.js` copies both into the reviewer workbook.
+
 **Rule for what counts as one story vs. two:** if two behaviors serve genuinely
 different goals, they're separate stories — e.g. "build a quiz from the question bank,"
 "attempt a quiz," and "review quiz results" are three different things someone sets out

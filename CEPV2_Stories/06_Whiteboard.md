@@ -6,10 +6,24 @@ persistence, and Eraser precision. Module code: `WB`. Each `### <ID> — <Title>
 
 ### WB-01 — Canvas
 
+**User story:** As a teacher, I want a canvas that takes my writing at once, so that teaching is not interrupted.
+
+**Acceptance criteria:**
+
+- AC1: The canvas loads and accepts strokes
+- AC2: Resizing the window keeps content in place
+
 1. WB-01-01 — To check the canvas loads and accepts drawing input correctly
 2. WB-01-02 — Edge: to check resizing the browser window doesn't lose or misalign existing canvas content
 
 ### WB-02 — Zoom
+
+**User story:** As a teacher, I want to zoom in and out, so that small details and the whole board are both visible.
+
+**Acceptance criteria:**
+
+- AC1: Zoom in and out change the view without distorting content
+- AC2: The zoom limits are reached without breaking the board
 
 1. WB-02-01 — To check zooming in changes the canvas view without distorting existing content
 2. WB-02-02 — Edge: to check zooming to the maximum limit doesn't break the canvas
@@ -18,12 +32,26 @@ persistence, and Eraser precision. Module code: `WB`. Each `### <ID> — <Title>
 
 ### WB-03 — Pan
 
+**User story:** As a teacher, I want to pan to any part of the board, so that I can use a large board.
+
+**Acceptance criteria:**
+
+- AC1: Panning moves the view, not content
+- AC2: Far edges keep their content
+- AC3: Opening a Playlist asset does not pan the board and opens where I am working
+
 1. WB-03-01 — To check panning the canvas moves the view without affecting content placement
 2. WB-03-02 — Edge: to check panning to the extreme edge of the canvas doesn't clip or lose content near the boundary
 3. WB-03-03 — Regression: opening an asset from the Playlist doesn't pan the whiteboard by itself (Zoho TCN-I16253)
 4. WB-03-04 — Regression: an asset opened from the Playlist appears where the teacher is working, not at the top of the board (Zoho TCN-I15241)
 
 ### WB-04 — Background
+
+**User story:** As a teacher, I want to change the background without affecting what I have written, so that I can change it mid-lesson.
+
+**Acceptance criteria:**
+
+- AC1: Existing content is unchanged after a background change
 
 1. WB-04-01 — To check changing the whiteboard background doesn't affect existing content
 
@@ -33,10 +61,26 @@ from the whiteboard-content side.)_
 
 ### WB-05 — Theme
 
+**User story:** As a teacher, I want a light or dark theme, so that the board is readable in my classroom.
+
+**Acceptance criteria:**
+
+- AC1: The theme applies to the whole board
+- AC2: Annotation colours are not changed unexpectedly
+
 1. WB-05-01 — To check changing the whiteboard theme applies correctly without breaking existing content
 2. WB-05-02 — Edge: to check switching theme while annotations exist doesn't alter their colors unexpectedly
 
 ### WB-06 — Annotation
+
+**User story:** As a teacher, I want each topic's board saved on its own and brought back exactly, so that I can continue a lesson on another day.
+
+**Acceptance criteria:**
+
+- AC1: Each topic has its own board
+- AC2: Lines, images and shapes are saved and a success message confirms it
+- AC3: Content comes back after refresh, topic switch, class switch and sign-out
+- AC4: Fast switching, heavy use or two tabs never lose or mix content
 
 Each topic has its own independent whiteboard — topic 1.1's whiteboard and its saved
 data are entirely separate from topic 1.2's, and either can be empty or hold previously
@@ -66,11 +110,28 @@ sentences, (b) an image inserted from Gallery, (c) a drawn shape.
 
 ### WB-07 — Eraser
 
+**User story:** As a teacher, I want the eraser to be precise when zoomed or panned, so that I only remove what I mean to.
+
+**Acceptance criteria:**
+
+- AC1: Only the dragged-over part is erased at any zoom
+- AC2: Neighbouring writing stays
+- AC3: Erasing empty space does nothing
+
 1. WB-07-01 — To check erasing a stroke after zooming in removes only the dragged-over portion
 2. WB-07-02 — To check erasing near another annotation after panning doesn't remove the neighboring annotation
 3. WB-07-03 — Negative: to check erasing over an empty area (no stroke under the cursor) does nothing and doesn't error
 
 ### WB-08 — Long teaching session (added 2026-09-27)
+
+**User story:** As a teacher, I want to write a whole long lesson on one board, so that a full period of notes is kept.
+
+**Acceptance criteria:**
+
+- AC1: Every stroke of a 50, 150 and 800-word session lands and comes back exactly after a reload
+- AC2: Autosave keeps up while I write and "Whiteboard Saved!" follows
+- AC3: Writing offline, closing the app or a forced sign-out loses nothing
+- AC4: The board does not slow down as it fills
 
 A teacher fills the board during a lesson: handwritten sentences, line after line, and when the visible board is full
 they pan to fresh space and keep writing. Autosave must keep up with a whole lesson's writing, nothing may be lost on a
@@ -115,6 +176,15 @@ at several points of one continuous session (10, 15, 20, 25, 30, 35 minutes -- u
 
 ### WB-09 — Data integrity: what the teacher sees is what is saved (added 2026-09-27)
 
+**User story:** As a teacher, I want what I see on the board to be exactly what is saved, so that I can trust it.
+
+**Acceptance criteria:**
+
+- AC1: Clear, Undo and erase are saved as seen
+- AC2: Zoomed or far-away writing comes back in the same place
+- AC3: Switching class, reloading or signing out straight after writing loses nothing and never puts strokes on another board
+- AC4: Long text boxes are saved in full
+
 1. WB-09-01 — Regression: after Clear Whiteboard and a reload, nothing comes back
 2. WB-09-02 — Edge: Undo straight after Clear Whiteboard leaves the saved board matching what is on screen (no difference after a reload)
 3. WB-09-03 — Regression: handwriting rubbed out with the eraser stays erased after a reload
@@ -123,8 +193,19 @@ at several points of one continuous session (10, 15, 20, 25, 30, 35 minutes -- u
 6. WB-09-06 — Negative: switching class straight after writing (before the autosave) never puts the strokes on the other class's board
 7. WB-09-07 — Edge: a text box with 1,500 characters is saved in full
 8. WB-09-08 — After switching class straight after writing, the strokes are on their own board when the teacher comes back _(split from WB-09-06, 2026-09-28)_
+9. WB-09-09 — Negative: reloading the app within 10 seconds of writing (before the autosave countdown ends) loses nothing _(owner, 2026-09-29)_
+10. WB-09-10 — Negative: signing out within 10 seconds of writing (before the autosave countdown ends) loses nothing _(owner, 2026-09-29)_
 
 ### WB-10 — Touch and stylus on the classroom panel (added 2026-09-27)
+
+**User story:** As a teacher on a touch panel, I want finger and stylus input to write, pan and zoom naturally, so that I can teach as on a real board.
+
+**Acceptance criteria:**
+
+- AC1: A finger or stylus stroke draws exactly one stroke, and fast handwriting keeps every stroke
+- AC2: Two fingers pan, a pinch zooms, and neither draws
+- AC3: The palm resting on the screen draws nothing
+- AC4: Taps on tools and cards act once
 
 Classroom panels are touch screens used with fingers and a pen. These cases use real touch and pen input. (Split
 2026-09-28 so each case checks one result; the new cases carry the next free IDs. The 150-word sessions are each
@@ -162,6 +243,13 @@ written once, and the cases after the writing case check one more result on the 
 
 ### WB-11 — A teacher's day on one topic (added 2026-09-27)
 
+**User story:** As a teacher, I want a board I use all day, across sign-outs and restarts, to keep everything exactly once, so that my board is like a real classroom board.
+
+**Acceptance criteria:**
+
+- AC1: Writing is added below earlier writing and nothing earlier changes
+- AC2: Sign-out, app restart and reload bring everything back exactly once
+
 Uses a topic whose board is never cleared (Class 12A Physics, 3.1), so writing accumulates the way a real classroom
 board fills up over days.
 
@@ -173,3 +261,69 @@ finds it, so none depends on another having passed.
 3. WB-11-03 — Regression: after signing in again the teacher pans to fresh space and handwrites about 100 words with a finger; the board keeps everything from before exactly once, plus exactly the new strokes
 4. WB-11-04 — Regression: after closing and reopening the app, everything on the board is still there, exactly once
 5. WB-11-05 — Regression: at the end of the day, a reload brings back every stroke of every session exactly, once
+
+### WB-12 — Whiteboard History (added 2026-09-30)
+
+**User story:** As a teacher, I want to see my board's saved versions, so that I can check when and what was saved.
+
+**Acceptance criteria:**
+
+- AC1: Whiteboard History lists the topic's versions, newest first, with stroke counts, changes and times
+- AC2: The newest version matches the board and a new save adds a version
+- AC3: Each topic has its own history; closing it changes nothing
+
+New in v 0.0.232 on the Ultra server: User menu → Whiteboard History opens a panel listing the topic board's saved
+versions, newest first, each as "#N · <strokes> strokes", "+added −removed" and the save time. Seen live on 12A Physics
+1.9 (13 versions from 08:01 to 10:55, matching the writing sessions). Read-only checks only: a version is never restored
+on a teacher's board (never-clear rule) unless the owner agrees.
+
+1. WB-12-01 — To check Whiteboard History opens from the User menu and lists the current topic's saved versions, newest first
+2. WB-12-02 — To check the newest version's stroke count matches the strokes on the board
+3. WB-12-03 — To check that after writing a few strokes and waiting for autosave, a new version appears with the right "+added" count
+4. WB-12-04 — To check each version shows its save time, and the times are in order
+5. WB-12-05 — To check the history belongs to the current topic: another topic shows its own list
+6. WB-12-06 — To check closing Whiteboard History (X) leaves the board unchanged
+7. WB-12-07 — Negative: to check a topic with an empty board shows an empty-state message, not a blank panel
+8. WB-12-08 — Regression: writing lost before a forced sign-out (LOG-06-06) is absent from the history too, which shows the loss is on the server, not only on screen
+
+### WB-13 — Heavy boards (added 2026-09-30)
+
+**User story:** As a teacher, I want a board with thousands of strokes to open and work smoothly, so that a full term of notes stays usable.
+
+**Acceptance criteria:**
+
+- AC1: A board of about 10,000 strokes opens without crashing, in the client and the browser
+- AC2: Signing in onto a heavy board works
+- AC3: Writing, zoom and pan stay smooth, and switching away and back keeps it complete
+
+From the long writing runs on the Ultra server: 12A Physics 1.7 (~8,400 strokes), 1.8 (~12,700) and 1.9 (~14,200). The
+desktop client crashes ("Target crashed") when it opens a board of about 8,400+ strokes (5,190 opened fine), and the
+account then crashes again at every sign-in because it reopens the last topic (CLIENT-01). Read-only on existing boards.
+
+1. WB-13-01 — Regression: the desktop client opens a board of about 10,000 strokes without crashing
+2. WB-13-02 — Regression: signing in when the last topic is a heavy board does not crash the app
+3. WB-13-03 — Performance: a board of about 10,000 strokes opens within an agreed time (browser and client)
+4. WB-13-04 — Performance: writing, zoom and pan stay smooth on a heavy board
+5. WB-13-05 — To check switching from a heavy board to another topic and back works, and the heavy board is complete
+6. WB-13-06 — To check Whiteboard History and the Minimap open on a heavy board
+
+### WB-14 — A board as teachers really write (added 2026-09-30)
+
+**User story:** As a teacher, I want everything I normally do on a board (headings, points, arrows, circling, crossing out, formulas, diagrams, two languages, writing over a PDF) to be saved exactly, so that the board is a true record of the lesson.
+
+**Acceptance criteria:**
+
+- AC1: Mixed content (headings, bullet points, arrows, circles, crossed-out and rewritten words, colour highlights) is saved exactly
+- AC2: Maths and science notation (fractions, powers, subscripts, units, labelled diagrams, a small table) is saved exactly
+- AC3: English, Hindi/Marathi and formulas on one board all come back after sign-out
+- AC4: Writing over an opened PDF or image stays on it after closing and reopening
+- AC5: A long board can be navigated with the Minimap
+
+1. WB-14-01 — To check a page with a heading, numbered points, arrows between words and circled words is saved and comes back exactly after sign-out and sign-in
+2. WB-14-02 — To check a word crossed out and rewritten beside it is saved as written (both the crossing-out and the new word)
+3. WB-14-03 — To check highlighting a line with a second colour over existing writing is saved in the right order (highlight under or over, as drawn)
+4. WB-14-04 — To check fractions, powers (x²), subscripts (H₂O), units and a small hand-drawn table are saved exactly
+5. WB-14-05 — To check a labelled diagram (shapes, arrows and handwritten labels) keeps its labels in place after a reload
+6. WB-14-06 — To check an English heading, a Marathi explanation and a formula on one board all come back after sign-out
+7. WB-14-07 — To check writing over an opened worksheet PDF stays on that page after closing and reopening it _(see PLR-14)_
+8. WB-14-08 — To check each screen of a 9-screen board can be reached from the Minimap, and the viewport box matches what is shown

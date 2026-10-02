@@ -81,16 +81,18 @@ test.describe('PRE-03 Toolbar is available, except Magnet', () => {
     await expect.poll(() => tb.pathCount()).toBe(before + 1);
   });
 
-  test('PRE-03-01: the User menu is visible without logging in', { tag: ['@functional', '@bug'] }, async ({ page }) => {
-    // MISMATCH, CONFIRMED LIVE (v 0.0.223): the story lists "User menu" among the tools
-    // visible before login, but signed-out there is no user avatar and the profile menu
-    // trigger (toolbar-profile-trigger) exists in the DOM but is hidden. Both only appear
-    // after a PIN login. Either the story is wrong or the pre-login build is missing it --
-    // needs a product decision. Tracked as expected-to-fail so it isn't masked.
-    test.fail(true, 'User menu (avatar / profile trigger) is not visible in Guest Mode');
-    const app = new WithoutLoginPage(page);
-    await expect(app.userAvatar.or(app.userMenuTrigger).first()).toBeVisible({ timeout: 3000 });
-  });
+  test(
+    'PRE-03-01: the User menu is not visible without logging in',
+    { tag: ['@functional', '@negative'] },
+    async ({ page }) => {
+      // Owner decision (2026-09-29): the User menu must NOT be visible signed-out -- the app is right and the story was
+      // wrong (it listed "User menu" among the tools visible before login). Signed-out there is no avatar, and the
+      // profile trigger (toolbar-profile-trigger) is in the DOM but hidden; both appear only after signing in.
+      const app = new WithoutLoginPage(page);
+      await expect(app.userAvatar).toBeHidden({ timeout: 3000 });
+      await expect(app.userMenuTrigger).toBeHidden();
+    }
+  );
 
   test(
     'PRE-03-02: the Magnet menu is not available without login',

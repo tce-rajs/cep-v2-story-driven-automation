@@ -35,9 +35,11 @@ const MODULE_CLASS_MAP = {
   default: {
     label: 'Default (general-purpose fallback)',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    // MOVED 2026-10-01 (owner): see longSession -- Class 7A Mathematics holds no handwriting data boards. The `user`
+    // fixture also brings every test that names no class here first (fixtures/index.js).
+    grade: 'Class 7',
     division: 'A',
-    subject: 'Physics',
+    subject: 'Mathematics',
     chapterIndex: 0,
     topicIndex: 0,
     notes:
@@ -333,9 +335,11 @@ const MODULE_CLASS_MAP = {
   longSession: {
     label: 'Whiteboard -- long multi-session teaching (never cleared)',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    // MOVED 2026-10-01 (owner): whiteboard-writing tests run in Class 7A Mathematics, which holds none of the
+    // handwriting data boards (12A Physics 1.2/1.6-1.10, 7A Value Education 1.1, 12A CS 7.2/8.1/8.2).
+    grade: 'Class 7',
     division: 'A',
-    subject: 'Physics',
+    subject: 'Mathematics',
     chapterIndex: 2,
     topicIndex: 0,
     notes:
@@ -346,9 +350,10 @@ const MODULE_CLASS_MAP = {
   toolbarGeneral: {
     label: 'Toolbar / Whiteboard drawing',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    // MOVED 2026-10-01 (owner): see longSession -- Class 7A Mathematics holds no handwriting data boards.
+    grade: 'Class 7',
     division: 'A',
-    subject: 'Physics',
+    subject: 'Mathematics',
     chapterIndex: 0,
     topicIndex: 0,
     notes:
@@ -473,6 +478,8 @@ async function applyClassMap(nav, moduleKey, opts = {}) {
  * (the combo may then simply not hold the expected data -- see the entry's notes). */
 function pinForModule(moduleKey) {
   const entry = getClassMap(moduleKey);
+  // ONLY_PRIMARY_ACCOUNT=1: every entry signs in with the primary account (owner, 2026-10-01: use Raj's account).
+  if (process.env.ONLY_PRIMARY_ACCOUNT) return process.env.VALID_PIN;
   return process.env[entry.account] || process.env.VALID_PIN;
 }
 

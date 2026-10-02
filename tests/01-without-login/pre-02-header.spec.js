@@ -80,7 +80,8 @@ test.describe('PRE-02 Header displays correctly', () => {
       const shown = await calendarText(app);
       const date = shown.match(/([A-Za-z]{3}),\s*([A-Za-z]{3})\s+(\d{1,2})/);
       expect(date, `date in "${shown}"`).not.toBeNull();
-      expect(`${date[1]}, ${date[2]} ${date[3]}`, 'the current date').toBe((await appNow(page)).date);
+      // The header pads the day ("Oct 01"), the clock's format does not ("Oct 1"): compare the day as a number.
+      expect(`${date[1]}, ${date[2]} ${Number(date[3])}`, 'the current date').toBe((await appNow(page)).date);
     }
   );
 });

@@ -15,11 +15,15 @@
 //   2. The client needs `--env=qa` on its command line, or it silently talks
 //      to the prod backend instead of QA.
 //   3. C:\Users\Public\tce_settings.json (external, not part of this project)
-//      is this machine's saved client profile. Its "path" must be the target
-//      server, http://172.18.2.85/teach/ (owner, 2026-09-28 -- the old QA server
-//      ce-qa-school.devstudi.com must not be used). Set it with
-//      `npm run set-env new-server` (or `npm run set-server -- <url>`), and keep
-//      it to ONE profile (see the BLOCKER check below).
+//      is this machine's saved client profile. It must hold exactly ONE profile
+//      whose "path" is the target server, http://172.18.2.85/teach/ (owner,
+//      2026-09-28/30 -- the old QA server ce-qa-school.devstudi.com must not be
+//      used). Set it with `npm run set-server -- <url>`; assertClientProfile()
+//      stops the run otherwise.
+//   4. The CLIENT loads the teach link, never the tests (owner, 2026-09-30):
+//      the client opens its profile's link with its own settings attached, the
+//      fixture only finds that window and checks it, and every reload / return
+//      to the start goes through the client (see clientNavigate below).
 
 const fs = require('fs');
 const base = require('@playwright/test');
@@ -195,29 +199,68 @@ function assertClientInstalled() {
   }
 }
 
-// CONFIRMED LIVE in client-automation/tests/04-multi-profile.spec.js: with 2+ profiles saved in
-// tce_settings.json, cold launch shows a "SELECT PROFILE" chooser screen instead of connecting directly --
-// this fixture has no code path for that screen, so every test would otherwise hang until Playwright's own
-// timeout, with no indication of why. Fail fast with a message that says what's actually wrong and how to fix
-// it (npm run set-server), instead of a confusing generic timeout on every single test.
-function assertSingleProfile() {
-  if (!fs.existsSync(TCE_SETTINGS_PATH)) return; // missing entirely is a different, pre-existing failure mode
+// The client must have exactly ONE profile, and it must point at the target server (owner, 2026-09-30).
+// CONFIRMED LIVE in client-automation/tests/04-multi-profile.spec.js: with 2+ profiles saved in tce_settings.json,
+// cold launch shows a "SELECT PROFILE" chooser screen instead of connecting directly -- every test would hang until
+// timeout. And a single profile pointing somewhere else would silently test the wrong server. Fail fast with a
+// message that says what's wrong and how to fix it.
+const sameUrl = (a, b) => String(a).replace(/\/+$/, '').toLowerCase() === String(b).replace(/\/+$/, '').toLowerCase();
+function assertClientProfile() {
+  const fix = `Fix: run "npm run set-server -- ${BASE_URL}" (keeps one profile, pointing at ${BASE_URL}).`;
+  if (!fs.existsSync(TCE_SETTINGS_PATH)) {
+    throw new Error(`BLOCKER: ${TCE_SETTINGS_PATH} not found -- the client has no profile to open. ${fix}`);
+  }
   let settings;
   try {
     settings = JSON.parse(fs.readFileSync(TCE_SETTINGS_PATH, 'utf8'));
-  } catch {
-    return; // unreadable/invalid JSON is also a different failure mode -- let the launch itself surface it
+  } catch (e) {
+    throw new Error(`BLOCKER: ${TCE_SETTINGS_PATH} is not valid JSON (${e.message}). ${fix}`);
   }
-  const count = Array.isArray(settings.profiles) ? settings.profiles.length : 0;
-  if (count > 1) {
-    const titles = settings.profiles.map((p) => p.title).join(', ');
+  const profiles = Array.isArray(settings.profiles) ? settings.profiles : [];
+  if (profiles.length !== 1) {
+    const titles = profiles.map((p) => p.title).join(', ') || 'none';
     throw new Error(
-      `BLOCKER: ${TCE_SETTINGS_PATH} has ${count} saved profiles (${titles}), not 1. With 2+ profiles the ` +
-        `client shows a "SELECT PROFILE" picker on launch instead of connecting directly, which this suite's ` +
-        `launch fixture has no code path for -- every test would hang until timeout instead of failing clearly. ` +
-        `Fix: run "npm run set-server -- <url>" to collapse back down to a single profile before running tests.`
+      `BLOCKER: ${TCE_SETTINGS_PATH} has ${profiles.length} profiles (${titles}); the client must have exactly one. ` +
+        `With 2+ the client shows a "SELECT PROFILE" picker instead of connecting. ${fix}`
     );
   }
+  if (!sameUrl(profiles[0].path, BASE_URL)) {
+    throw new Error(
+      `BLOCKER: the client's only profile ("${profiles[0].title}") points at ${profiles[0].path}, not the target ` +
+        `server ${BASE_URL}. ${fix}`
+    );
+  }
+  return profiles[0].path;
+}
+
+// --- The client loads the link, not the tests (owner, 2026-09-30) ---
+// CONFIRMED LIVE (2026-09-30): the client opens the teach app with its own settings in the query string
+// (`?cmode=2&...&tceclient=1&webdrop=1&erasersize=150&gesturemode=1...`, from tce_settings.json). A test that loads
+// the bare BASE_URL itself drops all of them and is no longer testing the client. F5 and Ctrl+R do nothing in the
+// client (a teacher cannot reload), but the client's own main process can reload its teach <webview>, which keeps
+// the client's URL and the window. So every reload / "back to the start" below goes through the client itself.
+
+/** Runs `action` ('reload' or 'loadURL') on the client's teach <webview>, from the client's own main process. */
+async function clientWebviewDo(app, action, url) {
+  return app.evaluate(
+    ({ webContents }, [act, target]) => {
+      const views = webContents.getAllWebContents().filter((w) => w.getType() === 'webview');
+      const view = views.find((w) => /\/(teach|plan)\//.test(w.getURL())) || views[0];
+      if (!view) return false;
+      if (act === 'reload') view.reload();
+      else view.loadURL(target);
+      return true;
+    },
+    [action, url]
+  );
+}
+
+/** Triggers a client-side navigation and waits for the new document, keeping the same window. */
+async function clientNavigate(app, teachWindow, action, url, timeout = 30000) {
+  const loaded = teachWindow.waitForEvent('domcontentloaded', { timeout });
+  if (!(await clientWebviewDo(app, action, url))) throw new Error('the client has no teach <webview> to navigate');
+  await loaded;
+  await teachWindow.waitForTimeout(2000);
 }
 
 // Same launch-and-recover loop the fixture always used, extracted so both
@@ -225,21 +268,16 @@ function assertSingleProfile() {
 // `page` fixture below) share one implementation.
 async function launchWithRetry() {
   assertClientInstalled();
-  assertSingleProfile();
+  const profilePath = assertClientProfile();
 
   let app, teachWindow;
   for (let attempt = 1; attempt <= MAX_LAUNCH_ATTEMPTS; attempt++) {
     ({ app, teachWindow } = await launchClient());
 
     if (await isConnectionErrorShowing(app)) {
-      // Cheap recovery first: a plain Playwright-level goto on the SAME
-      // window, bypassing the app's own broken internal retry. Confirmed
-      // live this reliably restores real content within a few seconds.
-      try {
-        await teachWindow.goto(resolveUrl(BASE_URL), { timeout: 20000, waitUntil: 'domcontentloaded' });
-      } catch {
-        // fall through to the real-content check below regardless
-      }
+      // Cheap recovery first: the client's own reload of its teach <webview> (same client URL, same window),
+      // bypassing the shell's broken internal retry. A full relaunch below if that does not bring content back.
+      await clientNavigate(app, teachWindow, 'reload', null, 20000).catch(() => {});
     }
 
     if (await hasRealContent(teachWindow)) break;
@@ -256,13 +294,35 @@ async function launchWithRetry() {
     }
   }
 
-  const originalGoto = teachWindow.goto.bind(teachWindow);
-  teachWindow.goto = (url, options) => originalGoto(resolveUrl(url), options);
-  // CONFIRMED LIVE (2026-09-20): page.reload() on the client's <webview> window destroys that window
-  // ("Target page, context or browser has been closed", page.isClosed() === true, only the shell window is left),
-  // whereas navigating to the current URL is a genuine reload -- page state is reset, the signed-in session is kept and
-  // the app comes back. So reload is routed through goto, and every spec/page-object reload() keeps working unchanged.
-  teachWindow.reload = (options) => originalGoto(teachWindow.url(), { waitUntil: 'domcontentloaded', ...options });
+  // The URL the client opened by itself, with its own settings (tceclient=1, webdrop, erasersize, ...).
+  const clientUrl = teachWindow.url();
+  if (!clientUrl.toLowerCase().startsWith(profilePath.toLowerCase()) || !/[?&]tceclient=1\b/.test(clientUrl)) {
+    await app.close().catch(() => {});
+    throw new Error(
+      `BLOCKER: the client opened ${clientUrl}, not its profile's link ${profilePath} with tceclient=1 -- ` +
+        `it is not running as the ClassEdge client. Check ${TCE_SETTINGS_PATH} and the client install.`
+    );
+  }
+  teachWindow.clientUrl = clientUrl;
+
+  // page.goto() on a teach-app URL ('./', './whiteboard', BASE_URL...) means "back to the app's start" in every spec
+  // and page object: it goes to the client's own URL, loaded by the client, never the bare link. Any other URL
+  // (a phone page, an external site) is not a teach-app page and is refused, so no test can drive the teach app
+  // through a hand-typed link by mistake.
+  teachWindow.goto = async (url, options = {}) => {
+    const target = resolveUrl(url);
+    if (!target.toLowerCase().startsWith(new URL(BASE_URL).origin.toLowerCase())) {
+      throw new Error(`client mode: refusing to load ${target} in the teach window (open it in its own page instead)`);
+    }
+    await clientNavigate(app, teachWindow, 'loadURL', clientUrl, options.timeout);
+    return null;
+  };
+  // CONFIRMED LIVE (2026-09-20): Playwright's own page.reload() destroys the client's <webview> window. The client's
+  // own reload (main process, 2026-09-30) keeps the window, the client URL and the signed-in session.
+  teachWindow.reload = async (options = {}) => {
+    await clientNavigate(app, teachWindow, 'reload', null, options.timeout);
+    return null;
+  };
   return { app, teachWindow };
 }
 
@@ -298,7 +358,8 @@ async function resetSession(teachWindow) {
   if (teachWindow.url().includes('/teach/')) {
     isSignedIn = await avatar.isVisible().catch(() => false);
   } else {
-    await teachWindow.goto(resolveUrl(BASE_URL), { timeout: 20000, waitUntil: 'domcontentloaded' });
+    // Back to the client's own start page (its own URL, loaded by the client -- see teachWindow.goto above).
+    await teachWindow.goto('./', { timeout: 20000 });
     isSignedIn = await avatar
       .waitFor({ state: 'visible', timeout: 6000 })
       .then(() => true)

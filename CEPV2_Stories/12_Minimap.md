@@ -10,6 +10,14 @@ confirmed live there: Zoom tool (`toolbar-tool-gtZoom`) → Minimap button (`too
 
 ### MM-01 — Open and close the Minimap
 
+**User story:** As a teacher, I want to open and close a Minimap, so that I can see the whole board when I need to.
+
+**Acceptance criteria:**
+
+- AC1: It opens from Zoom with overview, viewport, zoom % and Reset View
+- AC2: Close leaves nothing behind and it starts closed after a reload
+- AC3: Fast toggling and class switching leave it clean
+
 1. MM-01-01 — To check the Minimap opens from the Zoom control and shows a scaled overview, a viewport rectangle, the zoom percentage, Reset View and Close
 2. MM-01-02 — To check Close hides the Minimap and leaves nothing behind on the whiteboard
 3. MM-01-03 — To check the Minimap is closed again after the app reloads, not restored open
@@ -18,6 +26,14 @@ confirmed live there: Zoom tool (`toolbar-tool-gtZoom`) → Minimap button (`too
 6. MM-01-06 — Edge: to check that after opening and closing it 8 times quickly, the Minimap still opens normally _(split from MM-01-04, 2026-09-28)_
 
 ### MM-02 — See where the current view is on the board
+
+**User story:** As a teacher, I want the Minimap to show where I am on the board, so that I don't get lost on a big board.
+
+**Acceptance criteria:**
+
+- AC1: Content shows as markers
+- AC2: Zoom % and viewport follow the main board, within the frame at the limits
+- AC3: An empty board shows an empty overview
 
 1. MM-02-01 — To check the Minimap shows a marker for content that is already on the whiteboard
 2. MM-02-02 — To check zooming the main canvas updates the Minimap's zoom percentage to match
@@ -30,6 +46,14 @@ confirmed live there: Zoom tool (`toolbar-tool-gtZoom`) → Minimap button (`too
 
 ### MM-03 — Move around the board from the Minimap
 
+**User story:** As a teacher, I want to jump around the board from the Minimap, so that I can reach any part quickly.
+
+**Acceptance criteria:**
+
+- AC1: Clicking a point moves there
+- AC2: Reset View returns to 100% and the original content
+- AC3: Fast clicks end on the last point and the board still works
+
 1. MM-03-01 — To check clicking a point inside the Minimap pans the main canvas to that point
 2. MM-03-02 — To check Reset View restores 100% zoom after zooming and panning away
 3. MM-03-03 — Edge: to check double-clicking Reset View quickly causes no error or visual glitch
@@ -39,6 +63,13 @@ confirmed live there: Zoom tool (`toolbar-tool-gtZoom`) → Minimap button (`too
 7. MM-03-07 — Edge: to check that after clicking 10 points in the Minimap quickly, the canvas still takes a stroke _(split from MM-03-04, 2026-09-28)_
 
 ### MM-04 — Minimap alongside other panels
+
+**User story:** As a teacher, I want the Minimap to work alongside players and panels, so that it never gets in the way.
+
+**Acceptance criteria:**
+
+- AC1: The Players toggle hides/shows players in the overview only
+- AC2: It does not cover Add Resource or the Playlist
 
 1. MM-04-01 — To check the Minimap's Players toggle takes an open player out of the Minimap overview (it only has an effect while a player is open). _(Story said "hides and shows an open player"; confirmed live 2026-09-26 it switches the player in the overview only, the window stays open -- owner to decide story or app.)_
 2. MM-04-02 — Edge: to check the open Minimap does not cover the Add Resource button, which still responds

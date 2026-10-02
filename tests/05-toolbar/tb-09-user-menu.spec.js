@@ -8,15 +8,16 @@ const { test, expect } = require('../../fixtures');
 
 test.describe('TB-09 User menu', () => {
   test(
-    'TB-09-01: opening the User menu shows Profile, Account, Classroom Mode, Theme, Feedback, Build Version, Virtual Keyboard and Logout',
+    'TB-09-01: opening the User menu shows Profile, Account, Classroom Mode, Theme, Virtual Keyboard, Whiteboard History, Build Version and Sign Out',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const menu = user.userMenu;
       await menu.openProfileMenu();
 
+      // Story corrected 2026-09-30 from the live v 0.0.232 menu: Feedback is gone, Whiteboard History is new.
       await expect.soft(menu.classroomModeSwitcher, 'Classroom Mode').toBeVisible();
       await expect.soft(menu.darkModeToggle, 'Theme').toBeVisible();
-      await expect.soft(menu.feedbackBtn, 'Feedback').toBeVisible();
+      await expect.soft(menu.wbHistoryBtn, 'Whiteboard History').toBeVisible();
       await expect.soft(menu.buildInfoBtn, 'Build Version').toBeVisible();
       await expect.soft(menu.virtualKeyboardToggle, 'Virtual Keyboard').toBeVisible();
       await expect.soft(menu.signOutBtn, 'Logout').toBeVisible();

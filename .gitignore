@@ -25,3 +25,7 @@ bug-evidence/
 test-evidence/
 bug-evidence.zip
 test-evidence.zip
+
+# Local reports, screenshots and run results (large, internal; owner 2026-10-02). The timing note is kept.
+report/*
+!report/CLIENT_VS_BROWSER_TIMING.md

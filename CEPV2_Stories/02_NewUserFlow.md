@@ -7,6 +7,14 @@ numbered line under it is a **test case** belonging to that story.
 
 ### NEW-01 — First login: default password forces a password reset
 
+**User story:** As a new teacher, I want to be made to replace the default password on my first sign-in, so that my account is secure from day one.
+
+**Acceptance criteria:**
+
+- AC1: The default password leads to a forced "set new password" step
+- AC2: After setting it I am sent back to sign in
+- AC3: The new password works and the default one no longer does
+
 Steps for the happy path: (1) go to sign in — school is either pre-selected by default
 or chosen manually; (2) enter the given username; (3) enter the first-time default
 password `classedge`; (4) on submit, the system requires setting a new password rather
@@ -23,13 +31,30 @@ and the newly-set password.
 
 ### NEW-02 — PIN setup on first successful password login
 
+**User story:** As a new teacher, I want to set a 5-digit PIN after my first password sign-in, so that I can sign in quickly in class.
+
+**Acceptance criteria:**
+
+- AC1: PIN setup appears before entering the app
+- AC2: A valid PIN is saved and signs me in next time
+- AC3: Short PINs, letters and a mismatched confirmation are refused
+
 1. NEW-02-01 — To check that successfully signing in with the new password (immediately after NEW-01) presents a PIN setup page before entering the app
 2. NEW-02-02 — To check setting a new PIN completes successfully
 3. NEW-02-03 — To check the user can subsequently log in using the PIN, as an alternative to the password
 4. NEW-02-04 — Negative: to check a PIN that is too short (3 digits) cannot be submitted, not a silent rejection
 5. NEW-02-05 — Negative: to check letters are not accepted into the PIN boxes _(split from NEW-02-04, 2026-09-28)_
+6. NEW-02-06 — Negative: to check a different PIN in the confirmation step is refused with a clear message _(added 2026-09-30 for the acceptance criteria)_
 
 ### NEW-03 — Welcome screen and first-time class selection
+
+**User story:** As a new teacher, I want to choose my first class on a welcome screen, so that the app opens on my own class and subject.
+
+**Acceptance criteria:**
+
+- AC1: A welcome message with "Choose Class" shows on the first sign-in
+- AC2: Choosing a class opens the normal app
+- AC3: Leaving without choosing shows the prompt again next time
 
 1. NEW-03-01 — To check that logging in for the first time after setup (via either PIN or password) shows a welcome message with a "Choose Class" option centered on the page
 2. NEW-03-02 — To check selecting a class for the first time completes correctly and proceeds into the normal app flow

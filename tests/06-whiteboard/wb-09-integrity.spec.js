@@ -9,6 +9,7 @@
 
 const { test, expect } = require('../../fixtures');
 const { layoutHandwriting, lessonText } = require('../../pages/lib/handwriting');
+const { pinForModule } = require('../../config/moduleClassMap');
 
 const reload = async (user) => {
   await user.page.reload();
@@ -201,4 +202,56 @@ test.describe('WB-09 Whiteboard data integrity', () => {
       .annotations.push({ type: 'note', description: `Typed ${typed.length} chars; after reload ${after.length}.` });
     expect(after.replace(/\s+/g, ' ').trim(), 'the whole text is back').toBe(text.replace(/\s+/g, ' ').trim());
   });
+
+  // Leaving before the autosave (owner, 2026-09-29): the app saves about 10 s after the teacher stops writing, so the
+  // risky moment is leaving inside that window. Closing the app is WB-08-04; switching topic WB-06-09, class WB-09-06/08.
+  test(
+    'WB-09-09: reloading the app within 10 seconds of writing loses nothing',
+    { tag: ['@negative', '@regression', '@bug'] },
+    async ({ user }) => {
+      // PRODUCT FINDING, CONFIRMED LIVE twice (2026-09-29, 172.18.2.85, v 0.0.232, desktop client): all 31 strokes of
+      // 15 words written just before a reload are gone after it. Signing out in the same window keeps them (WB-09-10).
+      test.fail(true, 'Reloading within the 10-second autosave countdown loses everything written since the last save');
+      await write(user, 15, 41);
+      const mine = await user.content.pathGeometry();
+      // No wait for "Whiteboard Saved!": reload straight away, inside the countdown.
+      await reload(user);
+      await user.page.waitForTimeout(5000);
+      const back = await user.content.pathGeometry();
+      test.info().annotations.push({
+        type: 'note',
+        description: `${mine.length} strokes written, ${mine.filter((d) => back.includes(d)).length} back after the reload.`,
+      });
+      expect(
+        mine.filter((d) => !back.includes(d)),
+        'strokes written just before the reload that are missing'
+      ).toEqual([]);
+    }
+  );
+
+  test(
+    'WB-09-10: signing out within 10 seconds of writing loses nothing',
+    { tag: ['@negative', '@regression'] },
+    async ({ user }) => {
+      await write(user, 15, 42);
+      const mine = await user.content.pathGeometry();
+      // No wait for "Whiteboard Saved!": sign out straight away, inside the countdown, then come back.
+      await user.userMenu.signOut();
+      await user.page.waitForTimeout(3000);
+      await user.signIn(pinForModule('toolbarGeneral'));
+      await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
+      await user.nav.applyClassMap('toolbarGeneral');
+      await user.toolbar.waitForBoardToSettle();
+      await user.page.waitForTimeout(5000);
+      const back = await user.content.pathGeometry();
+      test.info().annotations.push({
+        type: 'note',
+        description: `${mine.length} strokes written, ${mine.filter((d) => back.includes(d)).length} back after signing in again.`,
+      });
+      expect(
+        mine.filter((d) => !back.includes(d)),
+        'strokes written just before signing out that are missing'
+      ).toEqual([]);
+    }
+  );
 });

@@ -10,6 +10,14 @@ Sending is a real action: it delivers a real notice to the chosen class (approve
 
 ### AIN-01 — Capture text from the whiteboard into a notice
 
+**User story:** As a teacher, I want to capture text from the board into a notice, so that I can send what I wrote without retyping.
+
+**Acceptance criteria:**
+
+- AC1: Notice starts capture mode with instructions
+- AC2: A selection can be approved or discarded
+- AC3: Approving real text gives a title and body; an empty area shows a message
+
 1. AIN-01-01 — To check Magnet → Notice switches the whiteboard into capture mode with the instruction "Capture the text area to add as your notice's description"
 2. AIN-01-02 — To check dragging over the whiteboard draws a selection with Approve and Discard controls
 3. AIN-01-03 — To check Discard removes the selection
@@ -20,6 +28,14 @@ Sending is a real action: it delivers a real notice to the chosen class (approve
 8. AIN-01-08 — To check approving a selection over real text puts the captured text in the notice body _(split from AIN-01-04, 2026-09-28)_
 
 ### AIN-02 — Write and edit the notice
+
+**User story:** As a teacher, I want to edit the notice title and body, so that the notice says exactly what I mean.
+
+**Acceptance criteria:**
+
+- AC1: Send needs a title
+- AC2: Typing, deleting, bold and pasting work without breaking the layout
+- AC3: Recapture refreshes title and body
 
 1. AIN-02-01 — To check Send is blocked while the title is empty
 2. AIN-02-02 — Regression: Backspace removes characters from the notice title
@@ -33,6 +49,13 @@ Sending is a real action: it delivers a real notice to the chosen class (approve
 
 ### AIN-03 — Choose classes and send the notice
 
+**User story:** As a teacher, I want to choose classes and send the notice, so that the right students receive it.
+
+**Acceptance criteria:**
+
+- AC1: The current class is ticked and at least one is needed
+- AC2: Send sends once, shows success and closes
+
 1. AIN-03-01 — To check "Share with" lists the teacher's classes with the current class ticked by default
 2. AIN-03-02 — Negative: to check unticking every class disables Ready to Send
 3. AIN-03-03 — Regression: Send delivers the notice, with exactly one send request (Zoho TCN-I16615, "Send Notice is not working")
@@ -42,6 +65,14 @@ Sending is a real action: it delivers a real notice to the chosen class (approve
 
 ### AIN-04 — Leave the notice composer
 
+**User story:** As a teacher, I want to leave the notice composer safely, so that I don't lose or duplicate work.
+
+**Acceptance criteria:**
+
+- AC1: Closing with edits warns first
+- AC2: Repeated opening leaves one composer and never stacks Magnet panels
+- AC3: Other controls keep working
+
 1. AIN-04-01 — Negative: to check closing the composer with unsent edits warns before discarding them
 2. AIN-04-02 — Edge: to check opening and closing the composer 5 times leaves exactly one clean composer
 3. AIN-04-03 — Regression: while the composer is open, clicking Current Class doesn't break the app
@@ -49,6 +80,14 @@ Sending is a real action: it delivers a real notice to the chosen class (approve
 5. AIN-04-05 — Regression: after clicking Current Class with the composer open, class switching works normally once the composer is closed _(split from AIN-04-03, 2026-09-28)_
 
 ### AIN-05 — Sending a notice when the network fails (added 2026-09-27)
+
+**User story:** As a teacher, I want to be told when a notice fails to send, so that I can send it again.
+
+**Acceptance criteria:**
+
+- AC1: A failed send says so, with no success message
+- AC2: The composer keeps my text
+- AC3: Retrying sends exactly once
 
 1. AIN-05-01 — Negative: when the send fails, the teacher is told the notice was not sent
 2. AIN-05-02 — Negative/Regression: after a failed send, sending again once the network is back sends the notice exactly once (no duplicate from the failed attempt)

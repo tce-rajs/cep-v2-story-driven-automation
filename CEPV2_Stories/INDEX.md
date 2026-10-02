@@ -30,6 +30,17 @@ level and the ID pattern are what tell them apart, not just position on the page
 | 15  | AI Homework                                                                               | [15_AIHomework.md](15_AIHomework.md)             |
 | 16  | Attendance                                                                                | [16_Attendance.md](16_Attendance.md)             |
 | 17  | Profile (Account settings, Change Password, Change PIN)                                   | [17_Profile.md](17_Profile.md)                   |
+| 18  | Resilience (session end, network/server failure, two devices, heavy boards, crashes)      | [18_Resilience.md](18_Resilience.md)             |
+| 19  | Desktop Client (install, window, closing, updates, devices)                               | [19_DesktopClient.md](19_DesktopClient.md)       |
+| 20  | Cross-cutting (Hindi/Marathi, dates, teacher roles, readability, messages)                | [20_CrossCutting.md](20_CrossCutting.md)         |
+
+**The master file is [CEPV2_TestCases.xlsx](CEPV2_TestCases.xlsx)** (one file for everything): a Summary sheet per
+module, and one row per test case with its story, user story, acceptance criteria, test type, automation status and
+known bug. It is rebuilt from these story files and the specs with `node scripts/build-workbook.js`; edit the story
+files, not the workbook (only the Review comments column is kept from the workbook itself).
+
+**Modules 18-20 (added 2026-09-30)** come from the long whiteboard writing runs and a gap analysis across all modules
+(interruption, concurrency, performance, the desktop client, languages, dates, roles and messages).
 
 **Modules 12-17 and every story or case marked "Added 2026-09-26"** come from a gap analysis against the
 reference suite (`D:\Projects\new approch playwright`: its 20 module workbooks and its Zoho Teach Mode bug list).

@@ -32,7 +32,7 @@ Committed on `improve/reference-driven-coverage` (not pushed). Target server **1
 - **Long whiteboard data for manual checks** (PIN 89632, Mandar A, Class 12A Computer Science): 7.2 has 800 words plus
   a 1,003-word lesson with images, diagrams and pen changes (2,992 strokes, 4 images); 8.1 has the same lesson
   written in the desktop client (1,390 strokes, 4 images). 7 sign-out checks lost nothing.
-  [CLIENT_VS_BROWSER_TIMING.md](CLIENT_VS_BROWSER_TIMING.md): the client took about 2x as long as the browser.
+  [report/CLIENT_VS_BROWSER_TIMING.md](report/CLIENT_VS_BROWSER_TIMING.md): the client took about 2x as long as the browser.
 - **Waiting on the owner:** how to test the Clear button; whether a single failed token renewal should sign the teacher
   out (LOG-06-04); the idle popup timing (~11-14 min); autosave shows no "Whiteboard Saved!" while writing (WB-08-11).
 - **Next:** rerun the data-gap modules on .85, the long whiteboard tests, WB-02-01 and WB-06-16.
@@ -123,6 +123,17 @@ school).
    shows "No web URLs available" / "Unable to connect ClassEdge server", this is why.
 5. If the client is not at the default install path, set `CLASSEDGE_CLIENT_EXE` in `.env`.
 
+## Client first (owner, 2026-09-30)
+
+The automation is for the **desktop client**, not the browser. The client must have **exactly one profile**, pointing
+at the Ultra server (`fixtures/electron-app.js` stops the run otherwise). **The client loads the link, never the tests:**
+the client opens its profile's link with its own settings (`?...&tceclient=1&webdrop=1&erasersize=150&gesturemode=1`);
+the fixture only finds that window, checks it, and the tests follow their steps from there. `page.goto('./')` means
+"back to the start" and reopens the client's own URL through the client; `page.reload()` is the client's own reload
+(F5/Ctrl+R do nothing in the client). Loading the bare BASE_URL would drop the client settings and is refused.
+`RUN_IN_BROWSER=1` stays only for watching or debugging a spec; second devices (a reader session, a phone for DropIt)
+are separate browser windows on purpose.
+
 ## Running
 
 ```
@@ -168,8 +179,8 @@ missing after "Quiz Complete!" (PLR-02-01 records it as a bug).
 
 - Signed out, the app opens on `/teach/whiteboard` in "Guest Mode" (v0.0.223 when last seen). PIN login: avatar
   `toolbar-user-avatar`. Sign out has no confirmation dialog.
-- **Magnet's entries are gated per class/subject.** Class 12A Physics lists Notice, Learning Shorts, Homework and
-  Attendance; Class 11A Accountancy has no Attendance. `config/moduleClassMap.js` records the class/chapter/topic (and
+- **Magnet's entries are gated per class/subject.** On the Ultra server (.85) Class 12A Physics lists Notice, Learning
+  Shorts and Homework only (no Attendance, checked 2026-09-30); Attendance is on Class 10A / 11A for PIN 74125. `config/moduleClassMap.js` records the class/chapter/topic (and
   which QA account) that holds the data each module needs — use it (`test.use({ classMap: '...' })`) rather than
   hard-coding classes.
 - **The Add Resource "+" picker intermittently renders with `pointer-events: none`** and is unclickable; only a reload
@@ -186,8 +197,11 @@ missing after "Quiz Complete!" (PLR-02-01 records it as a bug).
 
 Tests create then remove their own Playlist assets and restore theme, dock side and background. They **do** draw on real
 topic whiteboards (persisted) but **never clear them** (owner rule 2026-09-29): every writing test moves below the
-existing writing and counts only its own strokes, so the boards only grow. Boards written (PIN 74125, Class 12A
-Physics): **1.1** (most whiteboard/toolbar tests), **2.1** (WB-06's second topic), **3.1** (WB-11, a teacher's day).
+existing writing and counts only its own strokes, so the boards only grow. **Since 2026-10-01 every writing test runs
+in Class 7A Mathematics** (PIN 74125): **1.1** (most whiteboard/toolbar tests), **2.1** (WB-06's second topic), **3.1**
+(WB-11, a teacher's day); the `user` fixture brings any test that names no class there first. The handwriting data
+boards (12A Physics 1.2/1.6-1.10, 7A Value Education 1.1, 12A CS 7.2/8.1/8.2; see `report/whiteboard-data/`) must
+never be written by tests. Run with `ONLY_PRIMARY_ACCOUNT=1` to sign every class-map entry in with Raj's account.
 The four tests about the Clear button itself (TB-05-09/10, WB-09-01/02) are `fixme` until the owner decides how Clear
 may be tested. Module 02 is one-shot per user: it changes the fresh test user (default password `classedge`
 → new password → PIN → first class). Re-running needs an admin to reset that user or a fresh user.

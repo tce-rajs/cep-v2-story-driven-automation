@@ -88,6 +88,10 @@ module.exports = defineConfig({
     // Plain-language summary at the end of every run (works / known bug / known bug gone? / new failure /
     // environment / skipped), also saved as test-results/RESULT-SUMMARY.md.
     ['./scripts/result-summary-reporter.js'],
+    // Machine-readable results of every real run, one file per run (a small rerun must not replace a full run's
+    // results). scripts/build-workbook.js takes each test's latest result across them for the master workbook's
+    // "Last run result" column. Not written for --list, which runs no tests.
+    ...(isListOnly ? [] : [['json', { outputFile: `report/runs/run_${reportTimestamp()}.json` }]]),
   ],
 
   use: {

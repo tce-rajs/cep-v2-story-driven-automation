@@ -6,6 +6,15 @@ code: `RES`. Each `### <ID> — <Title>` is a **story**; each numbered line unde
 
 ### RES-01 — Create Resource
 
+**User story:** As a teacher, I want to create a resource by uploading a file with a title, so that my own material is in the lesson.
+
+**Acceptance criteria:**
+
+- AC1: The form is pre-filled with the current class and topic (not editable) and Share is on
+- AC2: Title and file are checked (length, type, 10 MB limit) with messages
+- AC3: Create adds exactly one card that opens properly
+- AC4: Cancel creates nothing
+
 1. RES-01-01 — To check creating a new custom resource and saving it makes it available to add to a lesson
 2. RES-01-02 — To check attempting to save with required fields empty is blocked with a message
 3. RES-01-03 — To check a created custom resource is only available for the grades/subjects it was assigned to
@@ -28,6 +37,15 @@ code: `RES`. Each `### <ID> — <Title>` is a **story**; each numbered line unde
 20. RES-01-20 — To check a resource created with Share turned off is saved with Share off _(split from RES-01-11, 2026-09-28)_
 
 ### RES-02 — Library
+
+**User story:** As a teacher, I want to search the Library for the topic's resources and preview them, so that I can add good material quickly.
+
+**Acceptance criteria:**
+
+- AC1: The search starts with the topic name and needs 3+ characters
+- AC2: Results preview by type with their own controls
+- AC3: Open to Whiteboard and Save to Playlist work once each
+- AC4: No result shows a message
 
 Flow: the search box defaults to searching the current topic name automatically and
 suggests matching assets if any exist, or shows "No result found" if not. Clicking an
@@ -54,8 +72,18 @@ inside that preview.
 16. RES-02-16 — Regression: double-clicking "Save to Playlist" adds the resource only once
 17. RES-02-17 — Edge: to check typing a search quickly, letter by letter, searches for the full text typed
 18. RES-02-18 — Regression: an Exercise resource's preview shows its answers, not blanks (Zoho TCN-I6380)
+19. RES-02-19 — Interruption: to check Save to Playlist while the network is down shows a message and adds nothing _(added 2026-09-30, gap analysis)_
 
 ### RES-03 — Gallery
+
+**User story:** As a teacher, I want to insert images from the Gallery, so that I can illustrate the lesson.
+
+**Acceptance criteria:**
+
+- AC1: The gallery shows the subject's images by category, with search
+- AC2: Every thumbnail loads
+- AC3: An image is inserted once and can be selected and moved
+- AC4: Close closes it
 
 1. RES-03-01 — To check opening the gallery from a topic shows images filtered to that chapter/subject
 2. RES-03-02 — To check searching within the gallery filters the results correctly
@@ -69,8 +97,18 @@ inside that preview.
 10. RES-03-10 — Regression: double-clicking an image adds it to the whiteboard only once
 11. RES-03-11 — Regression: every image thumbnail in the gallery loads, with no broken-image placeholders
 12. RES-03-12 — To check the gallery's close button closes it
+13. RES-03-13 — Interruption: to check gallery images that fail to load on a slow network show a message or retry, not an empty grid _(added 2026-09-30, gap analysis)_
 
 ### RES-04 — DropIt
+
+**User story:** As a teacher, I want to send a file or link from my phone with DropIt, so that I can show material I have on my phone.
+
+**Acceptance criteria:**
+
+- AC1: DropIt shows a QR code and pairing status
+- AC2: A shared link, file or text becomes a working resource
+- AC3: Unsupported files are refused with a message
+- AC4: Close closes it cleanly every time
 
 Flow: opening DropIt shows a QR code with a default pairing status; scanning the QR
 code pairs the device; once paired, the user can share a link or a file, which should
@@ -92,6 +130,15 @@ then open correctly when accessed.
 14. RES-04-14 — Edge: to check that after opening and closing DropIt 8 times, opening it again shows exactly one panel _(split from RES-04-08, 2026-09-28)_
 
 ### RES-05 — AI Assist
+
+**User story:** As a teacher, I want AI Assist to suggest exercises, videos and teaching tips for the topic, so that I can enrich the lesson quickly.
+
+**Acceptance criteria:**
+
+- AC1: Exercise, Videos and Teaching Tips tabs switch with one click
+- AC2: Add to Playlist needs a selected question and adds it once
+- AC3: Minimize, Maximize and Close work
+- AC4: Switching class closes it
 
 Flow: AI Assist loads with three tabs — Exercise, Videos, and Teaching Tips. Selecting
 a question and clicking "Add to Playlist" adds (or updates) a "My Exercise" asset in
@@ -118,6 +165,14 @@ the Playlist.
 
 ### RES-06 — Add Resource menu
 
+**User story:** As a teacher, I want one "+" menu for every way of adding a resource, so that adding material is simple.
+
+**Acceptance criteria:**
+
+- AC1: "+" shows all 6 options and each opens its screen
+- AC2: Closing returns to the board
+- AC3: Pressing "+" again never stacks menus
+
 Added 2026-09-26 from the reference suite (Add Resource workbook, ADD-CORE-01..04, AR-BREAK-04, ADD-EXP-07).
 
 1. RES-06-01 — To check the "+" button opens the Add Resource menu with all 6 options
@@ -127,6 +182,14 @@ Added 2026-09-26 from the reference suite (Add Resource workbook, ADD-CORE-01..0
 5. RES-06-05 — Edge: to check clicking an option the moment the menu opens opens that option, not a different one
 
 ### RES-08 — Uploading real teacher files, good and bad (added 2026-09-27)
+
+**User story:** As a teacher, I want real teacher files to upload correctly and bad files to be refused clearly, so that my resources always open.
+
+**Acceptance criteria:**
+
+- AC1: Every supported file is accepted and opens properly
+- AC2: Broken, wrong, oversized or unsupported files are refused with a message
+- AC3: No file is accepted and then fails to open
 
 Uses the upload test-data kit (`node scripts/make-test-data.js` builds `test-data/`: 29 files a teacher would upload and
 21 broken, wrong, oversized or unsupported ones; `test-data/manifest.json` describes each).
@@ -196,6 +259,14 @@ test asserts -- a known product bug is recorded on the test, not changed here):
 50. RES-08-50 — Negative: `Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name.pdf` (File name of about 250 characters) is refused with a reason
 
 ### RES-09 — Sending real teacher files through DropIt (added 2026-09-27)
+
+**User story:** As a teacher, I want DropIt to handle my files the same way as Create, so that sending from my phone is just as safe.
+
+**Acceptance criteria:**
+
+- AC1: Supported files open properly
+- AC2: Broken, wrong-type and oversized files are refused
+- AC3: A failed file is reported, never silently lost
 
 The same upload test-data kit as RES-08, tried through DropIt instead of Create (a full 50-file run was done once by
 hand; this keeps one representative case per outcome it found, since DropIt is far slower per file than Create):

@@ -52,6 +52,40 @@ class NavigationPage {
     await this.currentClassBtn.click();
   }
 
+  /** Clicks a TOGGLE button until `openSignal` is visible. CONFIRMED in the desktop-client run of 2026-10-01: a
+   * single click on the class or chapter button sometimes left its popup closed (the click landed while the app was
+   * still busy, e.g. right after sign-in or an autosave), and ~190 tests then timed out on the next click. Each retry
+   * first checks the popup is still closed, so a slow opening is never toggled shut again. */
+  async _openUntil(button, openSignal, tries = 4) {
+    for (let i = 0; i < tries; i++) {
+      if (await openSignal.isVisible().catch(() => false)) return;
+      await button.click({ force: true, timeout: 10000 });
+      if (
+        await openSignal
+          .waitFor({ state: 'visible', timeout: 4000 + i * 2000 })
+          .then(() => true)
+          .catch(() => false)
+      )
+        return;
+    }
+    await openSignal.waitFor({ state: 'visible', timeout: 5000 }); // fails with a clear "not visible" message
+  }
+
+  /** Clicks `target` until `nextSignal` appears (for steps inside an open popup: tab -> grades -> divisions). */
+  async _clickUntil(target, nextSignal, tries = 3) {
+    for (let i = 0; i < tries; i++) {
+      await target.click({ timeout: 10000 });
+      if (
+        await nextSignal
+          .first()
+          .waitFor({ state: 'visible', timeout: 3000 + i * 2000 })
+          .then(() => true)
+          .catch(() => false)
+      )
+        return;
+    }
+  }
+
   /**
    * Switch to a known Grade/Division/Subject via the cascade. Several
    * cascade tests leave the account's "current class" pointed at whatever
@@ -61,25 +95,39 @@ class NavigationPage {
    * 29 chapters with varying topic counts) regardless of what ran before.
    */
   async resetToClass(grade, division, subject) {
-    // openClassPopup() toggles the modal, so only call it if the modal
-    // isn't already open -- otherwise it closes what a caller had open.
-    const alreadyOpen = await this.allMyClassesTab.isVisible().catch(() => false);
-    if (!alreadyOpen) {
-      await this.openClassPopup();
-      // The modal re-renders for a moment right after opening -- clicking
-      // through it too fast hits "element detached, retrying" churn.
+    // CONFIRMED in the desktop client (2026-10-02): right after another class switch, the chooser can open and then
+    // close again by itself (the app finishing loading the previous class closes popups). So the whole cascade --
+    // open, All My Classes, grade, division, subject -- is retried from the start if any step finds the chooser gone,
+    // instead of one long wait on a tab that is no longer there. The class button toggles, so _openUntil only clicks
+    // it while the chooser is closed.
+    const steps = async () => {
+      await this._openUntil(this.currentClassBtn, this.allMyClassesTab);
+      // The modal re-renders for a moment right after opening -- clicking through it too fast hits
+      // "element detached, retrying" churn.
       await this.page.waitForTimeout(800);
+      await this.allMyClassesTab.click({ timeout: 4000 });
+      await this.gradeButton(grade).first().click({ timeout: 4000 });
+      await this.page.waitForTimeout(300);
+      await this.divisionButton(division).first().click({ timeout: 4000 });
+      await this.page.waitForTimeout(300);
+      await this.subjectButton(subject).first().click({ timeout: 4000 });
+    };
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await steps();
+        break;
+      } catch (err) {
+        if (attempt === 4) throw err;
+        await this.page.waitForTimeout(1500 * attempt);
+      }
     }
-    await this.allMyClassesTab.click({ timeout: 10000 });
-    await this.page.waitForTimeout(500);
-    await this.gradeButton(grade).click({ timeout: 10000 });
-    await this.page.waitForTimeout(300);
-    await this.divisionButton(division).click({ timeout: 10000 });
-    await this.page.waitForTimeout(300);
-    await this.subjectButton(subject).click({ timeout: 10000 });
     // Right after a client relaunch the class label can take well over 10 s to update (seen 2026-09-26: the switch
     // landed, just late), so allow 30 s.
     await this.currentClassBtn.filter({ hasText: subject }).waitFor({ state: 'visible', timeout: 30000 });
+    // CONFIRMED in the client (2026-10-02): the chooser slides shut after a switch, and a second switch started during
+    // that animation saw the closing tab as "open", skipped opening it, and timed out when the tab disappeared. Wait
+    // until it has really closed, so the next switch (a spec's own beforeEach after the fixture's) starts clean.
+    await this.allMyClassesTab.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
   }
 
   async openChaptersPopup() {
@@ -108,14 +156,7 @@ class NavigationPage {
   async _selectChapterTopic(chapterLocator, topicIndex) {
     // The popup button TOGGLES, so only click it when the popup is not already open (a caller such as showTopicsOf
     // leaves it open).
-    if (
-      !(await this.chapterItems
-        .first()
-        .isVisible()
-        .catch(() => false))
-    ) {
-      await this.openChaptersPopup();
-    }
+    await this._openUntil(this.currentChapterTopicBtn, this.chapterItems.first());
     await this.page.waitForTimeout(500);
     await chapterLocator().click({ timeout: 10000 });
     await this.page.waitForTimeout(500);
@@ -129,17 +170,21 @@ class NavigationPage {
 
     if (!(await listed())) {
       if (topicIndex > 0) {
-        if (
-          !(await this.chapterItems
-            .first()
-            .isVisible()
-            .catch(() => false))
-        )
-          await this.openChaptersPopup();
-        await this.page.waitForTimeout(500);
-        await chapterLocator().click({ timeout: 10000 });
-        await this.page.waitForTimeout(500);
-        await this.topicItems.nth(topicIndex).click({ timeout: 10000 });
+        // CONFIRMED in the desktop client (2026-10-02): the app is still loading the chapter just chosen and closes the
+        // popup again while it is being reopened, so the topic click timed out (49 tests). Retry the reopen-and-pick
+        // step until the topic list is really there.
+        for (let attempt = 1; ; attempt++) {
+          try {
+            await this.page.waitForTimeout(1000 * attempt);
+            await this._openUntil(this.currentChapterTopicBtn, this.chapterItems.first());
+            await this.page.waitForTimeout(500);
+            if (!(await listed())) await chapterLocator().click({ timeout: 5000 });
+            await this.topicItems.nth(topicIndex).click({ timeout: 5000 });
+            break;
+          } catch (err) {
+            if (attempt === 4) throw err;
+          }
+        }
       }
     } else {
       await this.topicItems.nth(topicIndex).click({ timeout: 10000 });

@@ -16,7 +16,7 @@
 
 const { test: base, expect } = require('./electron-app');
 const { App } = require('../pages/app');
-const { pinForModule } = require('../config/moduleClassMap');
+const { pinForModule, getClassMap } = require('../config/moduleClassMap');
 
 const test = base.extend({
   classMap: [null, { option: true }],
@@ -31,6 +31,13 @@ const test = base.extend({
     if (classMap) {
       await app.nav.applyClassMap(classMap);
       await app.playlist.ensureDrawerVisible();
+    } else {
+      // A test that names no class would otherwise start wherever the account was left -- possibly one of the
+      // handwriting data boards. Bring it to the default (whiteboard test) class first, unless it is already there
+      // (owner, 2026-10-01: tests must never add to those boards).
+      const { grade, division, subject } = getClassMap('default');
+      const label = (await app.nav.currentClassBtn.innerText().catch(() => '')).replace(/\s+/g, ' ');
+      if (!label.includes(`${grade}${division} | ${subject}`)) await app.nav.applyClassMap('default');
     }
     // Never erases (owner rule 2026-09-29): moves to empty space below the teacher's writing and ignores it in counts.
     if (freshSpace) await app.content.startOnFreshSpace();

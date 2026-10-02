@@ -51,6 +51,8 @@ class UserMenuPage {
     this.signOutBtn = page.locator('[data-qa-id="toolbar-profile-signout-btn"]');
     this.buildInfoBtn = page.locator('[data-qa-id="toolbar-profile-build-btn"]');
     this.feedbackBtn = page.locator('[data-qa-id="toolbar-profile-feedback-btn"]');
+    // New in v 0.0.232 (seen live 2026-09-30): opens a panel of the topic board's saved versions.
+    this.wbHistoryBtn = page.locator('[data-qa-id="toolbar-profile-wb-history-btn"]');
 
     // --- Account tab: Preferred Resource Type + Subjects ---
     // Confirmed data-qa-ids per cep2-workspace/docs/qa/DATA-QA-ID-REFERENCE.md
