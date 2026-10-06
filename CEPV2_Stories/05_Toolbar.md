@@ -173,25 +173,26 @@ code: `TB`. Each `### <ID> — <Title>` is a **story**; each numbered line under
 
 Checked live 2026-09-30 (Ultra server, v 0.0.232): the menu shows the "Signed in as" row (its chevron opens the Account
 and Profile tabs), Dark Mode, Virtual Keyboard, Classroom Mode (Teaching / Planning), **Whiteboard History** (new),
-Sign Out and the Build line. **Feedback is no longer in the menu** in the browser; the owner saw Feedback open a QR code,
-not a form (TB-09-06/10/16 wait for the owner's decision). Whiteboard History is covered in `06_Whiteboard.md`, WB-12.
+Sign Out and the Build line. **Expected (owner, 2026-10-05): a Feedback option in the menu that opens a QR code** for
+sending feedback (not a form). In the browser on v 0.0.232 Feedback was missing from the menu. Whiteboard History is
+covered in `06_Whiteboard.md`, WB-12.
 
-1. TB-09-01 — To check opening the User menu shows the Signed-in-as row (Profile, Account), Classroom Mode, Dark Mode (Theme), Virtual Keyboard, Whiteboard History, Build Version and Sign Out _(corrected 2026-09-30: Feedback removed, Whiteboard History added)_
+1. TB-09-01 — To check opening the User menu shows the Signed-in-as row (Profile, Account), Classroom Mode, Dark Mode (Theme), Virtual Keyboard, Whiteboard History, Feedback, Build Version and Sign Out _(corrected 2026-10-05: Feedback is expected, owner)_
 2. TB-09-02 — To check Profile opens and displays current settings
 3. TB-09-03 — To check Account shows the correct signed-in account details
 4. TB-09-04 — To check Classroom Mode switches to Planning
 5. TB-09-05 — To check Theme changes the app's visual theme
-6. TB-09-06 — To check Feedback opens a submission form with a message field _(owner 2026-09-30: Feedback shows a QR code, not a form -- story to be confirmed)_
+6. TB-09-06 — To check Feedback opens a QR code for sending feedback _(owner 2026-10-05: a QR code is the expected behaviour, not a form)_
 7. TB-09-07 — To check Build Version displays the correct value
 8. TB-09-08 — To check that with Virtual Keyboard ON, clicking the chapter search box opens the on-screen keyboard, visible inside the window
 9. TB-09-09 — To check Sign Out (from this menu) signs out correctly, same as the quick Sign Out button _(corrected 2026-09-30: there is no header Logout)_
-10. TB-09-10 — Negative: to check closing/canceling the Feedback form without submitting doesn't send anything
+10. TB-09-10 — To check closing the Feedback QR code returns to the app with nothing changed _(reworded 2026-10-05)_
 11. TB-09-11 — To check keys pressed on the on-screen keyboard type into the focused input box
 12. TB-09-12 — To check the on-screen keyboard opens for a whiteboard text box too, not only the chapter search
 13. TB-09-13 — Negative: to check that with Virtual Keyboard OFF, clicking the Add Resource title does not open the on-screen keyboard
 14. TB-09-14 — Edge: to check switching Theme 10 times in a row ends on the expected theme, with no flicker left behind
 15. TB-09-15 — To check Classroom Mode switches back from Planning to Teaching _(split from TB-09-04, 2026-09-28)_
-16. TB-09-16 — To check the Feedback form accepts a message and offers a way to submit it _(split from TB-09-06, 2026-09-28)_
+16. TB-09-16 — To check the Feedback QR code can be read (it decodes to a feedback link) _(reworded 2026-10-05)_
 17. TB-09-17 — To check typing on the on-screen keyboard fills the chapter search box _(split from TB-09-08, 2026-09-28)_
 18. TB-09-18 — To check the on-screen keyboard opens for the Add Resource title too _(split from TB-09-12, 2026-09-28)_
 19. TB-09-19 — Negative: to check that with Virtual Keyboard OFF, clicking a whiteboard text box does not open the on-screen keyboard _(split from TB-09-13, 2026-09-28)_
@@ -214,7 +215,7 @@ Added 2026-09-26 from the reference suite (Toolbar workbook, TB-TXT-01..06, TB-C
 3. TB-10-03 — To check To Back puts a text box below the content it overlaps
 4. TB-10-04 — Negative: to check a text box left empty leaves nothing behind after clicking away
 5. TB-10-05 — Regression: Bold makes the selected text visibly bold
-6. TB-10-06 — Regression: text that has already been typed can be opened and edited again
+6. TB-10-06 — Regression: text that has already been typed can be opened and edited again _(not applicable: expected flow -- committed text is not reopened for editing; owner 2026-10-06)_
 7. TB-10-07 — To check typed text stays on the board after clicking away _(split from TB-10-01, 2026-09-28)_
 8. TB-10-08 — To check choosing a colour from the palette colours the text _(split from TB-10-02, 2026-09-28)_
 9. TB-10-09 — To check To Front puts a text box above the content it overlaps _(split from TB-10-03, 2026-09-28)_
@@ -238,7 +239,7 @@ Added 2026-09-26 from the reference suite (Toolbar workbook, TB-WIDGET-01..04, T
 2. TB-11-02 — To check the Discipline filter changes which widgets are listed
 3. TB-11-03 — To check inserting the Ruler places a ruler on the board
 4. TB-11-04 — To check closing a widget removes it from the board
-5. TB-11-05 — Edge: to check a widget dragged onto the board lands where it was dropped
+5. TB-11-05 — Edge: to check a widget dragged onto the board lands where it was dropped _(not applicable: expected flow -- a widget is opened by clicking it, not by dragging; owner 2026-10-06)_
 6. TB-11-06 — Regression: opening a widget doesn't show a small widget screen on the toolbar (Zoho CWR-I754)
 7. TB-11-07 — To check a Ruler placed on the board can be moved _(split from TB-11-03, 2026-09-28)_
 

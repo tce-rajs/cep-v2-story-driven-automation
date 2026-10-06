@@ -23,6 +23,7 @@ code: `XC`. Each `### <ID> — <Title>` is a **story**; each numbered line under
 5. XC-01-05 — To check chapter search finds a Hindi chapter name in Class 9A Hindi Language
 6. XC-01-06 — Negative: to check a file with a Hindi name is accepted, or refused with a message _(seen: silently rejected, RES-08)_
 7. XC-01-07 — To check the on-screen keyboard can type Devanagari, or it is clear that it cannot
+8. XC-01-08 — To check Marathi handwriting is saved exactly: every stroke comes back after a reload _(added 2026-10-05: covers AC4)_
 
 ### XC-02 — Dates and times
 

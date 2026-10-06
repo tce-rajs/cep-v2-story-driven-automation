@@ -105,11 +105,9 @@ covered separately in PL-02, since it has its own navigation behavior).
 - AC1: The pin icon keeps the strip shown while I draw or open a player
 - AC2: Unpinning lets the strip hide again
 
-1. PL-06-01 — To check pinning a resource keeps it fixed at the top of the playlist
-2. PL-06-02 — To check unpinning removes that fixed placement
-3. PL-06-03 — Edge: to check pinning multiple resources keeps them all fixed at the top in a consistent order
-4. PL-06-04 — To check the pin icon keeps the Playlist strip shown while drawing and while a player is open _(added 2026-09-30 for the acceptance criteria)_
-5. PL-06-05 — To check unpinning lets the Playlist strip hide again _(added 2026-09-30 for the acceptance criteria)_
+1. PL-06-01 — To check the pin icon keeps the Playlist strip shown while the teacher draws or opens a player _(reworded 2026-10-05: the pin is the strip's, not a card's)_
+2. PL-06-02 — To check unpinning lets the Playlist strip hide again _(reworded 2026-10-05)_
+3. PL-06-03 — Edge: to check pinning multiple resources keeps them all fixed at the top in a consistent order _(not applicable: there is no per-card pin in the app; the test skips)_
 
 ### PL-07 — Playlist strip
 

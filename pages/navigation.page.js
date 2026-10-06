@@ -168,26 +168,27 @@ class NavigationPage {
         .then(() => true)
         .catch(() => false);
 
-    if (!(await listed())) {
-      if (topicIndex > 0) {
-        // CONFIRMED in the desktop client (2026-10-02): the app is still loading the chapter just chosen and closes the
-        // popup again while it is being reopened, so the topic click timed out (49 tests). Retry the reopen-and-pick
-        // step until the topic list is really there.
-        for (let attempt = 1; ; attempt++) {
-          try {
+    if (topicIndex > 0 || (await listed())) {
+      // CONFIRMED in the desktop client (2026-10-02/05): the app is still loading the chapter just chosen and closes the
+      // popup again while it is being reopened (49 tests timed out on the topic click), and a topic far down a long
+      // list (12A Physics 1.5) is below the visible part of the list. So: retry until the topic list is really there,
+      // and scroll the topic into view before clicking it.
+      for (let attempt = 1; ; attempt++) {
+        try {
+          if (!(await listed())) {
             await this.page.waitForTimeout(1000 * attempt);
             await this._openUntil(this.currentChapterTopicBtn, this.chapterItems.first());
             await this.page.waitForTimeout(500);
             if (!(await listed())) await chapterLocator().click({ timeout: 5000 });
-            await this.topicItems.nth(topicIndex).click({ timeout: 5000 });
-            break;
-          } catch (err) {
-            if (attempt === 4) throw err;
           }
+          const topic = this.topicItems.nth(topicIndex);
+          await topic.scrollIntoViewIfNeeded({ timeout: 5000 });
+          await topic.click({ timeout: 5000 });
+          break;
+        } catch (err) {
+          if (attempt === 4) throw err;
         }
       }
-    } else {
-      await this.topicItems.nth(topicIndex).click({ timeout: 10000 });
     }
     await this.page.waitForTimeout(500);
     await this._closeChaptersPopupIfOpen();

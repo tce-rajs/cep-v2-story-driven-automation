@@ -168,7 +168,13 @@ async function launchClient() {
   // Make sure the shell window has come up before we look for the webview.
   await app.firstWindow();
 
-  const teachWindow = await findTeachWindow(app);
+  let teachWindow;
+  try {
+    teachWindow = await findTeachWindow(app);
+  } catch (err) {
+    await app.close().catch(() => {}); // never leave a half-started client running behind a failed launch
+    throw err;
+  }
   await teachWindow.waitForLoadState('domcontentloaded');
   // The webview keeps rendering (fonts, the Guest Mode panel, the Sign In
   // modal) for a bit after domcontentloaded — give it a few seconds so
@@ -183,7 +189,7 @@ async function launchClient() {
 // If a full relaunch is ever still needed (the cheap same-window retry
 // below failed too), don't loop forever -- 2 fresh app instances is plenty
 // given the cheap retry already handles the common case.
-const MAX_LAUNCH_ATTEMPTS = 2;
+const MAX_LAUNCH_ATTEMPTS = 3; // raised from 2 on 2026-10-06 (start-up race seen often in the overnight run)
 
 // Without this check, a missing client just fails with Playwright's own
 // generic "Process failed to launch!" (confirmed live -- no path, no
@@ -272,7 +278,17 @@ async function launchWithRetry() {
 
   let app, teachWindow;
   for (let attempt = 1; attempt <= MAX_LAUNCH_ATTEMPTS; attempt++) {
-    ({ app, teachWindow } = await launchClient());
+    // CONFIRMED in the 2026-10-05 overnight run: after a mid-run relaunch the client sometimes never brings its teach
+    // window up within 30 s (the start-up race above), and that one failed launch used to fail the test outright.
+    // A launch that does not produce the window now counts as one failed attempt, like the overlay case below.
+    try {
+      ({ app, teachWindow } = await launchClient());
+    } catch (err) {
+      if (app) await app.close().catch(() => {});
+      app = null;
+      if (attempt === MAX_LAUNCH_ATTEMPTS) throw err;
+      continue;
+    }
 
     if (await isConnectionErrorShowing(app)) {
       // Cheap recovery first: the client's own reload of its teach <webview> (same client URL, same window),

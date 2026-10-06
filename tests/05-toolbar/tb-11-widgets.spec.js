@@ -103,11 +103,10 @@ test.describe('TB-11 Widgets', () => {
 
   test(
     'TB-11-05: a widget dragged onto the board lands where it was dropped',
-    { tag: ['@edge', '@bug'] },
+    { tag: ['@edge'] },
     async ({ user, page }) => {
-      // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): widget tiles are not draggable (no draggable attribute);
-      // dragging one onto the board places nothing -- only a click inserts it. Owner to decide: story or app.
-      test.fail(true, 'Dragging a widget from the panel onto the board places nothing (only clicking inserts)');
+      // NOT APPLICABLE (owner 2026-10-06): widgets are opened by clicking them; not dragging is the expected flow.
+      // The story marks this case not applicable, so the outOfScope fixture skips it; the steps stay for reference.
       await user.toolbar.openToolPanel('gtWidgets');
       const source = await user.toolbar.widgetTool('Ruler').boundingBox();
       const canvas = await user.toolbar.wbSvg.boundingBox();

@@ -59,7 +59,7 @@ multiple questions, selects an answer, then submits.
 - AC2: Results are not shown before submitting
 - AC3: Score display is an improvement request (owner 2026-09-30)
 
-1. PLR-02-01 — To check the score displays correctly immediately after submitting
+1. PLR-02-01 — To check the score displays correctly immediately after submitting _(improvement, not a bug -- owner 2026-09-30)_
 2. PLR-02-02 — To check reviewing the quiz shows which specific answers were right or wrong
 3. PLR-02-03 — Negative: to check attempting to review results before submitting the quiz is not accessible, or shows an appropriate message
 
@@ -313,7 +313,7 @@ worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file,
 
 1. PLR-14-01a — The teacher can write on an open worksheet (PDF), and the stroke is on the asset
 2. PLR-14-01b — Zoom in, write, pan, write again on a worksheet (PDF): both strokes stay, none lost to the zoom or the pan
-3. PLR-14-01c — A shape can be drawn on a worksheet (PDF)
+3. PLR-14-01c — A shape can be drawn on a worksheet (PDF) _(improvement, not a bug -- owner 2026-09-30)_
 4. PLR-14-01d — Annotations on a worksheet (PDF) are still there after closing and opening it again
 5. PLR-14-01e — After closing a worksheet (PDF), its annotations are not left on the whiteboard
 6. PLR-14-01f — A text box can be added on a worksheet (PDF)
@@ -322,7 +322,7 @@ worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file,
 9. PLR-14-01i — Redo erases the stroke on a worksheet (PDF) again after Undo
 10. PLR-14-02a — The teacher can write on an open image, and the stroke is on the asset
 11. PLR-14-02b — Zoom in, write, pan, write again on a image: both strokes stay, none lost to the zoom or the pan
-12. PLR-14-02c — A shape can be drawn on a image
+12. PLR-14-02c — A shape can be drawn on a image _(improvement, not a bug -- owner 2026-09-30)_
 13. PLR-14-02d — Annotations on a image are still there after closing and opening it again
 14. PLR-14-02e — After closing a image, its annotations are not left on the whiteboard
 15. PLR-14-02f — A text box can be added on a image
@@ -331,7 +331,7 @@ worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file,
 18. PLR-14-02i — Redo erases the stroke on a image again after Undo
 19. PLR-14-03a — The teacher can write on an open video, and the stroke is on the asset
 20. PLR-14-03b — Zoom in, write, pan, write again on a video: both strokes stay, none lost to the zoom or the pan
-21. PLR-14-03c — A shape can be drawn on a video
+21. PLR-14-03c — A shape can be drawn on a video _(improvement, not a bug -- owner 2026-09-30)_
 22. PLR-14-03d — Annotations on a video are still there after closing and opening it again
 23. PLR-14-03e — After closing a video, its annotations are not left on the whiteboard
 24. PLR-14-03f — A text box can be added on a video
@@ -340,7 +340,7 @@ worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file,
 27. PLR-14-03i — Redo erases the stroke on a video again after Undo
 28. PLR-14-04a — The teacher can write on an open web link, and the stroke is on the asset
 29. PLR-14-04b — Zoom in, write, pan, write again on a web link: both strokes stay, none lost to the zoom or the pan
-30. PLR-14-04c — A shape can be drawn on a web link
+30. PLR-14-04c — A shape can be drawn on a web link _(improvement, not a bug -- owner 2026-09-30)_
 31. PLR-14-04d — Annotations on a web link are still there after closing and opening it again
 32. PLR-14-04e — After closing a web link, its annotations are not left on the whiteboard
 33. PLR-14-04f — A text box can be added on a web link
@@ -349,7 +349,7 @@ worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file,
 36. PLR-14-04i — Redo erases the stroke on a web link again after Undo
 37. PLR-14-05a — The teacher can write on an open code editor, and the stroke is on the asset
 38. PLR-14-05b — Zoom in, write, pan, write again on a code editor: both strokes stay, none lost to the zoom or the pan
-39. PLR-14-05c — A shape can be drawn on a code editor
+39. PLR-14-05c — A shape can be drawn on a code editor _(improvement, not a bug -- owner 2026-09-30)_
 40. PLR-14-05d — Annotations on a code editor are still there after closing and opening it again
 41. PLR-14-05e — After closing a code editor, its annotations are not left on the whiteboard
 42. PLR-14-05f — A text box can be added on a code editor
@@ -358,7 +358,7 @@ worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file,
 45. PLR-14-05i — Redo erases the stroke on a code editor again after Undo
 46. PLR-14-06a — The teacher can write on an open unsupported file, and the stroke is on the asset
 47. PLR-14-06b — Zoom in, write, pan, write again on a unsupported file: both strokes stay, none lost to the zoom or the pan
-48. PLR-14-06c — A shape can be drawn on a unsupported file
+48. PLR-14-06c — A shape can be drawn on a unsupported file _(improvement, not a bug -- owner 2026-09-30)_
 49. PLR-14-06d — Annotations on a unsupported file are still there after closing and opening it again
 50. PLR-14-06e — After closing a unsupported file, its annotations are not left on the whiteboard
 51. PLR-14-06f — A text box can be added on a unsupported file
@@ -367,7 +367,7 @@ worksheet, 02 image, 03 video, 04 web link, 05 code editor, 06 unsupported file,
 54. PLR-14-06i — Redo erases the stroke on a unsupported file again after Undo
 55. PLR-14-07a — The teacher can write on an open quiz, and the stroke is on the asset
 56. PLR-14-07b — Zoom in, write, pan, write again on a quiz: both strokes stay, none lost to the zoom or the pan
-57. PLR-14-07c — A shape can be drawn on a quiz
+57. PLR-14-07c — A shape can be drawn on a quiz _(improvement, not a bug -- owner 2026-09-30)_
 58. PLR-14-07d — Annotations on a quiz are still there after closing and opening it again
 59. PLR-14-07e — After closing a quiz, its annotations are not left on the whiteboard
 60. PLR-14-07f — A text box can be added on a quiz

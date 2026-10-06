@@ -172,11 +172,10 @@ test.describe('TB-10 Text box', () => {
 
   test(
     'TB-10-06: text that has already been typed can be opened and edited again (regression)',
-    { tag: ['@regression', '@bug'] },
+    { tag: ['@regression'] },
     async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; same as the reference suite's TB-CYP-08): double-clicking
-      // committed text with the Select tool does not reopen it for editing; typed text is not added.
-      test.fail(true, 'Committed text cannot be reopened for editing');
+      // NOT APPLICABLE (owner 2026-10-06): committed text not reopening for editing is the expected flow, not a bug.
+      // The story marks this case not applicable, so the outOfScope fixture skips it; the steps stay for reference.
       const box = await addText(user, 'First draft');
       await user.toolbar.selectTool('gtSelect');
       await box.dblclick({ force: true });

@@ -8,16 +8,28 @@ const { test, expect } = require('../../fixtures');
 
 test.describe('TB-09 User menu', () => {
   test(
-    'TB-09-01: opening the User menu shows Profile, Account, Classroom Mode, Theme, Virtual Keyboard, Whiteboard History, Build Version and Sign Out',
-    { tag: ['@smoke', '@functional'] },
-    async ({ user }) => {
+    'TB-09-01: opening the User menu shows Profile, Account, Classroom Mode, Theme, Virtual Keyboard, Whiteboard History, Feedback, Build Version and Sign Out',
+    { tag: ['@smoke', '@functional', '@bug'] },
+    async ({ user, page }) => {
+      // Every other item is there; only Feedback is missing (v 0.0.236, see FEEDBACK_MISSING below).
+      test.fail(true, 'The User menu has no Feedback option (expected by the owner, 2026-10-05) -- v 0.0.236');
       const menu = user.userMenu;
       await menu.openProfileMenu();
 
-      // Story corrected 2026-09-30 from the live v 0.0.232 menu: Feedback is gone, Whiteboard History is new.
+      // Whiteboard History is new on the Ultra server build; Feedback is expected in the menu (owner, 2026-10-05).
       await expect.soft(menu.classroomModeSwitcher, 'Classroom Mode').toBeVisible();
       await expect.soft(menu.darkModeToggle, 'Theme').toBeVisible();
       await expect.soft(menu.wbHistoryBtn, 'Whiteboard History').toBeVisible();
+      await expect
+        .soft(
+          page
+            .locator('[data-qa-id="toolbar-profile-feedback-btn"]')
+            .or(page.getByText(/feedback/i))
+            .filter({ visible: true })
+            .first(),
+          'Feedback'
+        )
+        .toBeVisible();
       await expect.soft(menu.buildInfoBtn, 'Build Version').toBeVisible();
       await expect.soft(menu.virtualKeyboardToggle, 'Virtual Keyboard').toBeVisible();
       await expect.soft(menu.signOutBtn, 'Logout').toBeVisible();
@@ -113,39 +125,63 @@ test.describe('TB-09 User menu', () => {
     await user.userMenu.darkModeToggle.click({ force: true });
   });
 
-  // Feedback: a form with a message field opens (TB-09-06), and it accepts input and offers Submit (TB-09-16) -- one test
-  // each (split 2026-09-28). Never submitted: that would send real mail from the QA account.
-  // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): clicking "Share your feedBack!" does nothing observable -- no dialog,
-  // no window.open, no new window, no network request, and the menu simply stays open. Tracked as expected-to-fail
-  // so it isn't masked; needs a product decision (dead control, or it hands off somewhere a test cannot see).
-  const openFeedback = async (user, page) => {
+  // Feedback (owner, 2026-10-05): the User menu has a Feedback option, and it opens a QR code for sending feedback --
+  // a QR code is the expected behaviour, not a form. TB-09-06 (opens a QR code), TB-09-16 (the QR code can be read),
+  // TB-09-10 (closing it changes nothing). Seen 2026-09-30 in the browser on v 0.0.232: no Feedback option in the menu.
+  // PRODUCT FINDING, seen in the desktop client on v 0.0.236 (2026-10-05): the menu has no Feedback option at all.
+  const FEEDBACK_MISSING =
+    'The User menu has no Feedback option (expected: Feedback opening a QR code, owner 2026-10-05) -- v 0.0.236';
+  const feedbackOption = (page) =>
+    page
+      .locator('[data-qa-id="toolbar-profile-feedback-btn"]')
+      .or(page.getByText(/feedback/i))
+      .filter({ visible: true })
+      .first();
+  const feedbackQr = (page) =>
+    page.locator('canvas, img[src*="qr" i], [class*="qr" i] img, [class*="qr" i] canvas, svg[class*="qr" i]').filter({
+      visible: true,
+    });
+  const openFeedbackQr = async (user, page) => {
     await user.userMenu.openProfileMenu();
-    await user.userMenu.feedbackBtn.click({ force: true });
-    const dialog = page.locator('mat-dialog-container, [role="dialog"]').filter({ visible: true }).first();
-    await expect(dialog).toBeVisible({ timeout: 10000 });
-    return dialog;
+    await expect(feedbackOption(page), 'the User menu has a Feedback option').toBeVisible({ timeout: 10000 });
+    await feedbackOption(page).click({ force: true });
+    await expect(feedbackQr(page).first(), 'Feedback shows a QR code').toBeVisible({ timeout: 15000 });
+    return feedbackQr(page).first();
   };
 
   test(
-    'TB-09-06: Feedback opens a submission form with a message field',
+    'TB-09-06: Feedback opens a QR code for sending feedback',
     { tag: ['@functional', '@bug'] },
     async ({ user, page }) => {
-      test.fail(true, 'Feedback opens nothing when clicked');
-      const dialog = await openFeedback(user, page);
-      await expect(dialog.locator('textarea, input[type="text"]').first(), 'a message field is offered').toBeVisible();
+      test.fail(true, FEEDBACK_MISSING);
+      await openFeedbackQr(user, page);
     }
   );
 
   test(
-    'TB-09-16: the Feedback form accepts a message and offers a way to submit it',
+    'TB-09-16: the Feedback QR code can be read (it decodes to a feedback link)',
     { tag: ['@functional', '@bug'] },
     async ({ user, page }) => {
-      test.fail(true, 'Feedback opens nothing when clicked, so there is no form to fill');
-      const dialog = await openFeedback(user, page);
-      const field = dialog.locator('textarea, input[type="text"]').first();
-      await field.fill('Automated check — please ignore');
-      await expect(field).toHaveValue('Automated check — please ignore');
-      await expect(dialog.getByRole('button', { name: /submit|send/i }).first()).toBeVisible();
+      test.fail(true, FEEDBACK_MISSING);
+      const qr = await openFeedbackQr(user, page);
+      // Decode the QR code from a screenshot of it, with jsQR (the same decoder the DropIt tests use).
+      const png = await qr.screenshot();
+      await page.addScriptTag({ path: require.resolve('jsqr/dist/jsQR.js') });
+      const decoded = await page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, c.width, c.height);
+        const code = window.jsQR(data.data, c.width, c.height);
+        return code ? code.data : null;
+      }, png.toString('base64'));
+      test.info().annotations.push({ type: 'note', description: `Feedback QR decodes to: ${decoded}` });
+      expect(decoded, 'the QR code decodes to a link').toMatch(/^https?:\/\//);
     }
   );
 
@@ -229,29 +265,20 @@ test.describe('TB-09 User menu', () => {
   );
 
   test(
-    'TB-09-10: closing/cancelling the Feedback form without submitting does not send anything',
+    'TB-09-10: closing the Feedback QR code returns to the app with nothing changed',
     { tag: ['@negative', '@bug'] },
     async ({ user, page }) => {
-      // Same finding as TB-09-06: there is no Feedback form to open, so there is nothing to close or cancel.
-      test.fail(true, 'Feedback opens nothing when clicked, so its cancel path cannot be exercised');
-      const sent = [];
-      page.on('request', (req) => {
-        if (req.method() !== 'GET' && /feedback/i.test(req.url())) sent.push(`${req.method()} ${req.url()}`);
-      });
-
-      await user.userMenu.openProfileMenu();
-      await user.userMenu.feedbackBtn.click({ force: true });
-      const dialog = page.locator('mat-dialog-container, [role="dialog"]').filter({ visible: true }).first();
-      await expect(dialog).toBeVisible({ timeout: 10000 });
-      await dialog.locator('textarea, input[type="text"]').first().fill('Draft that must not be sent');
-
-      const cancel = dialog.getByRole('button', { name: /cancel|close/i }).first();
-      if (await cancel.isVisible().catch(() => false)) await cancel.click({ force: true });
+      test.fail(true, FEEDBACK_MISSING);
+      const before = await user.nav.currentChapterTopicBtn.innerText();
+      const qr = await openFeedbackQr(user, page);
+      const close = page
+        .getByRole('button', { name: /close|cancel|done/i })
+        .filter({ visible: true })
+        .first();
+      if (await close.isVisible().catch(() => false)) await close.click({ force: true });
       else await page.keyboard.press('Escape');
-      await expect(dialog).toBeHidden({ timeout: 5000 });
-      await page.waitForTimeout(1500);
-
-      expect(sent, 'no feedback request was sent').toEqual([]);
+      await expect(qr, 'the QR code closes').toBeHidden({ timeout: 10000 });
+      await expect(user.nav.currentChapterTopicBtn, 'same topic as before').toHaveText(before);
     }
   );
 

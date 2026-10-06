@@ -1,0 +1,35 @@
+[
+  {
+    "id": "LOG-06-06",
+    "module": "Login (session)",
+    "title": "Writing done after the session silently ends (~44 min) is lost; the app keeps looking signed in for ~6 more minutes",
+    "severity": "High",
+    "found": "2026-10-06, v0.0.236, desktop client, PIN 89632",
+    "steps": "Sign in and keep working without a pause: handwriting on the board, open a worksheet / video / image and write on them, play the video. Keep going past 44 minutes.",
+    "expected": "Everything written is saved; the teacher is warned before the session ends.",
+    "actual": "Token renewals succeed every 4 min until 39:51; the next (due ~43:50) never happens. From 43:58 the app slows (video play/pause takes 30 s) but still looks signed in and accepts the pen. The sign-out shows only at 49:52. 417 strokes written on the board, 390 saved: the 27 strokes written after minute 44 are lost. No warning at any point.",
+    "evidence": "report/session-video/2026-10-06_mandar-40min/ (uncut video, SESSION-TIMELINE.md, after-forced-signout.png)"
+  },
+  {
+    "id": "CLIENT-01",
+    "module": "Desktop client",
+    "title": "The desktop client crashes (\"Target crashed\") when it opens a board of about 8,400+ strokes, and again at every sign-in while that board is the last topic",
+    "severity": "High",
+    "found": "2026-09-30, v0.0.232, desktop client, PIN 74125",
+    "steps": "Open a topic whose board holds about 8,400 strokes or more (12A Physics 1.7, 1.8, 1.9; 7A Value Education 1.1).",
+    "expected": "The board opens.",
+    "actual": "The client crashes; with that topic as the last one, it crashes again at every sign-in. A board of 5,190 strokes opens fine. Moving the account to a light topic from a browser is the only way out.",
+    "evidence": "report/whiteboard-data/README.md (boards and stroke counts)"
+  },
+  {
+    "id": "RSL-03-03",
+    "module": "Resilience",
+    "title": "While the server is down (e.g. a new build being deployed) the pen strokes join into long scribbles, nothing is saved, and no message is shown",
+    "severity": "High",
+    "found": "2026-09-30 19:23-19:42 (deployment of v0.0.236), desktop client, PIN 74125",
+    "steps": "Write on the board while the server restarts.",
+    "expected": "A message that saving is not possible; writing kept and saved when the server is back; strokes drawn normally.",
+    "actual": "Strokes joined into long straight-line scribbles on screen; about 5 lines written during the outage were never saved; no message.",
+    "evidence": "report/screenshots/marathi-7a-colour-error.png"
+  }
+]

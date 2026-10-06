@@ -53,7 +53,7 @@ persistence, and Eraser precision. Module code: `WB`. Each `### <ID> — <Title>
 
 - AC1: Existing content is unchanged after a background change
 
-1. WB-04-01 — To check changing the whiteboard background doesn't affect existing content
+1. WB-04-01 — To check changing the whiteboard background doesn't affect existing content _(the same check as TB-03-05, kept here for the whiteboard side)_
 
 _(The background-change control itself, including its rapid-toggle regression case, is
 covered more thoroughly in `05_Toolbar.md`, TB-03 — this story only checks the effect
@@ -203,7 +203,7 @@ at several points of one continuous session (10, 15, 20, 25, 30, 35 minutes -- u
 **Acceptance criteria:**
 
 - AC1: A finger or stylus stroke draws exactly one stroke, and fast handwriting keeps every stroke
-- AC2: Two fingers pan, a pinch zooms, and neither draws
+- AC2: Finger input and gestures (two-finger pan, pinch zoom, finger taps and writing) are not supported (owner 2026-09-30); those cases are kept only as a record
 - AC3: The palm resting on the screen draws nothing
 - AC4: Taps on tools and cards act once
 
@@ -211,32 +211,32 @@ Classroom panels are touch screens used with fingers and a pen. These cases use 
 2026-09-28 so each case checks one result; the new cases carry the next free IDs. The 150-word sessions are each
 written once, and the cases after the writing case check one more result on the same session.)
 
-1. WB-10-01 — A finger stroke with the Pen draws exactly one stroke where the finger went
+1. WB-10-01 — A finger stroke with the Pen draws exactly one stroke where the finger went _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
 2. WB-10-02 — A stylus stroke with the Pen draws exactly one stroke
 3. WB-10-03 — Regression: fast stylus handwriting (30 words) keeps every stroke
-4. WB-10-04 — A two-finger drag pans the board, even with the Pen selected
-5. WB-10-05 — Pinching out zooms in
+4. WB-10-04 — A two-finger drag pans the board, even with the Pen selected _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+5. WB-10-05 — Pinching out zooms in _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
 6. WB-10-06 — Negative: with the palm resting on the screen, the pen writes one stroke and the palm draws nothing
-7. WB-10-07 — A finger tap on a toolbar tool selects it
-8. WB-10-08 — Regression: one finger tap on Undo undoes exactly one stroke (no ghost double tap)
-9. WB-10-09 — A finger drag with Select moves a stroke _(whether it also draws nothing new cannot be told apart from the selection handles, which are drawn as strokes too)_
+7. WB-10-07 — A finger tap on a toolbar tool selects it _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+8. WB-10-08 — Regression: one finger tap on Undo undoes exactly one stroke (no ghost double tap) _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+9. WB-10-09 — A finger drag with Select moves a stroke _(whether it also draws nothing new cannot be told apart from the selection handles, which are drawn as strokes too)_ _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
 10. WB-10-10 — The stylus eraser rubs out what it passes over
-11. WB-10-11 — Regression: one finger tap on a Playlist card opens it, every time (tapped several times, since the failure is intermittent)
-12. WB-10-12 — Regression: one finger tap on "+" opens the Add Resource menu and it stays open
-13. WB-10-13 — Swiping the Playlist strip with a finger scrolls it
+11. WB-10-11 — Regression: one finger tap on a Playlist card opens it, every time (tapped several times, since the failure is intermittent) _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+12. WB-10-12 — Regression: one finger tap on "+" opens the Add Resource menu and it stays open _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+13. WB-10-13 — Swiping the Playlist strip with a finger scrolls it _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
 14. WB-10-14 — Edge: a long press on the board with the Pen leaves at most a dot
-15. WB-10-15 — Regression: a teacher handwrites about 150 words with a finger, panning to fresh space with the Pan tool; every stroke lands (none dropped, none extra)
-16. WB-10-16 — Regression: a teacher handwrites about 150 words with a stylus, panning to fresh space with the Pan tool; every pen stroke lands (none dropped, none extra). _(Panning uses the Pan tool, not two fingers, because a two-finger drag draws instead of panning (WB-10-04).)_
+15. WB-10-15 — Regression: a teacher handwrites about 150 words with a finger, panning to fresh space with the Pan tool; every stroke lands (none dropped, none extra) _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+16. WB-10-16 — Regression: a teacher handwrites about 150 words with a stylus, panning to fresh space with the Pan tool; every pen stroke lands (none dropped, none extra). _(Panning uses the Pan tool, not two fingers, because a two-finger drag draws instead of panning (WB-10-04).)_ _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
 17. WB-10-17 — Negative: the same 150-word stylus session with the palm resting on the screen; only the pen strokes land (no extra marks from the palm)
 18. WB-10-18 — Regression: fast stylus handwriting (30 words) comes back exactly after a reload
-19. WB-10-19 — A two-finger drag draws nothing, even with the Pen selected
-20. WB-10-20 — Pinching draws nothing
-21. WB-10-21 — Regression: a finger tap that opens a Playlist card opens exactly one player (no ghost second tap)
-22. WB-10-22 — Swiping the Playlist strip with a finger does not open a card
+19. WB-10-19 — A two-finger drag draws nothing, even with the Pen selected _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+20. WB-10-20 — Pinching draws nothing _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+21. WB-10-21 — Regression: a finger tap that opens a Playlist card opens exactly one player (no ghost second tap) _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+22. WB-10-22 — Swiping the Playlist strip with a finger does not open a card _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
 23. WB-10-23 — Edge: a long press on the board with the Pen opens no menu or anything unexpected
-24. WB-10-24 — The 150-word finger session does not lose anything written on the board before it
-25. WB-10-25 — A "Whiteboard Saved!" message follows the last word of the 150-word finger session
-26. WB-10-26 — After the 150-word finger session, a reload brings the board back exactly
+24. WB-10-24 — The 150-word finger session does not lose anything written on the board before it _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+25. WB-10-25 — A "Whiteboard Saved!" message follows the last word of the 150-word finger session _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
+26. WB-10-26 — After the 150-word finger session, a reload brings the board back exactly _(not supported: finger input/gestures are not supported -- owner 2026-09-30)_
 27. WB-10-27 — The 150-word stylus session does not lose anything written on the board before it
 28. WB-10-28 — A "Whiteboard Saved!" message follows the last word of the 150-word stylus session
 29. WB-10-29 — After the 150-word stylus session, a reload brings the board back exactly

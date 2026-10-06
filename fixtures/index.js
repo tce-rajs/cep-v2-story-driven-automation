@@ -18,9 +18,31 @@ const { test: base, expect } = require('./electron-app');
 const { App } = require('../pages/app');
 const { pinForModule, getClassMap } = require('../config/moduleClassMap');
 
+// Cases the owner ruled out of scope are marked in the story files -- "(not supported ...)", "(improvement ...)",
+// "(not applicable ...)" -- and skipped here with that reason, so the stories stay the one place this is decided.
+const fs = require('fs');
+const path = require('path');
+const OUT_OF_SCOPE = new Map();
+const STORIES = path.join(__dirname, '..', 'CEPV2_Stories');
+for (const file of fs.readdirSync(STORIES).filter((f) => /^\d\d_.+\.md$/.test(f))) {
+  for (const line of fs.readFileSync(path.join(STORIES, file), 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\d+\.\s+([A-Z]+-\d+-\w+)\s+—.*_\(((?:not supported|improvement|not applicable)[^)]*)\)_/i);
+    if (m) OUT_OF_SCOPE.set(m[1], m[2]);
+  }
+}
+
 const test = base.extend({
   classMap: [null, { option: true }],
   freshSpace: [false, { option: true }],
+
+  outOfScope: [
+    async ({}, use, testInfo) => {
+      const id = (testInfo.title.match(/^([A-Z]+-\d\d-\w+)/) || [])[1];
+      if (id && OUT_OF_SCOPE.has(id)) testInfo.skip(true, `Out of scope (stories): ${OUT_OF_SCOPE.get(id)}`);
+      await use();
+    },
+    { auto: true },
+  ],
 
   app: async ({ page }, use) => {
     await use(new App(page));

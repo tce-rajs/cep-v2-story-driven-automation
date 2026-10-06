@@ -197,11 +197,14 @@ missing after "Quiz Complete!" (PLR-02-01 records it as a bug).
 
 Tests create then remove their own Playlist assets and restore theme, dock side and background. They **do** draw on real
 topic whiteboards (persisted) but **never clear them** (owner rule 2026-09-29): every writing test moves below the
-existing writing and counts only its own strokes, so the boards only grow. **Since 2026-10-01 every writing test runs
-in Class 7A Mathematics** (PIN 74125): **1.1** (most whiteboard/toolbar tests), **2.1** (WB-06's second topic), **3.1**
-(WB-11, a teacher's day); the `user` fixture brings any test that names no class there first. The handwriting data
-boards (12A Physics 1.2/1.6-1.10, 7A Value Education 1.1, 12A CS 7.2/8.1/8.2; see `report/whiteboard-data/`) must
-never be written by tests. Run with `ONLY_PRIMARY_ACCOUNT=1` to sign every class-map entry in with Raj's account.
+existing writing and counts only its own strokes, so the boards only grow. **Since 2026-10-05 every writing test runs
+in Class 9A Science** (PIN 74125, untouched until then): **1.1** (most whiteboard/toolbar tests), **2.1** (WB-06's second
+topic), **3.1** (WB-11, a teacher's day); the `user` fixture brings any test that names no class there first. The
+Devanagari tests (XC-01) write on **7A Hindi Language 1.1**. Boards tests must never write on: 12A Physics 1.2/1.6-1.10,
+7A Value Education 1.1 and 7A Mathematics 1.1 (Raj), 12A CS 7.2/8.1/8.2 (Mandar; see `report/whiteboard-data/`). Each
+class-map entry signs in with the account its data is on (Raj, or 96325 for the Players/quiz data); the
+`ONLY_PRIMARY_ACCOUNT=1` switch exists but is not used, since it caused most failures of the 2026-10-01 run. Cases the
+owner ruled out of scope are marked in the stories ("not supported", "improvement", "not applicable") and skipped.
 The four tests about the Clear button itself (TB-05-09/10, WB-09-01/02) are `fixme` until the owner decides how Clear
 may be tested. Module 02 is one-shot per user: it changes the fresh test user (default password `classedge`
 → new password → PIN → first class). Re-running needs an admin to reset that user or a fresh user.

@@ -169,6 +169,7 @@ for (const file of files) {
     Skipped: 0,
     'Manual only': 0,
     'To automate': 0,
+    'Out of scope': 0,
   };
   summary.set(no, sum);
   let storyId = '';
@@ -198,7 +199,10 @@ for (const file of files) {
     const manual = /\(manual|manual-only|Manual-only|excluded from automation/i.test(text) || storyId.startsWith('SB-');
     const note = notes.get(id);
     let status;
-    if (manual && !automated.has(id)) status = 'Manual only';
+    // Ruled out of scope by the owner in the story text; the fixture skips these tests (fixtures/index.js).
+    const outOfScope = (text.match(/_\((not supported|improvement|not applicable)/i) || [])[1];
+    if (outOfScope) status = 'Out of scope';
+    else if (manual && !automated.has(id)) status = 'Manual only';
     else if (note && note.kind === 'bug') status = 'Known bug';
     else if (note && note.kind === 'skip') status = 'Skipped';
     else if (automated.has(id)) status = 'Automated';
@@ -243,11 +247,21 @@ const sumRows = [
     'Skipped',
     'Manual only',
     'To automate',
+    'Out of scope',
     '',
     ...LAST.map((k) => `Last run: ${k}`),
   ],
 ];
-const total = { stories: 0, cases: 0, Automated: 0, 'Known bug': 0, Skipped: 0, 'Manual only': 0, 'To automate': 0 };
+const total = {
+  stories: 0,
+  cases: 0,
+  Automated: 0,
+  'Known bug': 0,
+  Skipped: 0,
+  'Manual only': 0,
+  'To automate': 0,
+  'Out of scope': 0,
+};
 for (const s of summary.values()) {
   sumRows.push([
     s.no,
@@ -259,6 +273,7 @@ for (const s of summary.values()) {
     s.Skipped,
     s['Manual only'],
     s['To automate'],
+    s['Out of scope'],
     '',
     ...LAST.map((k) => s[`last:${k}`] || 0),
   ]);
@@ -275,6 +290,7 @@ sumRows.push([
   total.Skipped,
   total['Manual only'],
   total['To automate'],
+  total['Out of scope'],
   '',
   ...LAST.map((k) => total[`last:${k}`] || 0),
 ]);
@@ -285,6 +301,11 @@ sumRows.push(['', 'Known bug', 'Automated; the app currently fails it (test.fail
 sumRows.push(['', 'Skipped', 'Automated but skipped for a stated reason (data, device or owner decision missing).']);
 sumRows.push(['', 'Manual only', 'Needs a person: Plan Mode, installing, hardware, second screens.']);
 sumRows.push(['', 'To automate', 'No automated test yet.']);
+sumRows.push([
+  '',
+  'Out of scope',
+  'Ruled out by the owner: not supported, an improvement, or not applicable. Skipped when run.',
+]);
 sumRows.push([]);
 sumRows.push(['', 'How to read the Last run result column (latest result per case across report/runs/)']);
 sumRows.push(['', 'Passed', 'The test ran and the app behaved as the story expects.']);

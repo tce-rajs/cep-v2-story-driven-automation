@@ -47,7 +47,7 @@ tool, and PRE-03-01 now covers only the User menu.
 
 1. PRE-03-01 — Negative: to check the User menu is **not** visible without logging in (owner decision 2026-09-29: it appears only after sign-in)
 2. PRE-03-02 — Negative: to check the Magnet menu is **not** available without login
-3. PRE-03-03 — To check the Widgets entry only shows "Open Widgets" — not the full logged-in widget set
+3. PRE-03-03 — To check the Widgets panel shows only the 8 basic widgets (Compass, Clock, Ruler, Protractor, Set Square 30, Set Square 45, Curtain, Split Screen), not the signed-in subject widgets _(corrected 2026-10-05 from the live app)_
 4. PRE-03-04 — To check every toolbar tool (Select, Pan, Background, Pen, Text, Eraser, Shapes, Undo, Redo) is visible without logging in
 5. PRE-03-05 — To check the Select tool activates when clicked, without logging in
 6. PRE-03-06 — To check the Pan tool activates when clicked, without logging in

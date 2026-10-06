@@ -35,11 +35,12 @@ const MODULE_CLASS_MAP = {
   default: {
     label: 'Default (general-purpose fallback)',
     account: 'VALID_PIN',
-    // MOVED 2026-10-01 (owner): see longSession -- Class 7A Mathematics holds no handwriting data boards. The `user`
-    // fixture also brings every test that names no class here first (fixtures/index.js).
-    grade: 'Class 7',
+    // DECIDED 2026-10-05 (owner: whiteboard tests use a class and topic not used before): Class 9A Science, all
+    // boards empty when checked (1.1, 2.1, 3.1), Notice/Learning Shorts/Homework/Attendance in Magnet, a video on
+    // each topic. The `user` fixture also brings every test that names no class here first (fixtures/index.js).
+    grade: 'Class 9',
     division: 'A',
-    subject: 'Mathematics',
+    subject: 'Science',
     chapterIndex: 0,
     topicIndex: 0,
     notes:
@@ -152,7 +153,9 @@ const MODULE_CLASS_MAP = {
     division: 'A',
     subject: 'Physics',
     chapterIndex: 0,
-    topicIndex: 2,
+    // DECIDED 2026-10-05: two test topics ("dddd", "Testing - New Topic Added") were inserted at 1.3/1.4 on the Ultra
+    // server, so "Coulomb's Law" moved from index 2 to index 4 (1.5).
+    topicIndex: 4,
     notes:
       'CONFIRMED LIVE (2026-09-20): "1.3 | Coulomb\'s Law" -- the Library\'s pre-filled search box shows the HTML entity (Coulomb&#39;s Law) instead of the apostrophe, so it finds nothing.',
     knownIssues: [{ summary: 'Library search box shows &#39; for an apostrophe in the topic name', module: 'library' }],
@@ -192,27 +195,29 @@ const MODULE_CLASS_MAP = {
   compassRevisionTest: {
     label: 'Compass -- a topic with a Revision Test',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    // DECIDED 2026-10-05: the owner created Revision Tests on Class 10A Science "Acids, Bases and Salts" (3rd in the
+    // chapter list): 3.4 "Importance of pH in Everyday Life" (used here) and 3.6 "Common Salts". Checked live in the
+    // client: Compass shows "Revision Test - 3 tests available" for this account (not for 96325).
+    grade: 'Class 10',
     division: 'A',
-    subject: 'Physics',
-    chapterIndex: 0,
-    topicIndex: 0,
-    unavailable:
-      'no topic with a Revision Test on 172.18.2.85 (all 119 Class 12A Physics topics scanned 2026-09-29; Revision Tests are created in Plan Mode, outside automation)',
-    notes: 'Point this at a real topic once a Revision Test exists on the server, and remove `unavailable`.',
+    subject: 'Science',
+    chapterIndex: 2,
+    topicIndex: 3,
+    notes: 'Second topic with the same Revision Tests: chapterIndex 2, topicIndex 5 (3.6 Common Salts).',
     knownIssues: [],
   },
 
   // --- Checkpoints (Players) ---
   checkpoints: {
-    unavailable:
-      'Class 8 division R does not exist on 172.18.2.85 (only division A), and no checkpoint resource was found in the scanned classes (2026-09-29)',
     label: 'Checkpoints Player',
-    account: 'VALID_PIN', // CORRECTED 2026-09-09 re-scan: flashcard.spec.js (see its own `flashcard` entry) also uses VALID_PIN for this same chapter, not VALID_PIN_2 as previously noted here.
-    grade: 'Class 8',
-    division: 'R',
-    subject: 'Mathematics',
-    chapterName: 'Foundation Checkpoint', // selected by NAME, not index -- position varies
+    account: 'VALID_PIN',
+    // DECIDED 2026-10-05: Class 8R does not exist on the Ultra server; the owner created baseline tests on Class 10A
+    // Science 1.1 "Baseline Test" (checked live: "Science Baseline Assessment" x3 created 2026-10-05, plus "test 1"
+    // (paused) and "Test 4"). To confirm in the next run that the checkpoint tests (PLR-09) drive these cards.
+    grade: 'Class 10',
+    division: 'A',
+    subject: 'Science',
+    chapterIndex: 0,
     topicIndex: 0,
     notes:
       'Resource card "testR-25.08.26". Chapter must be selected by NAME (goToChapterTopicByName), not a fixed index -- its position in the chapter list is not stable.',
@@ -243,7 +248,7 @@ const MODULE_CLASS_MAP = {
     grade: 'Class 12',
     division: 'A',
     subject: 'Computer Science',
-    chapterIndex: 1,
+    chapterIndex: 0, // DECIDED 2026-10-05: Raj's 12A CS 1.1 holds the Code resource (checked live); his 2.1 is a custom topic "T1"
     topicIndex: 0,
     notes: '"2. Exception Handling in Python" -- confirmed to hold a real Code-type resource.',
     knownIssues: [
@@ -295,10 +300,12 @@ const MODULE_CLASS_MAP = {
   ebook: {
     label: 'Ebook Player',
     account: 'VALID_PIN',
-    grade: 'Class 12',
+    // DECIDED 2026-10-05 (checked live in the client): Raj's 12A Physics shows no E-Books tile at all on the Ultra
+    // server; his Class 11A Mathematics 1.1 does.
+    grade: 'Class 11',
     division: 'A',
-    subject: 'Physics',
-    chapterIndex: 13,
+    subject: 'Mathematics',
+    chapterIndex: 0,
     topicIndex: 0,
     notes: 'Confirmed 1 linked e-book resource: "(CE Crystal) NCERT Physics Class 12".',
     knownIssues: [
@@ -307,10 +314,12 @@ const MODULE_CLASS_MAP = {
   },
   tceUnsupported: {
     label: 'TCE Player / Unsupported Player',
-    account: 'VALID_PIN_2', // CORRECTED 2026-09-09 re-scan: both consuming files (tce.spec.js, unsupported.spec.js) actually log in with VALID_PIN_2, not VALID_PIN as this entry previously said.
-    grade: 'Class 12',
+    // DECIDED 2026-10-05: creates and removes its own throwaway asset, so it runs on the primary account in the
+    // whiteboard test class instead of the second account.
+    account: 'VALID_PIN',
+    grade: 'Class 9',
     division: 'A',
-    subject: 'Physics',
+    subject: 'Science',
     chapterIndex: 0,
     topicIndex: 0,
     notes: 'Unsupported Player creates its own throwaway asset per test and works on any class.',
@@ -332,14 +341,29 @@ const MODULE_CLASS_MAP = {
   // --- Toolbar / Whiteboard drawing surface ---
   // A teacher's board that is NEVER cleared (owner's request, 2026-09-27): long multi-session writing tests add to it
   // day after day, the way a real classroom board fills up, and verify everything written before is still there.
+  devanagari: {
+    label: 'Hindi and Marathi (Devanagari) typing and handwriting -- XC-01',
+    account: 'VALID_PIN',
+    // DECIDED 2026-10-05: a board of its own, away from the whiteboard tests and the data boards. Checked live: 1.1
+    // "भाषा और व्याकरण" and 2.1 "स्वर और व्यंजन" empty, Hindi resources (video, worksheet, quiz), Notice in Magnet.
+    grade: 'Class 7',
+    division: 'A',
+    subject: 'Hindi Language',
+    chapterIndex: 0,
+    topicIndex: 0,
+    notes: 'XC-01 types Marathi/Hindi in a text box and writes Marathi handwriting here, below anything already there.',
+    knownIssues: [],
+  },
+
   longSession: {
     label: 'Whiteboard -- long multi-session teaching (never cleared)',
     account: 'VALID_PIN',
-    // MOVED 2026-10-01 (owner): whiteboard-writing tests run in Class 7A Mathematics, which holds none of the
-    // handwriting data boards (12A Physics 1.2/1.6-1.10, 7A Value Education 1.1, 12A CS 7.2/8.1/8.2).
-    grade: 'Class 7',
+    // DECIDED 2026-10-05: whiteboard-writing tests run in Class 9A Science (see `default`), which holds none of the
+    // data boards. Never write on: 12A Physics 1.2/1.6-1.10, 7A Value Education 1.1, 7A Mathematics 1.1 (Raj);
+    // 12A CS 7.2/8.1/8.2 (Mandar).
+    grade: 'Class 9',
     division: 'A',
-    subject: 'Mathematics',
+    subject: 'Science',
     chapterIndex: 2,
     topicIndex: 0,
     notes:
@@ -350,10 +374,10 @@ const MODULE_CLASS_MAP = {
   toolbarGeneral: {
     label: 'Toolbar / Whiteboard drawing',
     account: 'VALID_PIN',
-    // MOVED 2026-10-01 (owner): see longSession -- Class 7A Mathematics holds no handwriting data boards.
-    grade: 'Class 7',
+    // DECIDED 2026-10-05: Class 9A Science, see `default` and `longSession`.
+    grade: 'Class 9',
     division: 'A',
-    subject: 'Mathematics',
+    subject: 'Science',
     chapterIndex: 0,
     topicIndex: 0,
     notes:

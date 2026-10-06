@@ -1,0 +1,340 @@
+[
+  {
+    "severity": "High",
+    "area": "Session",
+    "ids": ["LOG-06-06"],
+    "title": "Writing is lost after the session silently ends (~44 min)",
+    "description": "At about 44 minutes the session ends, but the app still looks signed in for about 6 more minutes, and everything written in that time is lost without any warning.",
+    "evidence": "report/session-video/2026-10-06_mandar-40min/ (uncut video + timeline)",
+    "rerun": "RECORD_VIDEO_DIR=report/session-video/rerun npx playwright test tests/_probe/session-activity-recording.spec.js",
+    "recheck": "❌ Still there (10-06, recorded session: 27 strokes lost)"
+  },
+  {
+    "severity": "High",
+    "area": "Whiteboard",
+    "ids": ["WB-08-04"],
+    "title": "Closing the app straight after writing loses the writing",
+    "description": "Closing the client during the autosave countdown (about 10 s after writing) loses everything written since the last save."
+  },
+  {
+    "severity": "High",
+    "area": "Whiteboard",
+    "ids": ["WB-09-09"],
+    "title": "Reloading straight after writing loses the writing",
+    "description": "A reload within about 10 s of writing loses that writing."
+  },
+  {
+    "severity": "High",
+    "area": "Whiteboard",
+    "ids": ["WB-08-16", "WB-08-19"],
+    "title": "Autosave does not resume after a network drop",
+    "description": "After the network comes back, autosave does not start again, so everything written after reconnecting is lost."
+  },
+  {
+    "severity": "High",
+    "area": "Whiteboard",
+    "ids": ["RSL-03-03"],
+    "title": "During a server restart, writing turns into scribbles and is not saved",
+    "description": "While the server restarts, pen strokes join into long lines, nothing is saved, and the teacher is not told.",
+    "evidence": "report/screenshots/marathi-7a-colour-error.png (30 Sep deployment)",
+    "recheck": "❌ Still there (10-06, seen during the server outages at 13:31 and 15:09)"
+  },
+  {
+    "severity": "High",
+    "area": "Desktop client",
+    "ids": ["WB-13-01", "WB-13-02"],
+    "title": "The desktop client crashes on large boards",
+    "description": "A board with about 8,400+ strokes crashes the client, and it crashes again at every sign-in while that board is the last topic.",
+    "evidence": "report/whiteboard-data/README.md (12A Physics 1.7 / 1.8 / 1.9)",
+    "recheck": "Not rechecked (the heavy boards on Raj's account were cleared on 10-06)"
+  },
+  {
+    "severity": "High",
+    "area": "Header",
+    "ids": ["HDR-07-02"],
+    "title": "Switch Mode discards a drawing without warning",
+    "description": "Pressing Switch Mode in the middle of drawing switches to Planning straight away and the drawing is lost."
+  },
+  {
+    "severity": "High",
+    "area": "Profile",
+    "ids": ["PRF-04-04", "PRF-04-07", "PRF-04-11", "PRF-04-12"],
+    "title": "Change Password does nothing",
+    "description": "Pressing Save in Change Password sends nothing and shows no message; the password is not changed."
+  },
+  {
+    "severity": "High",
+    "area": "AI Notices",
+    "ids": ["AIN-03-04"],
+    "title": "A double click sends the notice twice",
+    "description": "Double-clicking Ready to Send sends the same notice to the class twice."
+  },
+  {
+    "severity": "High",
+    "area": "Attendance",
+    "ids": ["ATT-03-03"],
+    "title": "A double click submits attendance twice",
+    "description": "Double-clicking Submit sends the attendance twice."
+  },
+  {
+    "severity": "High",
+    "area": "AI Homework",
+    "ids": ["AIH-03-05"],
+    "title": "A double click starts two AI generations",
+    "description": "Double-clicking Generate starts two homework generations at once."
+  },
+  {
+    "severity": "High",
+    "area": "DropIt",
+    "ids": ["RES-09-08"],
+    "title": "DropIt has no file-size limit",
+    "description": "Files of any size are accepted through DropIt; Create's 10 MB limit is not enforced there."
+  },
+  {
+    "severity": "High",
+    "area": "Upload",
+    "ids": ["RES-09-05", "RES-09-06", "RES-09-07"],
+    "title": "Broken or renamed files are accepted as a success",
+    "description": "A header-only PDF, a program renamed .pdf or a video renamed .png is accepted and only fails when opened."
+  },
+  {
+    "severity": "Medium",
+    "area": "User menu",
+    "ids": ["TB-09-01", "TB-09-06", "TB-09-10", "TB-09-16"],
+    "title": "No Feedback option in the User menu",
+    "description": "The User menu has no Feedback option. Expected: Feedback opening a QR code."
+  },
+  {
+    "severity": "Medium",
+    "area": "Sign-in",
+    "ids": ["LOG-03-04", "LOG-03-05", "LOG-03-10", "LOG-03-11"],
+    "title": "On-screen PIN keypad opens off the screen",
+    "description": "On the PIN screen the on-screen keypad opens below the visible window, so its keys and \"Disable Virtual Keyboard\" cannot be used."
+  },
+  {
+    "severity": "Medium",
+    "area": "Sign-in",
+    "ids": ["LOG-03-06"],
+    "title": "Pasting a PIN fills only the first box",
+    "description": "Pasting a 5-digit PIN puts only the first digit in; the other digits are dropped."
+  },
+  {
+    "severity": "Medium",
+    "area": "Sign-in",
+    "ids": ["LOG-04-08"],
+    "title": "A double click on Sign In sends two sign-in requests",
+    "description": "Double-clicking Sign In sends the sign-in request twice."
+  },
+  {
+    "severity": "Medium",
+    "area": "Virtual keyboard",
+    "ids": ["TB-09-08", "TB-09-17"],
+    "title": "Virtual keyboard opens off the screen for chapter search",
+    "description": "With Virtual Keyboard on, the keyboard for the chapter search box is drawn below the window, so its keys cannot be pressed."
+  },
+  {
+    "severity": "Medium",
+    "area": "Virtual keyboard",
+    "ids": ["TB-09-13"],
+    "title": "Virtual Keyboard OFF is ignored by the Add Resource title",
+    "description": "With Virtual Keyboard turned off, clicking the Add Resource title still opens the on-screen keyboard."
+  },
+  {
+    "severity": "Medium",
+    "area": "Header",
+    "ids": ["HDR-07-04", "HDR-07-06"],
+    "title": "Switch Mode with no network shows a browser error page",
+    "description": "With no network, Switch Mode shows a browser error page instead of an in-app message."
+  },
+  {
+    "severity": "Medium",
+    "area": "Header",
+    "ids": ["HDR-04-03"],
+    "title": "Moving the toolbar closes the open tool panel",
+    "description": "Moving the toolbar to the other side closes whatever tool panel was open."
+  },
+  {
+    "severity": "Medium",
+    "area": "Toolbar",
+    "ids": ["TB-07-07"],
+    "title": "Undo does not undo a move",
+    "description": "After moving an object, Undo leaves it in the new place."
+  },
+  {
+    "severity": "Medium",
+    "area": "Text box",
+    "ids": ["TB-10-04"],
+    "title": "An empty text box stays on the board",
+    "description": "A text box left empty is not removed when the teacher clicks away."
+  },
+  {
+    "severity": "Medium",
+    "area": "Stylus",
+    "ids": ["WB-10-06", "WB-10-17"],
+    "title": "No palm rejection",
+    "description": "With the palm resting on the screen, every pen stroke also draws a line from the palm."
+  },
+  {
+    "severity": "Medium",
+    "area": "Class switch",
+    "ids": ["ATT-01-04", "ATT-04-05", "MM-01-05", "RES-04-09"],
+    "title": "Panels stay open over the new class after a class switch",
+    "description": "Attendance, the Minimap and DropIt stay on screen when the teacher switches to another class."
+  },
+  {
+    "severity": "Medium",
+    "area": "Navigation",
+    "ids": ["NAV-06-02"],
+    "title": "Current Class cannot be clicked while Homework is open",
+    "description": "With a Magnet panel (Homework) open, the Current Class button does not respond."
+  },
+  {
+    "severity": "Medium",
+    "area": "Magnet",
+    "ids": ["AIN-04-04", "AIH-01-05"],
+    "title": "Notice and Homework open on top of each other",
+    "description": "Two Magnet panels (Notice and Homework) can be open at once, one over the other."
+  },
+  {
+    "severity": "Medium",
+    "area": "AI Homework",
+    "ids": ["AIH-04-10"],
+    "title": "Previous then Next resets the homework title",
+    "description": "After editing the homework title, going Previous and then Next puts the old title back."
+  },
+  {
+    "severity": "Medium",
+    "area": "Learning Shorts",
+    "ids": ["LS-02-03"],
+    "title": "Cannot record again after discarding a recording",
+    "description": "After one recording is discarded, the recorder cannot record again in the same session."
+  },
+  {
+    "severity": "Medium",
+    "area": "Learning Shorts",
+    "ids": ["LS-03-09"],
+    "title": "Leaving the composer discards the recording without warning",
+    "description": "Closing the Learning Shorts composer throws the recording away without asking."
+  },
+  {
+    "severity": "Medium",
+    "area": "Quiz",
+    "ids": ["PLR-01-20"],
+    "title": "Reopening a quiz does not restart it",
+    "description": "Closing and reopening the quiz resumes where it was closed instead of starting from question 1."
+  },
+  {
+    "severity": "Medium",
+    "area": "Video",
+    "ids": ["PLR-05-06"],
+    "title": "Cannot draw over a playing video",
+    "description": "Pen strokes over a playing video are not drawn."
+  },
+  {
+    "severity": "Medium",
+    "area": "Create",
+    "ids": ["RES-01-04"],
+    "title": "An empty (0-byte) file is accepted",
+    "description": "Create accepts a zero-byte file and makes an empty resource from it."
+  },
+  {
+    "severity": "Medium",
+    "area": "DropIt",
+    "ids": ["RES-04-10"],
+    "title": "DropIt's Close button covers Add Resource",
+    "description": "While DropIt is open, its Close button sits on top of the Add Resource button."
+  },
+  {
+    "severity": "Medium",
+    "area": "DropIt",
+    "ids": ["RES-04-11"],
+    "title": "Text shared through DropIt never arrives",
+    "description": "Text sent from the phone through DropIt does not appear in the Playlist."
+  },
+  {
+    "severity": "Medium",
+    "area": "Add Resource",
+    "ids": ["RES-06-04"],
+    "title": "Pressing + again stacks a second menu",
+    "description": "Pressing \"+\" while an Add Resource option is open opens a second menu on top."
+  },
+  {
+    "severity": "Medium",
+    "area": "Gallery",
+    "ids": ["RES-03-10"],
+    "title": "A double click inserts a Gallery image twice",
+    "description": "Double-clicking an image in the Gallery puts it on the board twice."
+  },
+  {
+    "severity": "Medium",
+    "area": "Upload",
+    "ids": ["RES-08-23", "RES-08-25", "RES-09-03"],
+    "title": "Office files are accepted but cannot be opened",
+    "description": "Word, PowerPoint, Excel, ODF and .txt files are accepted but show \"Unsupported file\" when opened."
+  },
+  {
+    "severity": "Low",
+    "area": "Navigation",
+    "ids": ["NAV-02-02"],
+    "title": "Chapter search with no results shows a blank popup",
+    "description": "Searching for a chapter that does not exist shows an empty popup with no message."
+  },
+  {
+    "severity": "Low",
+    "area": "Playlist",
+    "ids": ["PL-08-05"],
+    "title": "Contents search with no results shows a blank panel",
+    "description": "A Contents search with no matches shows an empty panel with no message."
+  },
+  {
+    "severity": "Low",
+    "area": "Gallery",
+    "ids": ["RES-03-09"],
+    "title": "Gallery search with no results shows an empty grid",
+    "description": "A Gallery search with no matches shows an empty grid with no message."
+  },
+  {
+    "severity": "Low",
+    "area": "Create",
+    "ids": ["RES-01-15"],
+    "title": "A long file name with emoji is silently rejected",
+    "description": "A file with a long name containing emoji is refused by the server without any message."
+  },
+  {
+    "severity": "Low",
+    "area": "Library",
+    "ids": ["RES-02-12"],
+    "title": "Library search shows &#39; instead of an apostrophe",
+    "description": "For \"Coulomb's Law\" the search box shows \"Coulomb&#39;s Law\"."
+  },
+  {
+    "severity": "Low",
+    "area": "Profile",
+    "ids": ["PRF-02-04"],
+    "title": "\"Interactivity\" is listed twice",
+    "description": "The preferred resource types list shows \"Interactivity\" twice."
+  },
+  {
+    "severity": "Low",
+    "area": "Profile",
+    "ids": ["PRF-04-02"],
+    "title": "No error for a too-short new password",
+    "description": "Typing a new password shorter than 8 characters shows no inline error."
+  },
+  {
+    "severity": "Low",
+    "area": "Profile",
+    "ids": ["PRF-05-05"],
+    "title": "No message when the new PIN is the same as the old one",
+    "description": "Saving a new PIN identical to the current one shows no message."
+  },
+  {
+    "severity": "Low",
+    "area": "Messages",
+    "ids": ["XC-05-01"],
+    "title": "Autosave shows debug text to teachers",
+    "description": "The autosave message shows technical text like \"Saving whiteboard E:10652 / N:264 s in 8s\".",
+    "evidence": "Any whiteboard screenshot (top centre)",
+    "recheck": "❌ Still there (10-06, visible in today's screenshots)"
+  }
+]

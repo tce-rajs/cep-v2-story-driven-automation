@@ -92,7 +92,7 @@ changes are undone at the end of each test. Change Password and Change PIN use t
 - AC3: A change works, the old PIN stops working, and Cancel changes nothing
 
 1. PRF-05-01 — To check Change PIN shows Current, New and Repeat New PIN boxes, Auto-Generate PIN, Cancel and Save
-2. PRF-05-02 — Negative: to check the PIN boxes accept digits only
+2. PRF-05-02 — Negative: to check the Change PIN boxes accept digits only
 3. PRF-05-03 — To check Auto-Generate PIN fills in the New PIN
 4. PRF-05-04 — Negative: to check different New and Repeat New PIN values block Save
 5. PRF-05-05 — Negative: to check a new PIN identical to the current one is rejected with a clear message

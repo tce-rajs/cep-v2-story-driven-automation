@@ -41,7 +41,7 @@ test.describe('WB-10 Touch and stylus', () => {
   });
 
   test.afterEach(async () => {
-    await touch.dispose();
+    await touch?.dispose(); // undefined when the case was skipped as out of scope before set-up
   });
 
   test(
