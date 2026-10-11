@@ -46,9 +46,19 @@ const test = base.extend({
   },
 
   user: async ({ app, classMap, classOverride, autoResetClass, freshSpace }, use) => {
-    const target = classOverride ? resolveClassConfig(classMap || 'default', classOverride) : classMap;
+    let envOverride = null;
+    if (process.env.CLASS_OVERRIDE) {
+      try {
+        envOverride = JSON.parse(process.env.CLASS_OVERRIDE);
+      } catch {
+        // Ignore malformed JSON in environment variable
+      }
+    }
+    const effectiveOverride = classOverride || envOverride;
+    const target = effectiveOverride ? resolveClassConfig(classMap || 'default', effectiveOverride) : classMap;
 
-    await app.signIn(target ? pinForModule(target) : process.env.VALID_PIN);
+    const pin = process.env.OVERRIDE_PIN || (target ? pinForModule(target) : process.env.VALID_PIN);
+    await app.signIn(pin);
     if (target) {
       await app.nav.switchToClass(target);
       await app.playlist.ensureDrawerVisible();
