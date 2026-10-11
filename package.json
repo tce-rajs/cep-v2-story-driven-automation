@@ -23,6 +23,8 @@
     "prepare": "husky",
     "core": "node scripts/run-core.js",
     "review:page": "node scripts/build-review-page.js",
+    "classmap:page": "node scripts/build-classmap-page.js",
+    "classmap:open": "start report/CLASS_MAP.html",
     "review:merge": "node scripts/merge-review.js",
     "core:client": "node scripts/run-core.js client",
     "core:browser": "node scripts/run-core.js browser",

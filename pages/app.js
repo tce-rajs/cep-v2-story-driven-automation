@@ -22,6 +22,7 @@ const { AiHomeworkPage } = require('./ai-homework.page');
 const { LearningShortsPage } = require('./learning-shorts.page');
 const { AiNoticesPage } = require('./ai-notices.page');
 const { PlanModePage } = require('./plan-mode.page');
+const { ClassMapPage } = require('./class-map.page');
 
 const PAGES = {
   login: LoginPage,
@@ -31,6 +32,7 @@ const PAGES = {
   userMenu: UserMenuPage,
   magnet: MagnetPage,
   nav: NavigationPage,
+  classMap: ClassMapPage,
   playlist: PlaylistPage,
   addResource: AddResourcePage,
   player: PlayerPage,
