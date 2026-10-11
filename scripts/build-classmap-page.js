@@ -1,12 +1,7 @@
 // Builds report/CLASS_MAP.html:
-// Minimal, ultra-clean, and focused dashboard for CEP v2 Module Testing.
-// Purpose: Test any module with a different Class or Teacher PIN in seconds without touching code.
-// Features:
-// - Direct 1-click test execution via local server (no command copy/paste required)
-// - Real-time live terminal streaming right inside the web page
-// - Editable Teacher PIN (globally and per-module)
-// - Simplified module list: Existing Class | New Class Dropdown | Editable PIN | Reset | Run Test
-// - "Add New Class" option right in the dropdown
+// Modern, minimal, and state-of-the-art dashboard for CEP v2 Module Testing.
+// Designed with UI/UX Pro Max intelligence (Data-Dense Dev Console, OLED Dark & Crisp Light themes,
+// SVG iconography, 44px accessible touch targets, and real-time SSE execution).
 
 require('dotenv').config();
 const fs = require('fs');
@@ -22,7 +17,7 @@ if (!fs.existsSync(REPORT_DIR)) {
 const DEFAULT_PIN = process.env.VALID_PIN || '74125';
 const DEFAULT_PIN_2 = process.env.VALID_PIN_2 || '65412';
 
-// Clean list of verified curriculum classes from CEP v2
+// Verified curriculum classes discovered from CEP v2
 const CEP_CLASSES = [
   { label: 'Class 9A — Science', grade: 'Class 9', division: 'A', subject: 'Science', pin: DEFAULT_PIN },
   { label: 'Class 9A — Hindi Language', grade: 'Class 9', division: 'A', subject: 'Hindi Language', pin: DEFAULT_PIN },
@@ -45,32 +40,34 @@ const CEP_CLASSES = [
 ];
 
 const MODULE_FRIENDLY_NAMES = {
-  aiHomework: 'AI Homework',
-  aiNotices: 'AI Notices',
-  attendance: 'Attendance',
-  attendanceReadOnly: 'Attendance (Read Only)',
-  checkpoints: 'Checkpoints',
-  planMode: 'Plan Mode',
-  quiz: 'Quiz / Revision Test',
-  scratchBoard: 'Whiteboard (Scratch Canvas)',
-  toolbarGeneral: 'Toolbar & Canvas Tools',
-  playersDefault: 'Media Players (Default)',
-  playersWeblink: 'Player: Web Links',
-  playersInteractive: 'Player: Interactive & Simulations',
-  codeEditor: 'Code Editor',
-  librarySuggestions: 'Content Library',
-  playlistGeneral: 'Playlist & Resource Drawer',
-  navigationGeneral: 'Class & Grade Navigation',
-  devanagari: 'Devanagari / Regional Languages',
-  default: 'Baseline General Class',
+  aiHomework: { name: 'AI Homework', category: 'curriculum' },
+  aiNotices: { name: 'AI Notices', category: 'curriculum' },
+  attendance: { name: 'Attendance', category: 'curriculum' },
+  attendanceReadOnly: { name: 'Attendance (Read Only)', category: 'curriculum' },
+  checkpoints: { name: 'Checkpoints', category: 'curriculum' },
+  planMode: { name: 'Plan Mode', category: 'curriculum' },
+  quiz: { name: 'Quiz / Revision Test', category: 'curriculum' },
+  scratchBoard: { name: 'Whiteboard (Scratch Canvas)', category: 'tools' },
+  toolbarGeneral: { name: 'Toolbar & Canvas Tools', category: 'tools' },
+  codeEditor: { name: 'Code Editor', category: 'tools' },
+  playersDefault: { name: 'Media Players (Default)', category: 'players' },
+  playersWeblink: { name: 'Player: Web Links', category: 'players' },
+  playersInteractive: { name: 'Player: Interactive & Simulations', category: 'players' },
+  librarySuggestions: { name: 'Content Library', category: 'players' },
+  playlistGeneral: { name: 'Playlist & Resource Drawer', category: 'players' },
+  navigationGeneral: { name: 'Class & Grade Navigation', category: 'curriculum' },
+  devanagari: { name: 'Devanagari / Regional Languages', category: 'curriculum' },
+  default: { name: 'Baseline General Class', category: 'curriculum' },
 };
 
 const modules = Object.entries(MODULE_CLASS_MAP).map(([key, item]) => {
   const account = item.account || 'VALID_PIN';
   const pin = account === 'VALID_PIN_2' ? DEFAULT_PIN_2 : DEFAULT_PIN;
+  const meta = MODULE_FRIENDLY_NAMES[key] || { name: item.label || key, category: 'curriculum' };
   return {
     key,
-    name: MODULE_FRIENDLY_NAMES[key] || item.label || key,
+    name: meta.name,
+    category: meta.category,
     defaultGrade: item.grade || 'Class 9',
     defaultDivision: item.division || 'A',
     defaultSubject: item.subject || 'Science',
@@ -84,40 +81,46 @@ const html = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ClassMap Runner — CEP v2</title>
+  <title>ClassMap Runner — Tata ClassEdge CEP v2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090a0f;
-      --card: #12151e;
-      --card-border: #1e2433;
-      --card-hover: #171c28;
-      --input-bg: #0a0d14;
-      --input-border: #242c3d;
-      --text: #f3f4f6;
+      --bg: #0b0f19;
+      --surface: #111827;
+      --surface-subtle: #161f30;
+      --surface-hover: #1e293b;
+      --border: #1f2937;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366f1;
+      --text: #f9fafb;
       --text-muted: #9ca3af;
       --text-dim: #6b7280;
       --accent: #6366f1;
       --accent-hover: #4f46e5;
-      --run-green: #10b981;
-      --run-hover: #059669;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --font: 'Inter', -apple-system, sans-serif;
+      --emerald: #10b981;
+      --emerald-hover: #059669;
+      --amber: #f59e0b;
+      --rose: #ef4444;
+      --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --mono: 'JetBrains Mono', monospace;
+      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+      --radius: 10px;
     }
+
     [data-theme="light"] {
       --bg: #f8fafc;
-      --card: #ffffff;
-      --card-border: #e2e8f0;
-      --card-hover: #f1f5f9;
-      --input-bg: #ffffff;
-      --input-border: #cbd5e1;
+      --surface: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --surface-hover: #f8fafc;
+      --border: #e2e8f0;
+      --border-subtle: #cbd5e1;
+      --border-focus: #6366f1;
       --text: #0f172a;
       --text-muted: #475569;
       --text-dim: #94a3b8;
+      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -127,10 +130,24 @@ const html = `<!doctype html>
       font-family: var(--font);
       font-size: 13px;
       line-height: 1.5;
-      padding: 24px 20px 100px;
+      padding: 24px 24px 120px;
       -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
-    .wrapper { max-width: 1280px; margin: 0 auto; }
+    .wrapper { max-width: 1340px; margin: 0 auto; }
+
+    /* Icons */
+    .icon {
+      width: 14px;
+      height: 14px;
+      display: inline-block;
+      vertical-align: middle;
+      stroke-width: 2;
+      stroke: currentColor;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
 
     /* Top Bar */
     .top-bar {
@@ -138,69 +155,98 @@ const html = `<!doctype html>
       justify-content: space-between;
       align-items: center;
       margin-bottom: 24px;
-      padding-bottom: 18px;
-      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
       flex-wrap: wrap;
       gap: 16px;
     }
-    .brand h1 {
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-title h1 {
       font-size: 20px;
       font-weight: 700;
+      letter-spacing: -0.02em;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    .brand p {
+    .brand-title p {
       font-size: 12px;
       color: var(--text-muted);
-      margin-top: 2px;
+      margin-top: 3px;
     }
-    .pill-badge {
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 99px;
       font-size: 11px;
       font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 99px;
-      background: rgba(99, 102, 241, 0.15);
-      color: var(--accent);
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .status-badge.standby {
+      background: rgba(107, 114, 128, 0.15);
+      color: var(--text-muted);
+      border-color: rgba(107, 114, 128, 0.3);
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-badge:not(.standby) .status-dot {
+      animation: pulseDot 1.8s infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
     }
 
-    /* Global Controls */
-    .global-controls {
+    /* Controls Header */
+    .header-controls {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
     }
-    .cred-group {
+    .cred-chip {
       display: flex;
       align-items: center;
-      background: var(--card);
-      border: 1px solid var(--card-border);
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 4px 10px;
+      padding: 5px 10px;
       gap: 8px;
     }
-    .cred-label {
+    .cred-chip label {
       font-size: 11px;
       font-weight: 600;
-      color: var(--text-dim);
+      color: var(--text-muted);
       text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
-    .pin-input {
+    .cred-chip input {
       font-family: var(--mono);
       font-size: 13px;
       font-weight: 600;
-      width: 76px;
-      padding: 4px 6px;
-      background: var(--input-bg);
-      border: 1px solid var(--input-border);
+      width: 74px;
+      padding: 3px 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text);
       text-align: center;
       outline: none;
+      transition: border-color 0.15s ease;
     }
-    .pin-input:focus { border-color: var(--accent); }
+    .cred-chip input:focus { border-color: var(--border-focus); }
 
     .btn {
       display: inline-flex;
@@ -211,91 +257,132 @@ const html = `<!doctype html>
       font-weight: 600;
       border-radius: 8px;
       cursor: pointer;
-      border: 1px solid var(--card-border);
-      background: var(--card);
+      border: 1px solid var(--border);
+      background: var(--surface);
       color: var(--text);
       transition: all 0.15s ease;
+      min-height: 34px;
     }
-    .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .btn:hover { border-color: var(--border-focus); transform: translateY(-1px); }
     .btn-reset {
-      color: var(--danger);
-      border-color: rgba(239, 68, 68, 0.3);
+      color: var(--rose);
+      border-color: rgba(239, 68, 68, 0.25);
     }
-    .btn-reset:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
-    .btn-theme { padding: 7px 10px; }
+    .btn-reset:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: var(--rose);
+    }
 
-    /* Search & Filter Bar */
+    /* Filter & Category Bar */
     .filter-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
-      gap: 12px;
+      margin-bottom: 18px;
+      gap: 16px;
+      flex-wrap: wrap;
     }
+    .filter-pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+    }
+    .pill:hover { color: var(--text); border-color: var(--border-focus); }
+    .pill.active {
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--accent);
+      border-color: rgba(99, 102, 241, 0.35);
+      font-weight: 600;
+    }
+    .pill .count {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 99px;
+      background: var(--surface-subtle);
+    }
+    .pill.active .count {
+      background: rgba(99, 102, 241, 0.25);
+      color: var(--accent);
+    }
+
     .search-box {
-      flex: 1;
-      max-width: 380px;
       position: relative;
+      width: 320px;
     }
     .search-box input {
       width: 100%;
-      padding: 8px 12px 8px 32px;
+      padding: 8px 12px 8px 34px;
       font-size: 12px;
-      background: var(--card);
-      border: 1px solid var(--card-border);
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text);
       outline: none;
+      transition: border-color 0.15s ease;
     }
-    .search-box input:focus { border-color: var(--accent); }
+    .search-box input:focus { border-color: var(--border-focus); }
     .search-icon {
       position: absolute;
-      left: 10px;
+      left: 12px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-dim);
-      font-size: 12px;
+      pointer-events: none;
     }
 
-    /* Modules Table */
+    /* Table Container */
     .table-container {
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      box-shadow: var(--shadow);
     }
     table {
       width: 100%;
       border-collapse: collapse;
       text-align: left;
     }
-    thead {
-      background: rgba(255, 255, 255, 0.02);
-      border-bottom: 1px solid var(--card-border);
-    }
     th {
+      background: var(--surface-subtle);
       padding: 12px 16px;
       font-size: 11px;
       font-weight: 600;
-      color: var(--text-dim);
+      color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    tbody tr {
-      border-bottom: 1px solid var(--card-border);
-      transition: background 0.15s ease;
-    }
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: var(--card-hover); }
-    tbody tr.is-custom {
-      background: rgba(99, 102, 241, 0.04);
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
     }
     td {
       padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
       vertical-align: middle;
+      transition: background-color 0.15s ease;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td {
+      background: var(--surface-hover);
+    }
+    tbody tr.is-overridden td {
+      background: rgba(245, 158, 11, 0.03);
     }
 
+    /* Module Info */
     .mod-name {
       font-weight: 600;
       color: var(--text);
@@ -305,73 +392,98 @@ const html = `<!doctype html>
       font-family: var(--mono);
       font-size: 11px;
       color: var(--text-dim);
+      margin-top: 2px;
     }
-    .class-badge {
+    .badge-baseline {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--card-border);
+      gap: 5px;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 9px;
       border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
       color: var(--text-muted);
     }
 
-    /* Class Selector Dropdown */
+    /* Dropdown Selection */
+    .select-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .class-select {
-      padding: 6px 10px;
-      background: var(--input-bg);
-      border: 1px solid var(--input-border);
+      flex: 1;
+      padding: 6px 12px;
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text);
-      font-size: 12px;
-      font-family: inherit;
       outline: none;
-      min-width: 220px;
       cursor: pointer;
+      transition: all 0.15s ease;
     }
-    .class-select:focus { border-color: var(--accent); }
+    .class-select:focus { border-color: var(--border-focus); }
     .class-select.custom-active {
-      border-color: var(--accent);
-      color: #818cf8;
+      border-color: rgba(245, 158, 11, 0.5);
+      background: rgba(245, 158, 11, 0.08);
+      color: #fbbf24;
       font-weight: 600;
-      background: rgba(99, 102, 241, 0.08);
     }
 
-    /* Row PIN input */
+    /* Row PIN */
     .row-pin-input {
       font-family: var(--mono);
       font-size: 12px;
       font-weight: 600;
-      width: 72px;
+      width: 78px;
       padding: 5px 8px;
-      background: var(--input-bg);
-      border: 1px solid var(--input-border);
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text);
       text-align: center;
       outline: none;
+      transition: all 0.15s ease;
     }
-    .row-pin-input:focus { border-color: var(--accent); }
+    .row-pin-input:focus { border-color: var(--border-focus); }
+    .row-pin-input.is-changed {
+      border-color: var(--amber);
+      color: #fbbf24;
+    }
 
-    /* Actions */
-    .btn-row-reset {
-      padding: 5px 8px;
-      font-size: 12px;
-      background: transparent;
-      border: 1px solid transparent;
+    /* State Tag */
+    .state-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+    .state-tag.baseline {
+      background: var(--surface-subtle);
       color: var(--text-dim);
-      border-radius: 6px;
-      cursor: pointer;
     }
-    .btn-row-reset:hover {
-      color: var(--danger);
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.2);
+    .state-tag.override {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
     }
 
+    /* Action Buttons */
+    .action-group {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
     .btn-run {
       display: inline-flex;
       align-items: center;
@@ -380,42 +492,64 @@ const html = `<!doctype html>
       font-size: 12px;
       font-weight: 700;
       border-radius: 6px;
-      background: linear-gradient(135deg, var(--run-green), #059669);
-      color: #fff;
-      border: none;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      border: none;
+      background: var(--emerald);
+      color: #ffffff;
       transition: all 0.15s ease;
+      min-height: 32px;
     }
-    .btn-run:hover {
-      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+    .btn-run:hover:not(:disabled) {
+      background: var(--emerald-hover);
       transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
     .btn-run:disabled {
-      opacity: 0.6;
+      opacity: 0.65;
       cursor: not-allowed;
-      transform: none;
+    }
+    .btn-row-reset {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-row-reset:hover {
+      color: var(--rose);
+      border-color: rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.08);
     }
 
-    /* Active Run Drawer & Live Terminal */
+    /* Live Drawer & Terminal */
     .run-drawer {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      background: #0b0d14;
-      border-top: 1px solid var(--card-border);
+      background: #090d16;
+      border-top: 1px solid var(--border);
       padding: 14px 24px;
-      box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
       display: none;
       flex-direction: column;
       gap: 12px;
-      z-index: 100;
-      max-height: 55vh;
-      animation: slideUp 0.2s ease-out forwards;
+      z-index: 200;
+      max-height: 58vh;
+      animation: drawerSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes drawerSlideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
     .run-drawer.active { display: flex; }
+
     .drawer-header {
       display: flex;
       align-items: center;
@@ -426,27 +560,37 @@ const html = `<!doctype html>
     .drawer-info {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       flex: 1;
       overflow: hidden;
     }
     .drawer-badge {
-      background: var(--run-green);
-      color: #fff;
       font-size: 11px;
       font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 4px;
+      padding: 4px 9px;
+      border-radius: 6px;
       white-space: nowrap;
+      color: #fff;
+      background: var(--emerald);
     }
+    .drawer-badge.running {
+      background: var(--amber);
+      animation: pulseBadge 1.5s infinite;
+    }
+    .drawer-badge.failed { background: var(--rose); }
+    @keyframes pulseBadge {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
     .drawer-cmd {
       font-family: var(--mono);
-      font-size: 12px;
-      color: #a5b4fc;
-      background: #06080d;
-      padding: 7px 12px;
+      font-size: 11px;
+      color: #93c5fd;
+      background: #04070d;
+      padding: 6px 12px;
       border-radius: 6px;
-      border: 1px solid #1e2433;
+      border: 1px solid #1e293b;
       white-space: nowrap;
       overflow-x: auto;
       flex: 1;
@@ -456,21 +600,99 @@ const html = `<!doctype html>
       align-items: center;
       gap: 10px;
     }
+    .headed-toggle {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      user-select: none;
+    }
     .drawer-terminal-wrap {
-      background: #050608;
-      border: 1px solid var(--card-border);
+      background: #03060a;
+      border: 1px solid #1e293b;
       border-radius: 8px;
-      padding: 10px 14px;
-      max-height: 240px;
+      padding: 12px 16px;
+      max-height: 250px;
       overflow-y: auto;
     }
     .drawer-terminal {
       font-family: var(--mono);
       font-size: 11px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: #cbd5e1;
       white-space: pre-wrap;
       word-break: break-all;
+    }
+
+    /* Modal for Custom Class */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 480px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes modalPop {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .modal-header h3 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 13px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      outline: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--border-focus); }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
     }
 
     /* Toast */
@@ -485,11 +707,12 @@ const html = `<!doctype html>
       font-weight: 600;
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
       transform: translateY(-80px);
       opacity: 0;
       transition: all 0.25s ease;
       z-index: 1000;
+      pointer-events: none;
     }
     .toast.show { transform: translateY(0); opacity: 1; }
   </style>
@@ -497,115 +720,249 @@ const html = `<!doctype html>
 <body>
   <div class="wrapper">
     <!-- Top Bar -->
-    <div class="top-bar">
-      <div class="brand">
-        <h1>ClassMap Runner <span class="pill-badge">CEP v2</span></h1>
-        <p>Direct 1-click execution for any module with custom classes and credentials.</p>
+    <header class="top-bar">
+      <div class="brand-title">
+        <div>
+          <h1>
+            ClassMap Orchestrator
+            <span class="status-badge standby" id="serverStatusBadge">
+              <span class="status-dot"></span> <span id="serverStatusText">Checking Runner...</span>
+            </span>
+          </h1>
+          <p>Execute any module with custom curriculum classes and credentials in 1 click.</p>
+        </div>
       </div>
 
-      <div class="global-controls">
-        <div class="cred-group" title="Default PIN used for tests unless overridden on row">
-          <span class="cred-label">Teacher PIN:</span>
-          <input type="text" id="globalPinInput" class="pin-input" value="${DEFAULT_PIN}" maxlength="8">
+      <div class="header-controls">
+        <div class="cred-chip" title="Default PIN for Science, Maths & General curriculum">
+          <label>PIN 1 (Primary):</label>
+          <input type="text" id="globalPin1" value="${DEFAULT_PIN}" maxlength="8" oninput="onGlobalPinChange(1)">
         </div>
 
-        <button class="btn btn-reset" id="resetAllBtn" title="Reset all dropdowns and PINs back to baseline">
-          ↺ Reset All
+        <div class="cred-chip" title="Secondary PIN for Accountancy, CS & Senior classes">
+          <label>PIN 2 (Secondary):</label>
+          <input type="text" id="globalPin2" value="${DEFAULT_PIN_2}" maxlength="8" oninput="onGlobalPinChange(2)">
+        </div>
+
+        <button class="btn btn-reset" onclick="resetAllRows()" title="Reset all modules back to baseline classes">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Reset All
         </button>
 
-        <button class="btn btn-theme" id="themeToggleBtn" title="Toggle theme">
-          🌓
+        <button class="btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle color mode">
+          <svg class="icon" id="themeIcon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
         </button>
       </div>
-    </div>
+    </header>
 
-    <!-- Search & Info Bar -->
+    <!-- Filter & Search Bar -->
     <div class="filter-bar">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="searchInput" placeholder="Search module name or key…">
+      <div class="filter-pills" id="categoryFilterPills">
+        <button class="pill active" onclick="setCategoryFilter('all', this)">
+          All <span class="count">${modules.length}</span>
+        </button>
+        <button class="pill" onclick="setCategoryFilter('curriculum', this)">
+          Curriculum & Teaching <span class="count">${modules.filter((m) => m.category === 'curriculum').length}</span>
+        </button>
+        <button class="pill" onclick="setCategoryFilter('tools', this)">
+          Workspace & Tools <span class="count">${modules.filter((m) => m.category === 'tools').length}</span>
+        </button>
+        <button class="pill" onclick="setCategoryFilter('players', this)">
+          Media & Players <span class="count">${modules.filter((m) => m.category === 'players').length}</span>
+        </button>
+        <button class="pill" onclick="setCategoryFilter('overridden', this)">
+          Overridden Only <span class="count" id="overriddenCount">0</span>
+        </button>
       </div>
-      <div style="font-size: 12px; color: var(--text-dim);">
-        <span id="moduleCountText">${modules.length}</span> modules available · Click <b>▶ Run</b> to execute directly!
+
+      <div class="search-box">
+        <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" id="searchInput" placeholder="Search module name or key…" oninput="renderTable()">
       </div>
     </div>
 
-    <!-- Simplified Modules Table -->
+    <!-- Modules Table -->
     <div class="table-container">
       <table>
         <thead>
           <tr>
-            <th style="width: 240px;">Module</th>
-            <th style="width: 200px;">Existing Class</th>
+            <th style="width: 250px;">Module</th>
+            <th style="width: 210px;">Default Class</th>
             <th>Test In Class (Select / Custom)</th>
             <th style="width: 110px;">Teacher PIN</th>
-            <th style="width: 50px;">Reset</th>
-            <th style="width: 120px; text-align: right;">Action</th>
+            <th style="width: 100px;">State</th>
+            <th style="width: 150px; text-align: right;">Action</th>
           </tr>
         </thead>
         <tbody id="moduleTableBody">
-          <!-- Rendered via JS -->
+          <!-- Rendered dynamically -->
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Bottom Run Command Drawer & Terminal -->
-  <div class="run-drawer" id="runDrawer">
+  <!-- Live Execution Drawer -->
+  <aside class="run-drawer" id="runDrawer">
     <div class="drawer-header">
       <div class="drawer-info">
-        <span class="drawer-badge" id="drawerBadge">READY TO RUN</span>
+        <span class="drawer-badge" id="drawerBadge">READY</span>
         <div class="drawer-cmd" id="drawerCmdText">node scripts/run-with-class.js</div>
       </div>
       <div class="drawer-actions">
-        <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
-          <input type="checkbox" id="drawerHeadedCheck"> Headed (Show Client)
+        <label class="headed-toggle">
+          <input type="checkbox" id="drawerHeadedCheck">
+          <span>Headed (Watch Window)</span>
         </label>
-        <button class="btn btn-reset" id="stopTestBtn" style="display: none;" onclick="stopActiveTest()">⏹ Stop</button>
-        <button class="btn" id="drawerCopyBtn" style="padding: 6px 12px;">📋 Copy</button>
-        <button class="btn" id="drawerCloseBtn" style="padding: 6px 10px;">✕</button>
+        <button class="btn btn-reset" id="stopTestBtn" style="display: none;" onclick="stopActiveTest()">
+          <svg class="icon" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+          Stop
+        </button>
+        <button class="btn" onclick="copyDrawerCommand()">
+          <svg class="icon" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          Copy
+        </button>
+        <button class="btn" onclick="closeDrawer()">✕</button>
       </div>
     </div>
-    <div class="drawer-terminal-wrap" id="drawerTerminalWrap" style="display: none;">
+    <div class="drawer-terminal-wrap" id="drawerTerminalWrap">
       <pre class="drawer-terminal" id="liveTerminal"></pre>
+    </div>
+  </aside>
+
+  <!-- Modal: Add Custom Class -->
+  <div class="modal-backdrop" id="customClassModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Configure Custom Class</h3>
+        <button class="btn" onclick="closeCustomModal()" style="padding: 4px 8px;">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Grade</label>
+        <select id="modalGrade">
+          <option value="Class 5">Class 5</option>
+          <option value="Class 6">Class 6</option>
+          <option value="Class 7">Class 7</option>
+          <option value="Class 8">Class 8</option>
+          <option value="Class 9" selected>Class 9</option>
+          <option value="Class 10">Class 10</option>
+          <option value="Class 11">Class 11</option>
+          <option value="Class 12">Class 12</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Division</label>
+        <input type="text" id="modalDivision" value="A" maxlength="2">
+      </div>
+      <div class="form-group">
+        <label>Subject</label>
+        <input type="text" id="modalSubject" placeholder="e.g. Science, Mathematics, Physics, English">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeCustomModal()">Cancel</button>
+        <button class="btn-run" onclick="submitCustomClass()">Apply to Module</button>
+      </div>
     </div>
   </div>
 
-  <!-- Toast -->
-  <div class="toast" id="toast">Copied to clipboard!</div>
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">Notification</div>
 
   <script>
     const CEP_CLASSES = ${JSON.stringify(CEP_CLASSES)};
     const MODULES = ${JSON.stringify(modules)};
 
+    let currentFilter = 'all';
+    let currentActiveRow = null;
+    let isTestRunning = false;
+    let targetCustomKey = null;
+
     const tbody = document.getElementById('moduleTableBody');
     const searchInput = document.getElementById('searchInput');
-    const globalPinInput = document.getElementById('globalPinInput');
+    const globalPin1 = document.getElementById('globalPin1');
+    const globalPin2 = document.getElementById('globalPin2');
     const toast = document.getElementById('toast');
     const runDrawer = document.getElementById('runDrawer');
     const drawerCmdText = document.getElementById('drawerCmdText');
     const drawerHeadedCheck = document.getElementById('drawerHeadedCheck');
     const drawerBadge = document.getElementById('drawerBadge');
-    const drawerTerminalWrap = document.getElementById('drawerTerminalWrap');
     const liveTerminal = document.getElementById('liveTerminal');
     const stopTestBtn = document.getElementById('stopTestBtn');
+    const serverStatusBadge = document.getElementById('serverStatusBadge');
+    const serverStatusText = document.getElementById('serverStatusText');
 
-    let currentActiveRow = null;
-    let isTestRunning = false;
+    // Check server status
+    async function checkServerStatus() {
+      try {
+        const res = await fetch('/api/status', { method: 'GET' });
+        if (res.ok) {
+          serverStatusBadge.classList.remove('standby');
+          serverStatusText.textContent = 'Runner Connected (:3456)';
+        } else {
+          setStandbyStatus();
+        }
+      } catch {
+        setStandbyStatus();
+      }
+    }
+    function setStandbyStatus() {
+      serverStatusBadge.classList.add('standby');
+      serverStatusText.textContent = 'Standby (npm run classmap)';
+    }
+    checkServerStatus();
+    setInterval(checkServerStatus, 5000);
 
     function showToast(msg) {
       toast.textContent = msg;
       toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2000);
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+    }
+
+    function setCategoryFilter(category, btn) {
+      currentFilter = category;
+      document.querySelectorAll('#categoryFilterPills .pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      renderTable();
+    }
+
+    function updateOverriddenCount() {
+      let count = 0;
+      MODULES.forEach(m => {
+        const select = document.getElementById('select-' + m.key);
+        const pinInput = document.getElementById('pin-' + m.key);
+        const isClassChanged = select && select.value !== 'DEFAULT';
+        const expectedPin = m.defaultAccount === 'VALID_PIN_2' ? globalPin2.value : globalPin1.value;
+        const isPinChanged = pinInput && pinInput.value !== expectedPin;
+        if (isClassChanged || isPinChanged) count++;
+      });
+      document.getElementById('overriddenCount').textContent = count;
     }
 
     function renderTable() {
       const q = searchInput.value.toLowerCase().trim();
-      const filtered = MODULES.filter(m => !q || m.name.toLowerCase().includes(q) || m.key.toLowerCase().includes(q));
-      document.getElementById('moduleCountText').textContent = filtered.length;
+
+      const filtered = MODULES.filter(m => {
+        if (q && !m.name.toLowerCase().includes(q) && !m.key.toLowerCase().includes(q)) return false;
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'overridden') {
+          const select = document.getElementById('select-' + m.key);
+          const pinInput = document.getElementById('pin-' + m.key);
+          const isClassChanged = select && select.value !== 'DEFAULT';
+          const expectedPin = m.defaultAccount === 'VALID_PIN_2' ? globalPin2.value : globalPin1.value;
+          const isPinChanged = pinInput && pinInput.value !== expectedPin;
+          return isClassChanged || isPinChanged;
+        }
+        return m.category === currentFilter;
+      });
 
       tbody.innerHTML = filtered.map(m => {
-        const defaultClassLabel = \`\${m.defaultGrade} \${m.defaultDivision} | \${m.defaultSubject}\`;
+        const defaultClassLabel = \`\${m.defaultGrade} \${m.defaultDivision} · \${m.defaultSubject}\`;
+        const expectedPin = m.defaultAccount === 'VALID_PIN_2' ? globalPin2.value : globalPin1.value;
 
         return \`
           <tr id="row-\${m.key}">
@@ -614,97 +971,172 @@ const html = `<!doctype html>
               <div class="mod-key">\${m.key}</div>
             </td>
             <td>
-              <span class="class-badge">\${defaultClassLabel}</span>
+              <span class="badge-baseline">\${defaultClassLabel}</span>
             </td>
             <td>
-              <select class="class-select" id="select-\${m.key}" onchange="onClassChange('\${m.key}')">
-                <option value="DEFAULT" selected>[Default] \${defaultClassLabel}</option>
-                <optgroup label="Real CEP v2 Classes">
-                  \${CEP_CLASSES.map(c => \`
-                    <option value='\${JSON.stringify(c)}'>\${c.label}</option>
-                  \`).join('')}
-                </optgroup>
-                <option value="CUSTOM">+ Enter Custom Class...</option>
-              </select>
+              <div class="select-wrap">
+                <select class="class-select" id="select-\${m.key}" onchange="onClassSelectChange('\${m.key}')">
+                  <option value="DEFAULT" selected>[Baseline] \${defaultClassLabel}</option>
+                  <optgroup label="CEP v2 Curriculum Classes">
+                    \${CEP_CLASSES.map(c => \`
+                      <option value='\${JSON.stringify(c)}'>\${c.label}</option>
+                    \`).join('')}
+                  </optgroup>
+                  <option value="CUSTOM">+ Custom Class...</option>
+                </select>
+              </div>
             </td>
             <td>
-              <input type="text" class="row-pin-input" id="pin-\${m.key}" value="\${m.defaultPin}" maxlength="8" oninput="onPinChange('\${m.key}')">
+              <input type="text" class="row-pin-input" id="pin-\${m.key}" value="\${expectedPin}" maxlength="8" oninput="onPinInputChange('\${m.key}')">
             </td>
             <td>
-              <button class="btn-row-reset" onclick="resetRow('\${m.key}')" title="Reset to default">↺</button>
+              <span class="state-tag baseline" id="state-tag-\${m.key}">Baseline</span>
             </td>
-            <td style="text-align: right;">
-              <button class="btn-run" id="btn-run-\${m.key}" onclick="runModule('\${m.key}')">▶ Run</button>
+            <td>
+              <div class="action-group">
+                <button class="btn-row-reset" onclick="resetModuleRow('\${m.key}')" title="Reset this module">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+                <button class="btn-run" id="btn-run-\${m.key}" onclick="runModule('\${m.key}')">
+                  <svg class="icon" viewBox="0 0 24 24" style="fill: currentColor;"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                  Run
+                </button>
+              </div>
             </td>
           </tr>
         \`;
       }).join('');
+
+      updateOverriddenCount();
     }
 
-    window.onClassChange = function(key) {
+    function onClassSelectChange(key) {
       const select = document.getElementById('select-' + key);
       const row = document.getElementById('row-' + key);
+      const stateTag = document.getElementById('state-tag-' + key);
       const val = select.value;
 
       if (val === 'CUSTOM') {
-        const customInput = prompt('Enter class in format: Grade Division | Subject (e.g. Class 10 B | Mathematics)');
-        if (customInput && customInput.includes('|')) {
-          const parts = customInput.split('|');
-          const subj = parts[1].trim();
-          const gd = parts[0].trim().split(' ');
-          const g = gd[0] + ' ' + gd[1];
-          const d = gd[2] || 'A';
-          const customObj = { label: \`\${g}\${d} — \${subj}\`, grade: g, division: d, subject: subj };
-          
-          const opt = document.createElement('option');
-          opt.value = JSON.stringify(customObj);
-          opt.textContent = \`[Custom] \${customObj.label}\`;
-          select.appendChild(opt);
-          select.value = opt.value;
-          select.classList.add('custom-active');
-          row.classList.add('is-custom');
-          showToast(\`Custom class added: \${customObj.label}\`);
-        } else {
-          select.value = 'DEFAULT';
-          select.classList.remove('custom-active');
-          row.classList.remove('is-custom');
-          return;
-        }
-      } else if (val === 'DEFAULT') {
-        select.classList.remove('custom-active');
-        row.classList.remove('is-custom');
-      } else {
-        select.classList.add('custom-active');
-        row.classList.add('is-custom');
+        targetCustomKey = key;
+        openCustomModal();
+        return;
       }
 
-      if (currentActiveRow === key) updateDrawer(key);
-    };
+      const isChanged = val !== 'DEFAULT';
+      select.classList.toggle('custom-active', isChanged);
+      row.classList.toggle('is-overridden', isChanged);
+      if (stateTag) {
+        stateTag.className = 'state-tag ' + (isChanged ? 'override' : 'baseline');
+        stateTag.textContent = isChanged ? 'Override' : 'Baseline';
+      }
 
-    window.onPinChange = function(key) {
+      updateOverriddenCount();
       if (currentActiveRow === key) updateDrawer(key);
-    };
+    }
 
-    window.resetRow = function(key) {
+    function onPinInputChange(key) {
+      const mod = MODULES.find(m => m.key === key);
+      const pinInput = document.getElementById('pin-' + key);
+      const expectedPin = mod.defaultAccount === 'VALID_PIN_2' ? globalPin2.value : globalPin1.value;
+      const isChanged = pinInput.value !== expectedPin;
+
+      pinInput.classList.toggle('is-changed', isChanged);
+      updateOverriddenCount();
+      if (currentActiveRow === key) updateDrawer(key);
+    }
+
+    function onGlobalPinChange(pinIndex) {
+      MODULES.forEach(m => {
+        const matchesAccount = (pinIndex === 2 && m.defaultAccount === 'VALID_PIN_2') ||
+                               (pinIndex === 1 && m.defaultAccount !== 'VALID_PIN_2');
+        if (matchesAccount) {
+          const pinInput = document.getElementById('pin-' + m.key);
+          if (pinInput && !pinInput.classList.contains('is-changed')) {
+            pinInput.value = pinIndex === 2 ? globalPin2.value : globalPin1.value;
+          }
+        }
+      });
+    }
+
+    function resetModuleRow(key) {
       const select = document.getElementById('select-' + key);
       const pinInput = document.getElementById('pin-' + key);
       const row = document.getElementById('row-' + key);
+      const stateTag = document.getElementById('state-tag-' + key);
       const mod = MODULES.find(m => m.key === key);
 
       select.value = 'DEFAULT';
       select.classList.remove('custom-active');
-      row.classList.remove('is-custom');
-      pinInput.value = mod.defaultPin;
+      row.classList.remove('is-overridden');
+      const expectedPin = mod.defaultAccount === 'VALID_PIN_2' ? globalPin2.value : globalPin1.value;
+      pinInput.value = expectedPin;
+      pinInput.classList.remove('is-changed');
 
-      showToast(\`Reset \${mod.name} to default\`);
+      if (stateTag) {
+        stateTag.className = 'state-tag baseline';
+        stateTag.textContent = 'Baseline';
+      }
+
+      showToast(\`Reset \${mod.name} to baseline\`);
+      updateOverriddenCount();
       if (currentActiveRow === key) updateDrawer(key);
-    };
+    }
+
+    function resetAllRows() {
+      MODULES.forEach(m => resetModuleRow(m.key));
+      showToast('All modules reset to baseline classes & credentials');
+    }
+
+    // Modal logic
+    function openCustomModal() {
+      document.getElementById('customClassModal').classList.add('open');
+      document.getElementById('modalSubject').focus();
+    }
+    function closeCustomModal() {
+      document.getElementById('customClassModal').classList.remove('open');
+      if (targetCustomKey) {
+        const select = document.getElementById('select-' + targetCustomKey);
+        if (select && select.value === 'CUSTOM') {
+          select.value = 'DEFAULT';
+          onClassSelectChange(targetCustomKey);
+        }
+      }
+    }
+    function submitCustomClass() {
+      const g = document.getElementById('modalGrade').value;
+      const d = document.getElementById('modalDivision').value.trim() || 'A';
+      const s = document.getElementById('modalSubject').value.trim();
+
+      if (!s) {
+        alert('Please enter a subject name');
+        return;
+      }
+
+      const customObj = {
+        label: \`\${g}\${d} — \${s}\`,
+        grade: g,
+        division: d,
+        subject: s
+      };
+
+      const select = document.getElementById('select-' + targetCustomKey);
+      const opt = document.createElement('option');
+      opt.value = JSON.stringify(customObj);
+      opt.textContent = \`[Custom] \${customObj.label}\`;
+      select.appendChild(opt);
+      select.value = opt.value;
+
+      document.getElementById('customClassModal').classList.remove('open');
+      onClassSelectChange(targetCustomKey);
+      showToast(\`Custom class added: \${customObj.label}\`);
+      targetCustomKey = null;
+    }
 
     function updateDrawer(key) {
       const mod = MODULES.find(m => m.key === key);
       const select = document.getElementById('select-' + key);
       const pinInput = document.getElementById('pin-' + key);
-      const pin = pinInput.value.trim() || globalPinInput.value.trim();
+      const pin = pinInput.value.trim();
       const isHeaded = drawerHeadedCheck.checked;
 
       let grade = mod.defaultGrade;
@@ -723,7 +1155,7 @@ const html = `<!doctype html>
       }
 
       let cmd;
-      if (isOverridden || pin !== mod.defaultPin) {
+      if (isOverridden) {
         cmd = \`node scripts/run-with-class.js --module=\${key} --grade="\${grade}" --division="\${division}" --subject="\${subject}" --pin=\${pin}\`;
       } else {
         cmd = \`node scripts/run-with-class.js --module=\${key} --pin=\${pin}\`;
@@ -733,10 +1165,19 @@ const html = `<!doctype html>
       drawerCmdText.textContent = cmd;
     }
 
-    // Direct Execution Function
+    function copyDrawerCommand() {
+      navigator.clipboard.writeText(drawerCmdText.textContent);
+      showToast('Command copied to clipboard');
+    }
+
+    function closeDrawer() {
+      runDrawer.classList.remove('active');
+    }
+
+    // Direct Execution via server
     window.runModule = async function(key) {
       if (isTestRunning) {
-        showToast('A test is already running. Please stop it or wait for completion.');
+        showToast('A test is currently running. Please wait or click Stop.');
         return;
       }
 
@@ -746,7 +1187,7 @@ const html = `<!doctype html>
 
       const select = document.getElementById('select-' + key);
       const pinInput = document.getElementById('pin-' + key);
-      const pin = pinInput.value.trim() || globalPinInput.value.trim();
+      const pin = pinInput.value.trim();
       const isHeaded = drawerHeadedCheck.checked;
       const mod = MODULES.find(m => m.key === key);
 
@@ -764,27 +1205,22 @@ const html = `<!doctype html>
       }
 
       const isHttp = window.location.protocol.startsWith('http');
-
       if (!isHttp) {
-        // Fallback if user opened via file:/// without running server
-        const cmd = drawerCmdText.textContent;
-        navigator.clipboard.writeText(cmd);
-        showToast('Command copied! (To run directly in browser, launch "npm run classmap")');
+        copyDrawerCommand();
+        showToast('Local runner not connected. Launch with: npm run classmap');
         return;
       }
 
-      // Live Execution via server!
       isTestRunning = true;
       const runBtn = document.getElementById('btn-run-' + key);
       if (runBtn) {
-        runBtn.textContent = '⏳ Running...';
+        runBtn.innerHTML = '<span class="status-dot"></span> Running';
         runBtn.disabled = true;
       }
 
-      drawerTerminalWrap.style.display = 'block';
-      liveTerminal.textContent = \`[ClassMap Live Runner] Starting test for \${mod.name}...\\nTarget: \${grade} \${division} | \${subject} (PIN: \${pin})\\nCommand: \${drawerCmdText.textContent}\\n\\n\`;
+      liveTerminal.textContent = \`[ClassMap Runner] Initiating test for \${mod.name}...\\nTarget Class: \${grade} \${division} · \${subject}\\nTeacher PIN: \${pin}\\nCommand: \${drawerCmdText.textContent}\\n\\n\`;
+      drawerBadge.className = 'drawer-badge running';
       drawerBadge.textContent = \`RUNNING: \${mod.name}\`;
-      drawerBadge.style.background = 'var(--warning)';
       stopTestBtn.style.display = 'inline-flex';
 
       try {
@@ -804,8 +1240,8 @@ const html = `<!doctype html>
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           liveTerminal.textContent += \`\\n[Error] \${errData.error || response.statusText}\\n\`;
-          drawerBadge.textContent = 'FAILED';
-          drawerBadge.style.background = 'var(--danger)';
+          drawerBadge.className = 'drawer-badge failed';
+          drawerBadge.textContent = 'ERROR';
           stopTestBtn.style.display = 'none';
           cleanup();
           return;
@@ -828,103 +1264,69 @@ const html = `<!doctype html>
                 const event = JSON.parse(line.slice(6));
                 if (event.type === 'log') {
                   liveTerminal.textContent += event.text;
-                  drawerTerminalWrap.scrollTop = drawerTerminalWrap.scrollHeight;
+                  const wrap = document.getElementById('drawerTerminalWrap');
+                  wrap.scrollTop = wrap.scrollHeight;
                 } else if (event.type === 'done') {
                   stopTestBtn.style.display = 'none';
                   if (event.success) {
-                    drawerBadge.textContent = '✔ PASSED';
-                    drawerBadge.style.background = 'var(--run-green)';
-                    showToast(\`Test PASSED for \${mod.name}!\`);
+                    drawerBadge.className = 'drawer-badge';
+                    drawerBadge.textContent = 'PASSED';
+                    showToast(\`\${mod.name} PASSED!\`);
                   } else {
-                    drawerBadge.textContent = '✖ FAILED';
-                    drawerBadge.style.background = 'var(--danger)';
-                    showToast(\`Test finished with errors (code \${event.code})\`);
+                    drawerBadge.className = 'drawer-badge failed';
+                    drawerBadge.textContent = 'FAILED';
+                    showToast(\`\${mod.name} failed (exit code \${event.code})\`);
                   }
+                  cleanup();
                 } else if (event.type === 'error') {
                   liveTerminal.textContent += \`\\n[Fatal Error] \${event.message}\\n\`;
+                  drawerBadge.className = 'drawer-badge failed';
                   drawerBadge.textContent = 'ERROR';
-                  drawerBadge.style.background = 'var(--danger)';
                   stopTestBtn.style.display = 'none';
+                  cleanup();
                 }
               } catch (e) {}
             }
           }
         }
       } catch (err) {
-        liveTerminal.textContent += \`\\n[Connection Error] \${err.message}\\n\`;
+        liveTerminal.textContent += \`\\n[Network/Runner Error] \${err.message}\\n\`;
+        drawerBadge.className = 'drawer-badge failed';
         drawerBadge.textContent = 'OFFLINE';
-        drawerBadge.style.background = 'var(--danger)';
         stopTestBtn.style.display = 'none';
-      } finally {
         cleanup();
-      }
-
-      function cleanup() {
-        isTestRunning = false;
-        if (runBtn) {
-          runBtn.textContent = '▶ Run';
-          runBtn.disabled = false;
-        }
       }
     };
 
     window.stopActiveTest = async function() {
-      await fetch('/api/stop', { method: 'POST' }).catch(() => {});
-      liveTerminal.textContent += '\\n[Execution stopped by user]\\n';
-      drawerBadge.textContent = 'STOPPED';
-      drawerBadge.style.background = 'var(--danger)';
-      stopTestBtn.style.display = 'none';
+      try {
+        await fetch('/api/stop', { method: 'POST' });
+        liveTerminal.textContent += '\\n\\n[User Action] Execution stopped by user.\\n';
+        drawerBadge.className = 'drawer-badge failed';
+        drawerBadge.textContent = 'STOPPED';
+        stopTestBtn.style.display = 'none';
+        cleanup();
+      } catch (err) {
+        showToast('Failed to stop: ' + err.message);
+      }
     };
 
-    drawerHeadedCheck.addEventListener('change', () => {
-      if (currentActiveRow) updateDrawer(currentActiveRow);
-    });
-
-    document.getElementById('drawerCopyBtn').addEventListener('click', () => {
-      navigator.clipboard.writeText(drawerCmdText.textContent);
-      showToast('Command copied to clipboard!');
-    });
-
-    document.getElementById('drawerCloseBtn').addEventListener('click', () => {
-      runDrawer.classList.remove('active');
-    });
-
-    // Reset All
-    document.getElementById('resetAllBtn').addEventListener('click', () => {
-      MODULES.forEach(m => resetRow(m.key));
-      globalPinInput.value = '${DEFAULT_PIN}';
-      runDrawer.classList.remove('active');
-      showToast('All modules reset to default baseline');
-    });
-
-    globalPinInput.addEventListener('input', () => {
-      const newPin = globalPinInput.value.trim();
+    function cleanup() {
+      isTestRunning = false;
       MODULES.forEach(m => {
-        const pinInput = document.getElementById('pin-' + m.key);
-        if (pinInput && pinInput.value === m.defaultPin) {
-          pinInput.value = newPin;
+        const btn = document.getElementById('btn-run-' + m.key);
+        if (btn) {
+          btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="fill: currentColor;"><polygon points="6 3 20 12 6 21 6 3"/></svg> Run';
+          btn.disabled = false;
         }
       });
-      if (currentActiveRow) updateDrawer(currentActiveRow);
-    });
+    }
 
-    // Theme toggle
-    const themeBtn = document.getElementById('themeToggleBtn');
-    themeBtn.addEventListener('click', () => {
-      const cur = document.documentElement.getAttribute('data-theme');
-      const next = cur === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('cepv2_theme', next);
-    });
-    const savedTheme = localStorage.getItem('cepv2_theme');
-    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-
-    searchInput.addEventListener('input', renderTable);
     renderTable();
   </script>
 </body>
 </html>
 `;
 
-fs.writeFileSync(path.join(REPORT_DIR, 'CLASS_MAP.html'), html, 'utf8');
-console.log(`Successfully built report/CLASS_MAP.html with direct execution enabled.`);
+fs.writeFileSync(path.join(REPORT_DIR, 'CLASS_MAP.html'), html, 'utf-8');
+console.log('Built upgraded report/CLASS_MAP.html successfully.');
