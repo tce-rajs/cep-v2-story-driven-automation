@@ -38,4 +38,16 @@ test.describe('PRE-01 Whiteboard loads by default without logging in', () => {
       expect(await app.canvasIsUncovered(), 'nothing may cover the whiteboard canvas').toBe(true);
     }
   );
+
+  test(
+    'PRE-01-03: no class, chapter, topic or Playlist is shown before signing in',
+    { tag: ['@functional', '@negative'] },
+    async ({ page }) => {
+      const app = new WithoutLoginPage(page);
+      await app.open();
+      await expect(app.classButton.filter({ visible: true }), 'no current class').toHaveCount(0);
+      await expect(app.chapterTopicButton.filter({ visible: true }), 'no chapter or topic').toHaveCount(0);
+      await expect(app.playlistElements.filter({ visible: true }), 'no Playlist').toHaveCount(0);
+    }
+  );
 });

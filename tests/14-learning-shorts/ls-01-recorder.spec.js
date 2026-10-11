@@ -11,7 +11,7 @@ test.describe('LS-01 Open the Learning Shorts recorder', () => {
   });
 
   test(
-    'LS-01-01: Magnet → Learning Shorts opens the recorder with Record and Exit (regression, Zoho CWR-I678)',
+    'LS-01-01: Magnet → Learning Shorts opens the recorder with Record and Exit',
     { tag: ['@smoke', '@regression'] },
     async ({ user }) => {
       await user.learningShorts.openRecorder(user.magnet);
@@ -21,7 +21,7 @@ test.describe('LS-01 Open the Learning Shorts recorder', () => {
   );
 
   // Exit without recording: the panel closes cleanly (LS-01-02), and no composer or video is produced (LS-01-04) -- one
-  // test each (split 2026-09-28).
+  // test each.
   test(
     'LS-01-02: Exit without recording closes the recorder panel cleanly',
     { tag: ['@functional'] },

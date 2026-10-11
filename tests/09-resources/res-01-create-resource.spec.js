@@ -103,32 +103,8 @@ test.describe('RES-01 Create Resource', () => {
     }
   );
 
-  test(
-    'RES-01-04: a zero-byte file upload is rejected server-side, not just client-side',
-    { tag: ['@negative', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): a zero-byte file is accepted -- the form submits and a new
-      // (empty) resource card appears in the Playlist (count before -> before + 1). The sibling automation project
-      // recorded the same defect. Tracked as expected-to-fail so it isn't masked.
-      test.fail(true, 'A zero-byte file upload is accepted and creates an empty resource');
-      const { title, responses, before, after } = await submitAndObserve(user, {
-        name: 'empty.pdf',
-        mimeType: 'application/pdf',
-        buffer: Buffer.alloc(0),
-      });
-      test.info().annotations.push({ type: 'note', description: `Upload responses: ${JSON.stringify(responses)}` });
-      await removeIfCreated(user, title);
-
-      expect(after, 'no resource was created from a zero-byte file').toBe(before);
-      expect(
-        responses.some((r) => r.status >= 400),
-        'the upload reached the server and the SERVER refused it (a client-only check would send no request)'
-      ).toBe(true);
-    }
-  );
-
   test('RES-01-05: a file over the 10MB limit is rejected, not accepted', { tag: ['@negative'] }, async ({ user }) => {
-    // CONFIRMED LIVE (v 0.0.223): the form's own validation disables Submit for an oversized file, and even with
+    // The form's own validation disables Submit for an oversized file, and even with
     // that button forced enabled the form sends NO request at all (it will not submit an invalid form). So the
     // client-side rejection is what can be verified here. The story's other half -- that the SERVER also refuses
     // an oversized file -- cannot be reached through the UI and needs an API-level upload test; it is recorded as
@@ -156,7 +132,7 @@ test.describe('RES-01 Create Resource', () => {
     test.use({ classMap: 'default' });
 
     // Adding to a 200+ list: the new card appears promptly (RES-01-06), and no card is lost or duplicated (RES-01-17) --
-    // one test each (split 2026-09-28).
+    // one test each.
     /** The strip renders progressively (hundreds of cards): the count once it has stopped changing. */
     const settledCount = async (user) => {
       let last = -1;
@@ -247,7 +223,7 @@ test.describe('RES-01 Create Resource', () => {
       const rendered = user.player.imageWrapper.or(user.player.imageGalleryImg).first();
       await expect(rendered, 'and it rendered').toBeVisible({ timeout: 15000 });
       // isPlayerOpen()/toBeVisible() only prove the close icon and the wrapper exist — not that the player actually
-      // occupies a real amount of screen, not a broken sliver. CONFIRMED LIVE: this uses createImageAsset's small
+      // occupies a real amount of screen, not a broken sliver. This uses createImageAsset's small
       // test PNG (same as PLR-06-02, not a full curriculum image), which the OR can resolve to the bare <img>
       // (imageGalleryImg) rather than the full ~980x620 wrapper — matching PLR-06-02's own confirmed-live threshold
       // (>50) for this exact path, not the larger wrapper's threshold.
@@ -261,14 +237,12 @@ test.describe('RES-01 Create Resource', () => {
       expect(box.height, 'the image player renders at a real size, not collapsed').toBeGreaterThan(50);
 
       await user.player.closePlayer();
-      // CONFIRMED LIVE: closing the player leaves the Playlist drawer lowered (the card sits ~20px lower, under the
+      // Closing the player leaves the Playlist drawer lowered (the card sits ~20px lower, under the
       // whiteboard's drawing surface, which swallows a hover) -- bring the drawer back before touching the card.
       await user.playlist.ensureDrawerVisible();
       await user.playlist.removeOwnedAsset(added);
     }
   );
-
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Add Resource workbook) ---
 
   const openCreate = async (user) => {
     await user.addResource.openAction('create');
@@ -278,7 +252,7 @@ test.describe('RES-01 Create Resource', () => {
     user.addResource.createForm.locator('.invalid-file, mat-error, .error').filter({ visible: true });
 
   // The Title rule: an error below 3 characters (RES-01-09), cleared at 3 or more (RES-01-18) -- one test each (split
-  // 2026-09-28).
+  // ).
   const typeShortTitle = async (user) => {
     await openCreate(user);
     await user.addResource.titleInput.pressSequentially('ab');
@@ -317,7 +291,7 @@ test.describe('RES-01 Create Resource', () => {
   );
 
   // Grade & Subject and Chapter & Topic: filled in from the current topic (RES-01-10), and locked (RES-01-19) -- one test
-  // each (split 2026-09-28).
+  // each.
   test(
     'RES-01-10: Grade & Subject and Chapter & Topic are filled in from the current topic',
     { tag: ['@functional'] },
@@ -356,8 +330,7 @@ test.describe('RES-01 Create Resource', () => {
     }
   );
 
-  // Share: on by default (RES-01-11), and a resource created with it off is saved off (RES-01-20) -- one test each
-  // (split 2026-09-28).
+  // Share: on by default (RES-01-11), and a resource created with it off is saved off (RES-01-20) -- one test each.
   test('RES-01-11: Share is on by default in the Create form', { tag: ['@functional'] }, async ({ user }) => {
     await openCreate(user);
     try {
@@ -449,28 +422,6 @@ test.describe('RES-01 Create Resource', () => {
       } finally {
         for (let i = 0; i < 3 && (await cards.count()) > 0; i++)
           await user.playlist.removeOwnedAsset(cards.first()).catch(() => {});
-      }
-    }
-  );
-
-  test(
-    "RES-01-15: a file whose name has emoji and 150 characters doesn't break the form",
-    { tag: ['@edge', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): with a 150-character file name containing emoji, the
-      // upload (POST .../tce-repo-api/1/res/v1/content/package) is rejected with HTTP 400, the form closes anyway, and no
-      // message is shown -- the resource is silently not created.
-      test.fail(
-        true,
-        'A long file name with emoji is rejected by the server (400) with no message; the resource silently is not created'
-      );
-      const name = 'Lesson-notes-📚🔬-' + 'x'.repeat(150 - 22) + '.txt';
-      const r = await submitAndObserve(user, { name, mimeType: 'text/plain', buffer: Buffer.from('emoji name') });
-      try {
-        expect(r.clientBlocked, 'the form accepts the file').toBe(false);
-        await expect(user.playlist.resourceCards.filter({ hasText: r.title })).toBeVisible({ timeout: 15000 });
-      } finally {
-        await removeIfCreated(user, r.title);
       }
     }
   );

@@ -1,14 +1,13 @@
 // TB-08 — Magnet menu
 // Source: CEPV2_Stories/05_Toolbar.md
-// Magnet's entries are gated per class/subject. The 'attendance' class in config/moduleClassMap.js is the confirmed
-// class where Notice, Learning Shorts, Homework and Attendance can all be reached (on .85, 12A Physics has no Attendance).
+// Magnet's entries depend on the class and the teacher: Attendance is offered only to the class's own class teacher.
+// The 'attendance' entry in config/moduleClassMap.js signs in with an account that has Attendance, on a class where Notice,
+// Learning Shorts, Homework and Attendance can all be reached.
 
 const { test, expect } = require('../../fixtures');
 
 test.describe('TB-08 Magnet menu', () => {
-  test.beforeEach(async ({ user }) => {
-    await user.nav.applyClassMap('attendance');
-  });
+  test.use({ classMap: 'attendance' });
 
   test(
     'TB-08-01: opening Magnet shows the expected set of quick-access tools',
@@ -62,8 +61,8 @@ test.describe('TB-08 Magnet menu', () => {
   );
 
   // After opening and closing Magnet 6 times quickly: not stuck open (TB-08-07), not duplicated (TB-08-08) -- one test
-  // each (split 2026-09-28).
-  // CONFIRMED LIVE (2026-09-26): the Magnet icon only opens its menu (a second click leaves it open); tapping outside
+  // each.
+  // The Magnet icon only opens its menu (a second click leaves it open); tapping outside
   // closes it.
   const openCloseSixTimes = async (user) => {
     for (let i = 0; i < 6; i++) {
@@ -96,4 +95,48 @@ test.describe('TB-08 Magnet menu', () => {
       }
     }
   );
+});
+
+// Classes where an entry is not offered. Magnet lists only what the class has: 11A Accountancy has no Attendance
+// (pages/magnet.page.js), and Attendance belongs to the class teacher only ('attendanceReadOnly' is a teacher who is not
+// the class teacher of 9A Science).
+test.describe('TB-08 Magnet menu: entries the class does not have', () => {
+  test.describe('a class with no Attendance', () => {
+    test.use({ classMap: 'navigationAccountancy' });
+
+    test(
+      'TB-08-09: Magnet lists only the entries enabled for the current class (Attendance is not offered where the class has none)',
+      { tag: ['@functional'] },
+      async ({ user }) => {
+        await user.magnet.open();
+        try {
+          await expect(user.magnet.noticeItem, 'set-up: the Magnet menu is open').toBeVisible({ timeout: 8000 });
+          await expect(user.magnet.attendanceItem, 'no Attendance for this class').toBeHidden();
+        } finally {
+          await user.toolbar.closePanelByTappingOutside();
+        }
+      }
+    );
+  });
+
+  test.describe('a teacher who is not the class teacher', () => {
+    test.use({ classMap: 'attendanceReadOnly' });
+
+    test(
+      'TB-08-10: Magnet does not offer an entry the class does not have (no Attendance where the teacher is not the class teacher)',
+      { tag: ['@negative'] },
+      async ({ user }) => {
+        await user.magnet.open();
+        try {
+          await expect(user.magnet.noticeItem, 'set-up: the Magnet menu is open').toBeVisible({ timeout: 8000 });
+          await expect(
+            user.magnet.attendanceItem,
+            'no Attendance for a teacher who is not the class teacher'
+          ).toBeHidden();
+        } finally {
+          await user.toolbar.closePanelByTappingOutside();
+        }
+      }
+    );
+  });
 });

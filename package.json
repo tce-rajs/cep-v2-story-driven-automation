@@ -20,7 +20,18 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "core": "node scripts/run-core.js",
+    "review:page": "node scripts/build-review-page.js",
+    "review:merge": "node scripts/merge-review.js",
+    "core:client": "node scripts/run-core.js client",
+    "core:browser": "node scripts/run-core.js browser",
+    "explore": "playwright test --config=playwright.explore.config.js",
+    "review:project": "node scripts/review-project.js",
+    "workbook": "node scripts/build-workbook.js",
+    "bugs:report": "node scripts/build-bug-report.js",
+    "cleanup:dry": "playwright test --config=playwright.explore.config.js tools/cleanup/remove-test-data.spec.js",
+    "cleanup:apply": "node -e \"process.env.CLEANUP_APPLY=1;require('child_process').execSync('npx playwright test --config=playwright.explore.config.js tools/cleanup/remove-test-data.spec.js',{stdio:'inherit'})\""
   },
   "keywords": [],
   "lint-staged": {

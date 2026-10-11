@@ -40,7 +40,7 @@ test.describe('TB-11 Widgets', () => {
     async ({ user, page }) => {
       await user.toolbar.openToolPanel('gtWidgets');
       // The Discipline filter swaps the subject widgets: .gallery-grid-item tiles WITHOUT a data-qa-id (the 8 basic widgets,
-      // which have one, never change). Confirmed live 2026-09-26: Biology (Blood Vessel, DNA, ...) -> Mathematics (3D Shapes, ...).
+      // which have one, never change). Biology (Blood Vessel, DNA, ...) -> Mathematics (3D Shapes, ...).
       const names = () =>
         page.locator('.gallery-grid-item:not([data-qa-id])').filter({ visible: true }).allTextContents();
       const select = user.toolbar.widgetDisciplineSelect;
@@ -58,7 +58,7 @@ test.describe('TB-11 Widgets', () => {
     }
   );
 
-  // Inserting the Ruler (TB-11-03) and moving it (TB-11-07): one test each (split 2026-09-28).
+  // Inserting the Ruler (TB-11-03) and moving it (TB-11-07): one test each.
   const insertRuler = async (user, page) => {
     await user.toolbar.openToolPanel('gtWidgets');
     const before = await onBoard(page).count();
@@ -105,7 +105,7 @@ test.describe('TB-11 Widgets', () => {
     'TB-11-05: a widget dragged onto the board lands where it was dropped',
     { tag: ['@edge'] },
     async ({ user, page }) => {
-      // NOT APPLICABLE (owner 2026-10-06): widgets are opened by clicking them; not dragging is the expected flow.
+      // Widgets are opened by clicking them; not dragging is the expected flow.
       // The story marks this case not applicable, so the outOfScope fixture skips it; the steps stay for reference.
       await user.toolbar.openToolPanel('gtWidgets');
       const source = await user.toolbar.widgetTool('Ruler').boundingBox();
@@ -123,7 +123,7 @@ test.describe('TB-11 Widgets', () => {
   );
 
   test(
-    "TB-11-06: opening a widget doesn't show a small widget screen on the toolbar (regression, Zoho CWR-I754)",
+    "TB-11-06: opening a widget doesn't show a small widget screen on the toolbar",
     { tag: ['@regression'] },
     async ({ user, page }) => {
       await user.toolbar.openToolPanel('gtWidgets');
@@ -139,6 +139,38 @@ test.describe('TB-11 Widgets', () => {
         toolbarBox
       );
       expect(inside, 'no widget rendered inside the toolbar').toBe(0);
+    }
+  );
+
+  test(
+    'TB-11-08: closing a widget leaves no empty window or overlay behind',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      await user.toolbar.openToolPanel('gtWidgets');
+      const before = await onBoard(page).count();
+      await user.toolbar.widgetTool('Clock').click({ force: true });
+      await expect.poll(() => onBoard(page).count(), { message: 'set-up: clock on the board' }).toBeGreaterThan(before);
+      const area = await onBoard(page).last().boundingBox();
+      await page
+        .locator('lib-clock .mycloseClock')
+        .or(user.toolbar.widgetCloseBtn)
+        .filter({ visible: true })
+        .first()
+        .click({ force: true });
+      await expect.poll(() => onBoard(page).count(), { message: 'the widget is gone' }).toBe(before);
+      await expect(
+        page.locator('.cdk-overlay-backdrop-showing, .modal-backdrop').filter({ visible: true }),
+        'no overlay left behind'
+      ).toHaveCount(0);
+      // Where the clock was, the board itself is on top again (no empty window covering it).
+      const onTop = await page.evaluate(
+        ({ x, y }) => {
+          const el = document.elementFromPoint(x, y);
+          return !!(el && el.closest('[data-qa-id="wb-drawing-container"]'));
+        },
+        { x: area.x + area.width / 2, y: area.y + area.height / 2 }
+      );
+      expect(onTop, 'the board is uncovered where the widget was').toBe(true);
     }
   );
 });

@@ -30,7 +30,7 @@ test.describe('LS-02 Record a short', () => {
       const ls = user.learningShorts;
       await ls.openRecorder(user.magnet);
       await ls.record(4);
-      // CONFIRMED LIVE (2026-09-26): the composer shows no attachment preview in this build; the recording is attached
+      // The composer shows no attachment preview in this build; the recording is attached
       // implicitly (Save to Playlist stores it -- LS-04-01 plays it back). The composer opens ready to save.
       await expect(ls.titleInput).toBeVisible();
       expect((await ls.titleInput.inputValue()).trim().length, 'title pre-filled').toBeGreaterThan(3);
@@ -41,15 +41,12 @@ test.describe('LS-02 Record a short', () => {
 
   test(
     'LS-02-03: starting and stopping several times quickly does not leave the recorder stuck',
-    { tag: ['@edge', '@bug'] },
+    { tag: ['@edge'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): after one recording is discarded, pressing Record again
-      // makes the recorder disappear without recording, and the next Magnet -> Learning Shorts shows the old composer
-      // instead of the recorder. Seen with the client's fake camera/screen stream; worth re-checking by hand on a real device.
-      test.fail(true, 'After one recording is discarded, the recorder cannot record again in the same session');
       const ls = user.learningShorts;
       for (let i = 0; i < 2; i++) {
         await ls.openRecorder(user.magnet);
+        await ls.assertCanRecord();
         await ls.recordStartBtn.click({ force: true });
         await ls.recordStopBtn.waitFor({ state: 'visible', timeout: 15000 });
         await ls.recordStopBtn.click({ force: true });
@@ -67,10 +64,10 @@ test.describe('LS-02 Record a short', () => {
     'LS-02-04: stopping straight after starting is either rejected clearly or saved as a playable video',
     { tag: ['@negative'] },
     async ({ user }) => {
-      // INTERMITTENT PRODUCT DEFECT, SEEN LIVE (2026-09-26, v 0.0.232): in 1 of 2 runs the near-empty recording was saved
-      // with no message as a 0-second video that cannot play. Left asserting the correct outcome, so it goes red when it recurs.
+      // Left asserting the correct outcome, so it goes red when it recurs.
       const ls = user.learningShorts;
       await ls.openRecorder(user.magnet);
+      await ls.assertCanRecord();
       await ls.recordStartBtn.click({ force: true });
       await ls.recordStopBtn.waitFor({ state: 'visible', timeout: 15000 });
       await ls.recordStopBtn.click({ force: true });
@@ -101,5 +98,10 @@ test.describe('LS-02 Record a short', () => {
     }
   );
 
-  test.fixme('LS-02-05: refusing camera/screen permission shows a clear message (manual-only: permission prompts are outside automation)', async () => {});
+  test('LS-02-05: refusing camera/screen permission shows a clear message (manual-only: permission prompts are outside automation)', async () => {
+    test.fixme(
+      true,
+      'Manual only: the camera and screen permission prompts are outside the app and cannot be answered by automation'
+    );
+  });
 });

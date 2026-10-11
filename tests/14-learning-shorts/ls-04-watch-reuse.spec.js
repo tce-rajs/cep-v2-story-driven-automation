@@ -1,6 +1,6 @@
 // LS-04 — Watch and reuse Learning Shorts
 // Source: CEPV2_Stories/14_LearningShorts.md
-// A short is saved to this topic's Playlist first (real action, owner-approved), so there is always one to watch.
+// A short is saved to this topic's Playlist first, so there is always one to watch.
 
 const { test, expect } = require('../../fixtures');
 
@@ -49,7 +49,7 @@ test.describe('LS-04 Watch and reuse Learning Shorts', () => {
       const title = await saveShort(user);
       const card = user.playlist.resourceCards.filter({ hasText: title }).first();
       await expect(card).toBeAttached({ timeout: 30000 });
-      // The card menu (with Send) exists only in Edit mode (confirmed live 2026-09-26).
+      // The card menu (with Send) exists only in Edit mode.
       await user.playlist.ensureDrawerVisible();
       await user.playlist.enterEditMode();
       await card.scrollIntoViewIfNeeded();
@@ -61,6 +61,31 @@ test.describe('LS-04 Watch and reuse Learning Shorts', () => {
       // (there is no attachment preview in this build).
       await expect(user.learningShorts.sendBtn, 'ready to send that short').toBeVisible({ timeout: 15000 });
       await expect(user.learningShorts.titleInput, 'the short being sent').toHaveValue(title);
+    }
+  );
+
+  test(
+    'LS-04-03: a short shared with no class selected cannot be sent',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const ls = user.learningShorts;
+      await ls.openSendComposer(user);
+      const total = await ls.classOptions.count();
+      for (let i = 0; i < total; i++)
+        if (await ls.classCheckbox(i).isChecked()) await ls.classOption(i).click({ force: true });
+      expect(await ls.checkedClassCount(), 'set-up: no class ticked').toBe(0);
+      if (await ls.sendBtn.isDisabled()) return; // Send is refused outright
+      // Send can be pressed: it must then send nothing and keep the composer open.
+      const sends = [];
+      page.on('request', (r) => {
+        if (['POST', 'PUT'].includes(r.method()) && /send|share|short|revision|notify/i.test(r.url()))
+          sends.push(r.url());
+      });
+      await ls.sendBtn.click();
+      await page.waitForTimeout(5000);
+      expect(sends, 'nothing was sent').toEqual([]);
+      await expect(ls.snackbar.filter({ hasText: /sent|success|shared/i }), 'no success message').toHaveCount(0);
+      await expect(ls.sendBtn, 'the composer stays open').toBeVisible();
     }
   );
 });

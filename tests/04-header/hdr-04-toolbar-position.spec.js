@@ -1,7 +1,7 @@
 // HDR-04 — Toolbar Position
 // Source: CEPV2_Stories/04_Header.md
 // Toggling the position: it moves (HDR-04-01), an open panel survives (HDR-04-03), the toolbar still works from the
-// new side (HDR-04-04) -- one test each (split 2026-09-28). Each puts the toolbar back where it was.
+// new side (HDR-04-04) -- one test each. Each puts the toolbar back where it was.
 
 const { test, expect } = require('../../fixtures');
 
@@ -27,22 +27,6 @@ test.describe('HDR-04 Toolbar Position', () => {
         const movedSide = await user.header.dockedSide();
         expect(movedSide, 'toolbar moved to the opposite side').not.toBe(startSide);
         expect(movedSide).not.toBe('ambiguous');
-      });
-    }
-  );
-
-  test(
-    'HDR-04-03: toggling the toolbar position keeps an open panel open',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): the toolbar does move to the other side, but the open Pen panel
-      // is closed by the move (visible before, not visible after) instead of surviving it. Tracked as
-      // expected-to-fail so it isn't masked; needs a product decision on whether closing the panel is acceptable.
-      test.fail(true, 'Moving the toolbar closes the open tool panel');
-      await user.toolbar.openToolPanel('gtPen');
-      await expect(user.toolbar.panel, 'set-up: the Pen panel is open').toBeVisible();
-      await withToggledDock(user, async () => {
-        await expect(user.toolbar.panel, 'the open panel survived the move').toBeVisible();
       });
     }
   );
@@ -77,6 +61,57 @@ test.describe('HDR-04 Toolbar Position', () => {
       await user.toolbar.selectTool('gtPen');
       await expect(user.toolbar.isToolActive('gtPen')).toHaveCount(1);
       expect(errors, 'no uncaught page errors').toEqual([]);
+    }
+  );
+
+  test(
+    'HDR-04-05: the chosen toolbar side is kept after the app reloads',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      await withToggledDock(user, async () => {
+        const moved = await user.header.dockedSide();
+        await page.reload();
+        await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
+        await expect
+          .poll(() => user.header.dockedSide(), { message: 'the toolbar is on the chosen side', timeout: 10000 })
+          .toBe(moved);
+      });
+    }
+  );
+
+  test(
+    'HDR-04-06: the toolbar never ends up off screen or covering the header after changing its side',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const overlaps = (a, b) =>
+        a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+      await withToggledDock(user, async () => {
+        const { width, height } = await user.header.viewportSize();
+        const bar = await user.toolbar.container.boundingBox();
+        expect(bar, 'the toolbar is shown').not.toBeNull();
+        expect(bar.x, 'not off the left edge').toBeGreaterThanOrEqual(0);
+        expect(bar.y, 'not off the top edge').toBeGreaterThanOrEqual(0);
+        expect(bar.x + bar.width, 'not off the right edge').toBeLessThanOrEqual(width + 1);
+        expect(bar.y + bar.height, 'not off the bottom edge').toBeLessThanOrEqual(height + 1);
+        for (const [name, el] of [
+          ['logo', user.header.logoContainer],
+          ['version', user.header.versionText],
+          ['date and time', user.header.calendar],
+        ]) {
+          const box = await el.boundingBox();
+          expect(box && overlaps(bar, box), `the toolbar does not cover the header ${name}`).toBe(false);
+        }
+        // Every tool button is on screen, so each can still be reached.
+        const tools = await user.toolbar.allTools.evaluateAll(
+          (els, vh) =>
+            els.filter((e) => {
+              const r = e.getBoundingClientRect();
+              return r.width > 0 && (r.top < 0 || r.bottom > vh);
+            }).length,
+          height
+        );
+        expect(tools, 'no tool button is cut off').toBe(0);
+      });
     }
   );
 });

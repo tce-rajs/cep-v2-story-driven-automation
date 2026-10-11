@@ -22,9 +22,9 @@ function reportTimestamp() {
 // `npx playwright test --list` (used constantly for sanity checks -- does
 // this config/fixture change still resolve every test with no import
 // errors?) runs every reporter, including the html one below, even though
-// ZERO tests actually execute. Confirmed live: that was silently filling
+// ZERO tests actually execute. That would silently fill
 // playwright-report-archive/ with reports that have no real pass/fail data,
-// and at high enough volume even pushed genuine completed-run reports out
+// and at high enough volume even push genuine completed-run reports out
 // past archive-readme-reporter.js's own retention cap. Route the archive
 // folder outside the project during --list so nothing accumulates in the
 // repo for a run that never really happened; archive-readme-reporter.js's
@@ -38,7 +38,7 @@ module.exports = defineConfig({
   // Where our test files live.
   testDir: './tests',
 
-  // IMPORTANT: every test in this suite shares ONE live login/account
+  // Every test in this suite shares ONE live login/account
   // against the real QA app (no test-account-per-worker isolation exists
   // here) -- "current class", popup state, and the session itself are all
   // shared, mutable state. Running tests in parallel means multiple tests
@@ -85,8 +85,6 @@ module.exports = defineConfig({
     ['html', { outputFolder: 'playwright-report' }],
     ['html', { outputFolder: archiveFolder, open: 'never' }],
     ['./scripts/archive-readme-reporter.js', { outputFolder: archiveFolder }],
-    // Plain-language summary at the end of every run (works / known bug / known bug gone? / new failure /
-    // environment / skipped), also saved as test-results/RESULT-SUMMARY.md.
     ['./scripts/result-summary-reporter.js'],
     // Machine-readable results of every real run, one file per run (a small rerun must not replace a full run's
     // results). scripts/build-workbook.js takes each test's latest result across them for the master workbook's
@@ -111,12 +109,12 @@ module.exports = defineConfig({
     // spec files already set this themselves via their own test.use(), but
     // ~30 files never did, silently falling back to Playwright's small
     // 1280x720 default -- which, in headed mode on a real monitor, visibly
-    // renders the app into only part of the screen (confirmed live: at
+    // renders the app into only part of the screen (at
     // 1280x720 the canvas genuinely only fills that smaller area; at
     // 1920x1080 it correctly fills the whole window). Setting it here
     // makes every file consistent regardless of whether it overrides it.
-    // Re-enabled (2026-09-14): only matters for legacy browser mode (the desktop-client fixture
-    // ignores this entirely). CONFIRMED LIVE: `viewport` alone only controls the PAGE's internal
+    // Re-enabled: only matters for legacy browser mode (the desktop-client fixture
+    // ignores this entirely).: `viewport` alone only controls the PAGE's internal
     // content area via CDP emulation -- it does NOT resize the actual OS browser window, which
     // still opened maximized to the real monitor's native resolution regardless. The real fix is
     // an explicit --window-size launch arg below, which controls the actual window; `viewport` is
@@ -150,7 +148,7 @@ module.exports = defineConfig({
     video: 'retain-on-failure',
   },
 
-  // REMOVED (2026-09-14): this used to be 3 projects -- chromium, plus firefox/webkit scoped to
+  // This used to be 3 projects -- chromium, plus firefox/webkit scoped to
   // just RESP-05 for a real cross-browser check. Since the switch to desktop client mode, EVERY
   // spec (including responsive.spec.js's RESP-05) imports from fixtures/electron-app.js, which
   // always launches the real Tata ClassEdge School.exe regardless of a project's `use.browserName`

@@ -1,6 +1,6 @@
 // Page Object for AI Notices (Magnet -> Notice).
 //
-// CONFIRMED LIVE (probe, 2026-09-26, v 0.0.232, Class 12A Physics):
+//
 // - Choosing Notice puts the whiteboard into capture mode with the banner "Capture the text area to add as your
 //   notice's description". Dragging draws a selection with two unlabeled raw-SVG controls: `g[cursor="pointer"]`
 //   matches exactly those two while a selection shows -- Approve first, Discard second.
@@ -14,7 +14,7 @@ class AiNoticesPage {
   constructor(page) {
     this.page = page;
 
-    // CONFIRMED LIVE (2026-09-26): after Recapture the instruction banner can be in the page twice; use the visible one.
+    // After Recapture the instruction banner can be in the page twice; use the visible one.
     this.captureBanner = page
       .getByText(/capture the text area/i)
       .filter({ visible: true })
@@ -74,11 +74,11 @@ class AiNoticesPage {
     );
   }
 
-  /** CONFIRMED LIVE (2026-09-26): with Virtual Keyboard on (the default), focusing the title opens the on-screen keyboard
+  /** With Virtual Keyboard on (the default), focusing the title opens the on-screen keyboard
    * over the composer's lower half -- its keys sit on top of Close (a click there lands on a key). Blur the input so the
    * keyboard goes away before pressing the composer's own buttons. */
   async hideKeyboard() {
-    // CONFIRMED LIVE (2026-09-26): blurring the input does NOT hide it (the keyboard even slides further up, over Close).
+    // Blurring the input does NOT hide it (the keyboard even slides further up, over Close).
     // The keyboard has its own close control (a div.close just above its top edge): wait for it to settle, then use it.
     const kbTop = () =>
       this.page.evaluate(() => {

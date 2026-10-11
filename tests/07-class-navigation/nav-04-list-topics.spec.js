@@ -4,7 +4,7 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('NAV-04 List Topics', () => {
-  // The list (NAV-04-01) and choosing a topic from it (NAV-04-03): one test each (split 2026-09-28).
+  // The list (NAV-04-01) and choosing a topic from it (NAV-04-03): one test each.
   const showFirstChapterTopics = async (user) => {
     await user.nav.resetToClass('Class 12', 'A', 'Physics');
     await user.nav.showTopicsOf(0);
@@ -44,7 +44,7 @@ test.describe('NAV-04 List Topics', () => {
     async ({ user }) => {
       test.setTimeout(6 * 60 * 1000); // up to 29 chapters, each needing the popup reopened
       // Class 9A Hindi is the widest list (29 chapters). Look for one with no topics.
-      // SCANNED 2026-09-20: no chapter with zero topics in Class 12A Physics / Computer Science, Class 5A Mathematics,
+      // SCANNED: no chapter with zero topics in Class 12A Physics / Computer Science, Class 5A Mathematics,
       // Class 11A Accountancy, Class 9A Hindi, Early Childhood Education (4 subjects) or Class 1A (8 subjects). The account
       // has 169 class/subject combinations; a scan of all of them takes about 3 hours and was not completed.
       await user.nav.resetToClass('Class 9', 'A', 'Hindi Language');
@@ -79,6 +79,23 @@ test.describe('NAV-04 List Topics', () => {
       await expect(
         user.nav.chapterTpPopup.getByText(/no (topic|result|data|content)|not available|nothing/i).first()
       ).toBeVisible();
+    }
+  );
+
+  test(
+    'NAV-04-04: topics are listed in number order (1.1, 1.2, 1.3 ...)',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      // The list shows topic names only; the number appears on the topic button once a topic is chosen. Choosing the
+      // first four topics in list order must give 1.1, 1.2, 1.3, 1.4.
+      await showFirstChapterTopics(user);
+      const shown = [];
+      for (let i = 0; i < 4; i++) {
+        await user.nav.goToChapterTopic(0, i);
+        const label = (await user.nav.currentChapterTopicBtn.innerText()).replace(/\s+/g, ' ');
+        shown.push((label.match(/(\d+\.\d+)/) || [])[1]);
+      }
+      expect(shown, 'topics in number order').toEqual(['1.1', '1.2', '1.3', '1.4']);
     }
   );
 });

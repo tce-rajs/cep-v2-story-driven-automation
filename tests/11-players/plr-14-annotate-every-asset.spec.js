@@ -10,10 +10,11 @@
 //
 // Where an annotation lands is not the same for every player (the Worksheet has its own annotation layer), so strokes
 // are counted on both the asset's annotation layer and the whiteboard under it.
-// Nothing is ever cleared -- not the asset's annotations, not the board (owner rule 2026-09-29): every check compares
+// Nothing is ever cleared -- not the asset's annotations, not the board: every check compares
 // before vs after and looks only at the strokes the test itself drew.
 
 const { test, expect } = require('../../fixtures');
+const { isImprovement } = require('../../config/storyMarkers');
 
 const icon = (name) =>
   `[data-qa-id="playlist-resource-card"]:has(img.type-icon[src*="${name}" i]), [data-qa-id="playlist-asset-card"]:has(img.type-icon[src*="${name}" i])`;
@@ -57,7 +58,7 @@ const open = async (user, k) => {
   await expect(card.first(), `a ${k.kind} card is in this topic`).toBeAttached({ timeout: 15000 });
   await user.player.openResourceCard(card);
   if (k.kind === 'code editor') {
-    // CONFIRMED LIVE (2026-09-27): Monaco is the heaviest player to mount -- a generic 5 s wait can catch it still
+    // Monaco is the heaviest player to mount -- a generic 5 s wait can catch it still
     // on its loading spinner (a plain black screen), so a stroke drawn then lands on nothing. Wait for it directly.
     await user.player.codeEditorComponent
       .filter({ visible: true })
@@ -71,7 +72,7 @@ const open = async (user, k) => {
 };
 
 /** Select the Rectangle shape without ToolbarPage.chooseShape()'s own dismiss-tap at a fixed page point (200, 400):
- * CONFIRMED LIVE (2026-09-27) that point sits on top of an open asset's own content (e.g. a worksheet page), and
+ * That point sits on top of an open asset's own content (e.g. a worksheet page), and
  * tapping it there can disarm the just-chosen tool before the draw happens, instead of merely closing the panel. */
 const chooseRectangleOverAsset = async (user) => {
   await user.toolbar.openToolPanel('gtShapes');
@@ -154,19 +155,20 @@ for (const k of KINDS) {
       }
     );
 
-    // Every tool on the asset, one test each (split 2026-09-28; the pen is xxa): shape (xxc), text box (xxf), eraser
+    // Every tool on the asset, one test each: shape (xxc), text box (xxf), eraser
     // (xxg), Undo (xxh), Redo (xxi).
-    test(`PLR-14-${k.id}c: a shape can be drawn on a ${k.kind}`, { tag: ['@functional'] }, async ({ user, page }) => {
-      const start = await page.locator(STROKES).count();
-      await chooseRectangleOverAsset(user);
-      const box = await playerBox(page);
-      await page.mouse.move(box.x + box.width / 2 - 60, box.y + Math.min(box.height / 2, 260) + 20);
-      await page.mouse.down();
-      await page.mouse.move(box.x + box.width / 2 + 60, box.y + Math.min(box.height / 2, 260) + 90, { steps: 10 });
-      await page.mouse.up();
-      await page.waitForTimeout(700);
-      await expect.poll(() => page.locator(STROKES).count(), { message: 'shape', timeout: 5000 }).toBe(start + 1);
-    });
+    if (!isImprovement(`PLR-14-${k.id}c`))
+      test(`PLR-14-${k.id}c: a shape can be drawn on a ${k.kind}`, { tag: ['@functional'] }, async ({ user, page }) => {
+        const start = await page.locator(STROKES).count();
+        await chooseRectangleOverAsset(user);
+        const box = await playerBox(page);
+        await page.mouse.move(box.x + box.width / 2 - 60, box.y + Math.min(box.height / 2, 260) + 20);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2 + 60, box.y + Math.min(box.height / 2, 260) + 90, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForTimeout(700);
+        await expect.poll(() => page.locator(STROKES).count(), { message: 'shape', timeout: 5000 }).toBe(start + 1);
+      });
 
     test(
       `PLR-14-${k.id}f: a text box can be added on a ${k.kind}`,
@@ -353,7 +355,7 @@ test.describe('PLR-14-M Two assets open at once', () => {
   test.describe.configure({ timeout: 180000 });
 
   // With a worksheet and an image open, each annotated, then the image closed: the worksheet keeps its annotation
-  // (PLR-14-M1), and the image's annotation goes with the image (PLR-14-M2) -- one test each (split 2026-09-28).
+  // (PLR-14-M1), and the image's annotation goes with the image (PLR-14-M2) -- one test each.
   /** Annotate a worksheet, open an image over it and annotate that, then close the image; returns both strokes. */
   const annotateBothCloseImage = async (user, page) => {
     const [image, sheet] = [KINDS[1], KINDS[0]];

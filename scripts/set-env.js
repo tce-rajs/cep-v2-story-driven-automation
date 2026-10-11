@@ -1,6 +1,5 @@
 // Switches this machine to a named environment profile -- URL AND credentials together, in one command,
-// instead of hand-editing .env's credential block every time you cross servers (confirmed live 2026-09-23/24:
-// doing this by hand is what caused a mismatched credentials-vs-server-name comment to sit in .env unnoticed).
+// instead of hand-editing .env's credential block every time you change servers.
 //
 // A "profile" is a real config/environments/<name>.env file (gitignored, holds real credentials -- see
 // config/environments/example.env for the template). This script copies it verbatim into .env and points
@@ -9,7 +8,7 @@
 // Usage:
 //   node scripts/set-env.js qa
 //   node scripts/set-env.js new-server
-//   node scripts/set-env.js --reset        (alias for the DEFAULT_PROFILE below)
+//   node scripts/set-env.js --reset (alias for the DEFAULT_PROFILE below)
 
 const fs = require('fs');
 const os = require('os');
@@ -19,7 +18,7 @@ const { setTceServerUrl } = require('./lib/tce-settings');
 const ENVIRONMENTS_DIR = path.join(__dirname, '..', 'config', 'environments');
 const ENV_PATH = path.join(__dirname, '..', '.env');
 // The environment "reset" returns to -- the project's only target server (see CLAUDE.md).
-const DEFAULT_PROFILE = 'new-server'; // 172.18.2.85 -- the QA server is disabled (owner, 2026-09-28)
+const DEFAULT_PROFILE = 'new-server';
 
 function fail(message) {
   console.error(`\nset-env: ${message}`);

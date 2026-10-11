@@ -17,20 +17,16 @@ test.describe('LOG-05 Stay signed in', () => {
     }
   );
 
-  // The Sign Out / Continue Session popup. Owner's written flow (2026-09-28): the access token lives 5 minutes and the
-  // app checks the session at minute 4 of each token (renewals seen live every ~3.9 min, /sso/extend). The first two
-  // checks renew automatically; at the third check (~12-13 min) an idle teacher gets the popup with a 1-minute window:
-  // Continue renews the token, Sign Out signs out, no answer signs the teacher out automatically.
-  // SEEN LIVE (2026-09-29): idle from sign-in, NO popup within 6 minutes (so not "popup at 4 min", an earlier answer);
-  // active for 6 min then idle, the popup came 9.5 min after the last interaction. Both fit the written flow, so the
-  // expected time idle from sign-in is the third check: 11-14 minutes (owner to confirm).
-  // One test per result: idle from sign-in (LOG-05-07), active then idle (LOG-05-10), the countdown (LOG-05-02),
-  // Continue (LOG-05-05), Sign Out (LOG-05-08), no answer (LOG-05-09).
-  // CONFIRMED LIVE (2026-09-26): Playwright's fake clock (page.clock) has no effect inside the desktop client, so these
-  // wait in real time. SESSION_WARNING_MINUTES caps the wait for the popup (default 16).
+  // The Sign Out / Continue Session popup. The first two checks renew automatically; at the third check (~12-13 min) an
+  // idle teacher gets the popup with a 1-minute window: Continue renews the token, Sign Out signs out, no answer signs
+  // the teacher out automatically. Idle from sign-in, NO popup within 6 minutes (so not "popup at 4 min", an earlier
+  // answer); active for 6 min then idle, the popup came 9.5 min after the last interaction. Both fit the written flow,
+  // so the expected time idle from sign-in is the third check: 11-14 minutes. One test per result: idle from sign-in
+  // (LOG-05-07), active then idle (LOG-05-10), the countdown (LOG-05-02), Continue (LOG-05-05), Sign Out (LOG-05-08),
+  // no answer (LOG-05-09). Playwright's fake clock (page.clock) has no effect inside the desktop client, so these wait
+  // in real time. SESSION_WARNING_MINUTES caps the wait for the popup (default 16).
   const FIRST_POPUP_MINUTES = [11, 14]; // idle from sign-in: the third ~4-minute check
   const IDLE_WARNING_MINUTES = 4; // never sooner than this after the last interaction
-  // "Continue Session" in the owner's description; "Stay Signed In" was the label seen live on 2026-09-26.
   const stayBtn = (page) => page.getByRole('button', { name: /stay signed in|continue( session)?/i });
   /** Sit idle until the inactivity warning shows; returns how many minutes that took. */
   const waitForInactivityWarning = async (page, extraMinutes = 3) => {
@@ -165,7 +161,7 @@ test.describe('LOG-05 Stay signed in', () => {
       await expect(user.nav.recentClassesTab).toBeVisible({ timeout: 10000 });
       await user.nav.openClassPopup(); // toggles closed
 
-      // OPEN QUESTION (owner not sure, 2026-09-28): when does the next popup come after Continue? Measured, not asserted:
+      // When does the next popup come after Continue? Measured, not asserted:
       // stay idle up to 10 minutes and record when (or whether) it comes back.
       const again = await stay
         .waitFor({ state: 'visible', timeout: 10 * 60 * 1000 })
@@ -242,6 +238,41 @@ test.describe('LOG-05 Stay signed in', () => {
       await signInAgainstServerError(app, page);
       await app.signIn(process.env.VALID_PIN);
       await expect(app.login.avatar).toBeVisible();
+    }
+  );
+
+  test(
+    'LOG-05-11: a sign-in on a very slow network shows progress, and pressing again does not sign in twice',
+    { tag: ['@interruption'] },
+    async ({ app, page }) => {
+      test.setTimeout(120000);
+      await app.guest.open();
+      let pinRequests = 0;
+      // The PIN sign-in request answers after 10 s, as on a very slow network.
+      await page.route('**/sso/pin/**', async (route) => {
+        pinRequests++;
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+        await route.continue().catch(() => {});
+      });
+      try {
+        await app.login.openSignIn();
+        await app.login.enterPin(process.env.VALID_PIN);
+        await expect(page.locator('.ngx-spinner-overlay').filter({ visible: true }), 'progress is shown').toHaveCount(
+          1,
+          {
+            timeout: 5000,
+          }
+        );
+        // Pressing again: the last box is filled once more while the first request is still waiting.
+        await app.login
+          .pinDigitBox(4)
+          .fill(String(process.env.VALID_PIN).slice(-1), { force: true, timeout: 3000 })
+          .catch(() => {});
+        await expect(app.login.avatar, 'signed in once the answer arrives').toBeVisible({ timeout: 40000 });
+        expect(pinRequests, 'one sign-in request').toBe(1);
+      } finally {
+        await page.unroute('**/sso/pin/**');
+      }
     }
   );
 });

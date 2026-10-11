@@ -1,5 +1,5 @@
 // CLIENT-05 -- Volume control
-// CONFIRMED LIVE (2026-09-23): admin menu -> Volume opens a small slider widget (mute/loud icons either end,
+// Admin menu -> Volume opens a small slider widget (mute/loud icons either end,
 // a close button) as an overlay on the shell -- no navigation, no effect on the teach webview.
 
 const {

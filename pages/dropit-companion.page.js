@@ -1,7 +1,7 @@
 // Page Object for the DropIt "phone" companion page (https://tce-drop-it.web.app/cepweb-dropit/<token>) -- the
 // page a real phone's camera app opens after scanning the classroom's DropIt QR code.
 //
-// CONFIRMED LIVE (2026-09-23/24): this is a Flutter Web app, rendered to a <canvas> -- document.body has no real
+// This is a Flutter Web app, rendered to a <canvas> -- document.body has no real
 // DOM for its visible UI (only a hidden flt-semantics-placeholder), so its buttons are addressed by fixed pixel
 // coordinates within a FIXED phone-sized viewport (420x800), not locators. Reading status text back from this
 // page is therefore NOT reliable (document.body.innerText is empty despite real visible text) -- every test
@@ -12,12 +12,12 @@
 // One thing IS backed by a real, positioned element: text input. Typing via page.keyboard.type() after clicking
 // the visible field works normally.
 //
-// Accepted upload file types, confirmed live via the app's own validation message: png, jpg, jpeg, gif, bmp,
+// Accepted upload file types, as listed by the app's own validation message: png, jpg, jpeg, gif, bmp,
 // pdf, doc, docx -- NOT arbitrary files (a .txt was rejected outright, no upload attempted).
 
 const VIEWPORT = { width: 420, height: 800 };
 
-// Coordinates confirmed live at the VIEWPORT size above. The landing screen shows "Upload File" and "Share
+// Coordinates at the VIEWPORT size above. The landing screen shows "Upload File" and "Share
 // Link" side by side; clicking "Share Link" replaces them with a text field and Cancel/Share buttons.
 const COORDS = {
   uploadFileBtn: { x: 133, y: 629 },
@@ -43,7 +43,7 @@ class DropitCompanionPage {
     await this.page.waitForTimeout(3000);
   }
 
-  /** Shares a URL: opens the Share Link form, types the URL, confirms. CONFIRMED LIVE: after clicking Share the
+  /** Shares a URL: opens the Share Link form, types the URL, confirms. After clicking Share the
    * page shows "Resource Creation Status: Creating Resource" for a few seconds before the classroom side's
    * Playlist actually gains the new card -- a short fixed wait here is deliberate, not arbitrary padding,
    * because that status text is unreadable from this page (see the file header) so there is nothing to poll. */
@@ -58,11 +58,11 @@ class DropitCompanionPage {
     await this.page.waitForTimeout(5000);
   }
 
-  /** Uploads a file: clicks "Upload File", which triggers a real native file-chooser (CONFIRMED LIVE: Flutter's
+  /** Uploads a file: clicks "Upload File", which triggers a real native file-chooser ( Flutter's
    * upload button is backed by a genuine <input type="file">, so Playwright's filechooser event fires
    * normally). `file` is a local path. */
   async uploadFile(filePath) {
-    // CONFIRMED LIVE (2026-09-27, 50-file run): the first tap on "Upload File" often does not open the file chooser
+    // The first tap on "Upload File" often does not open the file chooser
     // while the Flutter page is still settling -- 29 of 32 attempts timed out. Retry the tap a few times.
     let chooser;
     for (let attempt = 0; attempt < 5 && !chooser; attempt++) {

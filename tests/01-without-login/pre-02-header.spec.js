@@ -13,7 +13,7 @@ const expectTopLeft = async (app, el) => {
   expect(box.y, 'top of screen').toBeLessThan(height * 0.2);
 };
 
-/** The calendar is in the top-right corner; returns its text with whitespace collapsed, e.g. "08 : 10 PM Sat, Sep 19". */
+/** The calendar is in the top-right corner; returns its text with whitespace collapsed, e.g. "08: 10 PM Sat, Sep 19". */
 const calendarText = async (app) => {
   await expect(app.calendar).toBeVisible();
   const { width, height } = await app.viewportSize();
@@ -82,6 +82,41 @@ test.describe('PRE-02 Header displays correctly', () => {
       expect(date, `date in "${shown}"`).not.toBeNull();
       // The header pads the day ("Oct 01"), the clock's format does not ("Oct 1"): compare the day as a number.
       expect(`${date[1]}, ${date[2]} ${Number(date[3])}`, 'the current date').toBe((await appNow(page)).date);
+    }
+  );
+
+  test(
+    'PRE-02-05: the time shown moves on to the next minute while the app stays open',
+    { tag: ['@functional'] },
+    async ({ page }) => {
+      test.setTimeout(150000);
+      const app = new WithoutLoginPage(page);
+      const minuteOf = async () =>
+        (await calendarText(app))
+          .match(/(\d{1,2})\s*:\s*(\d{2})/)
+          .slice(1)
+          .join(':');
+      const first = await minuteOf();
+      await expect
+        .poll(minuteOf, { message: 'the clock moves on within a minute', timeout: 70000, intervals: [5000] })
+        .not.toBe(first);
+    }
+  );
+
+  test(
+    'PRE-02-06: the header never shows a blank, "undefined" or placeholder value for the version, date or time',
+    { tag: ['@negative'] },
+    async ({ page }) => {
+      const app = new WithoutLoginPage(page);
+      const junk = /undefined|null|NaN|invalid date|\{\{|\}\}|--:--/i;
+      const version = (await app.versionText.innerText()).trim();
+      expect(version, 'the version is not blank').not.toBe('');
+      expect(version, 'the version is a real number').toMatch(/^v\s*\d+\.\d+\.\d+/);
+      expect(version, 'no placeholder in the version').not.toMatch(junk);
+      const shown = await calendarText(app);
+      expect(shown, 'no placeholder in the date or time').not.toMatch(junk);
+      expect(shown, 'a time is shown').toMatch(/\d{1,2}\s*:\s*\d{2}\s*(AM|PM)/i);
+      expect(shown, 'a date is shown').toMatch(/[A-Za-z]{3},\s*[A-Za-z]{3}\s+\d{1,2}/);
     }
   );
 });

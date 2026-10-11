@@ -11,28 +11,31 @@ only where there's a specific known bug or failure mode to call out. Process in
 line under it (`<ID>-<NN>`) is a **test case** belonging to that story — the heading
 level and the ID pattern are what tell them apart, not just position on the page.
 
-| #   | Module                                                                                    | File                                             |
-| --- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| 01  | Without Login                                                                             | [01_WithoutLogin.md](01_WithoutLogin.md)         |
-| 02  | New User Flow                                                                             | [02_NewUserFlow.md](02_NewUserFlow.md)           |
-| 03  | Login                                                                                     | [03_Login.md](03_Login.md)                       |
-| 04  | Header                                                                                    | [04_Header.md](04_Header.md)                     |
-| 05  | Toolbar                                                                                   | [05_Toolbar.md](05_Toolbar.md)                   |
-| 06  | Whiteboard                                                                                | [06_Whiteboard.md](06_Whiteboard.md)             |
-| 07  | Class Navigation (Grade/Class, Chapter/Topic selection + last-accessed-topic restoration) | [07_ClassNavigation.md](07_ClassNavigation.md)   |
-| 08  | Playlist                                                                                  | [08_Playlist.md](08_Playlist.md)                 |
-| 09  | Resources (Add Resource)                                                                  | [09_Resources.md](09_Resources.md)               |
-| 10  | Sidebar (Plan Mode — excluded from automation)                                            | [10_Sidebar_PlanMode.md](10_Sidebar_PlanMode.md) |
-| 11  | Players                                                                                   | [11_Players.md](11_Players.md)                   |
-| 12  | Minimap                                                                                   | [12_Minimap.md](12_Minimap.md)                   |
-| 13  | AI Notices                                                                                | [13_AINotices.md](13_AINotices.md)               |
-| 14  | Learning Shorts                                                                           | [14_LearningShorts.md](14_LearningShorts.md)     |
-| 15  | AI Homework                                                                               | [15_AIHomework.md](15_AIHomework.md)             |
-| 16  | Attendance                                                                                | [16_Attendance.md](16_Attendance.md)             |
-| 17  | Profile (Account settings, Change Password, Change PIN)                                   | [17_Profile.md](17_Profile.md)                   |
-| 18  | Resilience (session end, network/server failure, two devices, heavy boards, crashes)      | [18_Resilience.md](18_Resilience.md)             |
-| 19  | Desktop Client (install, window, closing, updates, devices)                               | [19_DesktopClient.md](19_DesktopClient.md)       |
-| 20  | Cross-cutting (Hindi/Marathi, dates, teacher roles, readability, messages)                | [20_CrossCutting.md](20_CrossCutting.md)         |
+| #   | Module                                                                                    | File                                           |
+| --- | ----------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 00  | End-to-End Flows (every feature start to finish, any order; Crystal hand-offs marked)     | [00_EndToEndFlows.md](00_EndToEndFlows.md)     |
+| 01  | Without Login                                                                             | [01_WithoutLogin.md](01_WithoutLogin.md)       |
+| 02  | New User Flow                                                                             | [02_NewUserFlow.md](02_NewUserFlow.md)         |
+| 03  | Login                                                                                     | [03_Login.md](03_Login.md)                     |
+| 04  | Header                                                                                    | [04_Header.md](04_Header.md)                   |
+| 05  | Toolbar                                                                                   | [05_Toolbar.md](05_Toolbar.md)                 |
+| 06  | Whiteboard                                                                                | [06_Whiteboard.md](06_Whiteboard.md)           |
+| 07  | Class Navigation (Grade/Class, Chapter/Topic selection + last-accessed-topic restoration) | [07_ClassNavigation.md](07_ClassNavigation.md) |
+| 08  | Playlist                                                                                  | [08_Playlist.md](08_Playlist.md)               |
+| 09  | Resources (Add Resource)                                                                  | [09_Resources.md](09_Resources.md)             |
+| 10  | Plan Mode (Question Bank, quizzes, Revision Tests, Check Point; automated in the browser) | [10_PlanMode.md](10_PlanMode.md)               |
+| 11  | Players                                                                                   | [11_Players.md](11_Players.md)                 |
+| 12  | Minimap                                                                                   | [12_Minimap.md](12_Minimap.md)                 |
+| 13  | AI Notices                                                                                | [13_AINotices.md](13_AINotices.md)             |
+| 14  | Learning Shorts                                                                           | [14_LearningShorts.md](14_LearningShorts.md)   |
+| 15  | AI Homework                                                                               | [15_AIHomework.md](15_AIHomework.md)           |
+| 16  | Attendance                                                                                | [16_Attendance.md](16_Attendance.md)           |
+| 17  | Profile (Account settings, Change Password, Change PIN)                                   | [17_Profile.md](17_Profile.md)                 |
+| 18  | Resilience (session end, network/server failure, two devices, heavy boards, crashes)      | [18_Resilience.md](18_Resilience.md)           |
+| 19  | Desktop Client (install, window, closing, updates, devices)                               | [19_DesktopClient.md](19_DesktopClient.md)     |
+| 20  | Cross-cutting (Hindi/Marathi, dates, teacher roles, readability, messages)                | [20_CrossCutting.md](20_CrossCutting.md)       |
+| 21  | Checkpoints and Student Tests (teacher launch, student test site, principal report)       | [21_Checkpoints.md](21_Checkpoints.md)         |
+| 22  | Admin panel (sign-in, school settings, teachers, class structure, sync, usage reports)    | [22_Admin.md](22_Admin.md)                     |
 
 **The master file is [CEPV2_TestCases.xlsx](CEPV2_TestCases.xlsx)** (one file for everything): a Summary sheet per
 module, and one row per test case with its story, user story, acceptance criteria, test type, automation status and

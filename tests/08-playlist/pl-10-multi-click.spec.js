@@ -56,7 +56,7 @@ test.describe('PL-10 Multiple clicks on the Playlist', () => {
 
   // Fast clicks on the strip's scroll arrows: the right arrow reaches the last card without the strip going blank
   // (PL-10-02), the left arrow comes back to the first card (PL-10-05), and no card is lost or duplicated (PL-10-06) --
-  // one test each (split 2026-09-28).
+  // one test each.
   // This topic has many cards: keep clicking fast until the strip stops moving (converged), as an impatient teacher
   // would, up to 100 clicks. Checked every 5 clicks, not every click, so 100 clicks fits the timeout.
   const clickUntilConverged = async (btn, tracked) => {
@@ -118,7 +118,7 @@ test.describe('PL-10 Multiple clicks on the Playlist', () => {
   );
 
   // Double-clicking a topic in Contents: the label shows the chosen topic (PL-10-03), and the Contents window closes and
-  // is not reopened by the second click (PL-10-07) -- one test each (split 2026-09-28).
+  // is not reopened by the second click (PL-10-07) -- one test each.
   /** Double-click the second topic of the current chapter in Contents; returns the topic's text. */
   const doubleClickSecondTopic = async (user, page) => {
     const nav = user.nav;
@@ -168,7 +168,7 @@ test.describe('PL-10 Multiple clicks on the Playlist', () => {
   );
 
   // Toggling Edit mode on and off five times fast: not stuck in Edit mode (PL-10-04), no card lost or duplicated
-  // (PL-10-08), and cards still open normally (PL-10-09) -- one test each (split 2026-09-28).
+  // (PL-10-08), and cards still open normally (PL-10-09) -- one test each.
   const toggleEditFiveTimes = async (user, page) => {
     const pl = user.playlist;
     for (let i = 0; i < 5; i++) {
@@ -207,4 +207,23 @@ test.describe('PL-10 Multiple clicks on the Playlist', () => {
       await user.player.closePlayer();
     }
   );
+
+  test('PL-10-10: a double click on a card opens only one player', { tag: ['@negative'] }, async ({ user, page }) => {
+    const pl = user.playlist;
+    await pl.ensureDrawerVisible();
+    const card = user.player.worksheetCards.or(pl.resourceCards).first();
+    await card.scrollIntoViewIfNeeded();
+    await card.dblclick({ delay: 40 });
+    try {
+      expect(await user.player.isPlayerOpen(20000), 'set-up: the player opened').toBe(true);
+      await page.waitForTimeout(3000);
+      await expect(
+        page.locator('.player-container .player').filter({ visible: true }),
+        'exactly one player'
+      ).toHaveCount(1);
+      await expect(user.player.closeIcon, 'with one close icon').toHaveCount(1);
+    } finally {
+      for (let i = 0; i < 3; i++) await user.player.closePlayer().catch(() => {});
+    }
+  });
 });

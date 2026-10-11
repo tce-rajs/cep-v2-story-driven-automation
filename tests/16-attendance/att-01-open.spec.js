@@ -21,7 +21,7 @@ test.describe('ATT-01 Open the attendance register', () => {
         .replace(/\s+/g, ' ')
         .replace(/attendance/i, '')
         .trim();
-      // CONFIRMED LIVE (2026-09-26): once submitted the badge is empty; before that it reads "Pending" (checked below).
+      // Once submitted the badge is empty; before that it reads "Pending".
       await user.page.keyboard.press('Escape');
 
       // The badge must agree with the register: "Pending" exactly when today's attendance hasn't been submitted.
@@ -66,15 +66,31 @@ test.describe('ATT-01 Open the attendance register', () => {
 
   test(
     'ATT-01-04: switching class while Attendance is still loading leaves no register over the new class (regression)',
-    { tag: ['@bug', '@regression'] },
+    { tag: ['@regression'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's ATT-BREAK-02): switching class while
-      // Attendance is opening leaves the register on screen over the new class.
-      test.fail(true, 'The Attendance register stays on screen over the new class after a class switch');
       await user.magnet.choose('attendance');
       await user.nav.applyClassMap('navigationGeneral');
       await expect(user.whiteboard.currentClassBtn).toContainText('Class 5');
       await expect(user.attendance.container, 'no register left behind').toBeHidden({ timeout: 10000 });
+    }
+  );
+});
+
+// A teacher who is not the class teacher ('attendanceReadOnly': the second account on 9A Science).
+test.describe('ATT-01 Open the attendance register: not the class teacher', () => {
+  test.use({ classMap: 'attendanceReadOnly' });
+
+  test(
+    'ATT-01-05: Attendance is not offered in Magnet for a class where the teacher is not the class teacher',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      await user.magnet.open();
+      try {
+        await expect(user.magnet.noticeItem, 'set-up: the Magnet menu is open').toBeVisible({ timeout: 8000 });
+        await expect(user.magnet.attendanceItem, 'no Attendance entry').toBeHidden();
+      } finally {
+        await user.toolbar.closePanelByTappingOutside();
+      }
     }
   );
 });

@@ -70,4 +70,55 @@ test.describe('NAV-03 List Chapters', () => {
       });
     }
   });
+
+  /** The leading chapter/topic number of each label ("3. Current Electricity" -> [3], "1.2 | Coulomb" -> [1, 2]). */
+  const numbersOf = (labels) => labels.map((t) => (t.match(/(\d+)/) || []).slice(1).map(Number)); // "Chapter 3. Current Electricity" -> [3]
+  const inOrder = (nums) =>
+    nums.every(
+      (n, i) => i === 0 || n[0] > nums[i - 1][0] || (n[0] === nums[i - 1][0] && (n[1] || 0) > (nums[i - 1][1] || 0))
+    );
+
+  test('NAV-03-04: chapters are listed in number order', { tag: ['@functional'] }, async ({ user }) => {
+    await user.nav.resetToClass('Class 12', 'A', 'Physics');
+    await user.nav.openChaptersPopup();
+    await expect(user.nav.chapterItems.first()).toBeVisible();
+    const labels = await user.nav.chapterItems.allInnerTexts();
+    await user.nav.openChaptersPopup(); // close
+    const nums = numbersOf(labels);
+    test
+      .info()
+      .annotations.push({ type: 'note', description: `Chapter order: ${nums.map((n) => n.join('.')).join(', ')}` });
+    expect(
+      nums.every((n) => n.length > 0),
+      'every chapter is numbered'
+    ).toBe(true);
+    expect(inOrder(nums), `chapters in number order (${nums.map((n) => n.join('.')).join(', ')})`).toBe(true);
+  });
+
+  test('NAV-03-05: no chapter is listed twice or with an empty name', { tag: ['@negative'] }, async ({ user }) => {
+    const problems = [];
+    for (const [grade, division, subject] of [
+      ['Class 12', 'A', 'Physics'],
+      ['Class 9', 'A', 'Hindi Language'],
+      ['Class 11', 'A', 'Accountancy'],
+      ['Class 5', 'A', 'Mathematics'],
+    ]) {
+      await user.nav.resetToClass(grade, division, subject);
+      await user.nav.openChaptersPopup();
+      await expect(user.nav.chapterItems.first(), `${grade}${division} ${subject}: chapters listed`).toBeVisible();
+      const names = (await user.nav.chapterItems.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+      await user.nav.openChaptersPopup(); // close
+      // The name itself, without its number ("3. Light" -> "Light").
+      const bare = names.map((n) => n.replace(/^\d+\s*[.)-]?\s*/, '').trim());
+      bare.forEach((n, i) => {
+        if (!n) problems.push(`${grade}${division} ${subject}: chapter ${i + 1} has no name ("${names[i]}")`);
+      });
+      const seen = new Set();
+      for (const n of names) {
+        if (seen.has(n)) problems.push(`${grade}${division} ${subject}: "${n}" listed twice`);
+        seen.add(n);
+      }
+    }
+    expect(problems, 'every chapter is listed once, with a name').toEqual([]);
+  });
 });

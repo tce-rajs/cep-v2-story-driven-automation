@@ -1,16 +1,12 @@
 // Page Object for AI Homework (Magnet -> Homework).
 //
-// CONFIRMED LIVE (probe, 2026-09-26, v 0.0.232):
+//
 // - Builder: ai-homework-option-select-chapter-btn, ai-homework-option-homework-select (Objective counter
 //   -minus / -input (default 15) / -plus), ai-homework-option-revise-select (Objective 10, Subjective 5 counters),
 //   ai-homework-option-generate-btn (disabled until a chapter is set), ai-homework-option-discard-btn,
 //   ai-homework-option-next-btn (disabled until questions exist).
 // - Chapter picker: ai-homework-topics-grade-select / -subject-select (ng-select), ai-homework-topics-chapter-{i},
-//   ai-homework-topics-update-btn, ai-homework-topics-close-btn.
-// From the reference suite (confirmed live there): generated questions are ai-homework-builder-{scq|mcq|subjective}-
-// question-{i} with -swipe-left-{i} / -swipe-right-{i}, ai-homework-option-regenerate-btn; the assign step is
-// ai-homework-assign-title-input, -class-option-{i} / -class-checkbox-{i}, -due-option-{i} / -due-radio-{i},
-// -previous-btn, -discard-btn, -send-btn. Generation is a real AI call taking 20-30 s.
+// ai-homework-topics-update-btn, ai-homework-topics-close-btn. Generation is a real AI call taking 20-30 s.
 
 const { AiNoticesPage } = require('./ai-notices.page');
 
@@ -101,7 +97,7 @@ class AiHomeworkPage {
     );
   }
 
-  /** CONFIRMED LIVE (2026-09-26): questions first appear with raw LaTeX ("$i^{35}$") and are typeset about 2 s later.
+  /** Questions first appear with raw LaTeX ("$i^{35}$") and are typeset about 2 s later.
    * Wait for that before reading question text. */
   async waitForMathRendered(timeout = 15000) {
     await this.page
@@ -122,7 +118,11 @@ class AiHomeworkPage {
       .getByText(/Class\s*\d+\s*\|\s*[^|]+\|/)
       .first()
       .innerText();
-    return (text.split('|').pop() || '').replace(/Chapter\s*\d+\.?/i, '').trim();
+    // "Chapter 2: The Building Block of Life" or "2. The Building Block of Life" -> the chapter name only.
+    return (text.split('|').pop() || '')
+      .replace(/^\s*(Chapter\s*)?\d+\s*[.:]?/i, '')
+      .replace(/Select Chapter\s*$/i, '')
+      .trim();
   }
 
   /** Builder -> Next -> assignment form. */
@@ -156,7 +156,7 @@ class AiHomeworkPage {
     return this.assignClassCheckboxes.evaluateAll((els) => els.filter((e) => e.checked).length);
   }
 
-  /** Typing in the title opens the on-screen keyboard over Previous / Ready to Send (seen on video 2026-09-26); close
+  /** Typing in the title opens the on-screen keyboard over Previous / Ready to Send; close
    * it first -- same control as in the notice composer. */
   async hideKeyboard() {
     await AiNoticesPage.prototype.hideKeyboard.call(this);

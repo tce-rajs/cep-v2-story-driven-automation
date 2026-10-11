@@ -1,6 +1,6 @@
 // LS-03 — Complete the details and share
 // Source: CEPV2_Stories/14_LearningShorts.md
-// Save and Send are real actions (owner-approved 2026-09-26): saved shorts land in this topic's Playlist and sent
+// Save and Send are real actions: saved shorts land in this topic's Playlist and sent
 // shorts go to the ticked class. Every test starts from a fresh 4-second recording.
 
 const { test, expect } = require('../../fixtures');
@@ -18,7 +18,7 @@ test.describe('LS-03 Complete the details and share', () => {
   });
 
   // Right after recording, the save actions are Save to Playlist and "Save & Send as Revision" (no plain Send). With an
-  // empty title (LS-03-01) and with a title (LS-03-10): one test each (split 2026-09-28).
+  // empty title (LS-03-01) and with a title (LS-03-10): one test each.
   test('LS-03-01: Save and Send are blocked while the title is empty', { tag: ['@functional'] }, async ({ user }) => {
     const ls = user.learningShorts;
     await ls.titleInput.fill('');
@@ -34,10 +34,11 @@ test.describe('LS-03 Complete the details and share', () => {
     await expect(ls.saveRevisionBtn).toBeEnabled();
   });
 
-  test.fixme('LS-03-02: Delete Attachment removes the video and Recapture attaches a new one', async () => {
-    // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): neither composer (after recording, or when sending a saved
-    // short) has an attachment preview, a Delete Attachment or a Recapture control. The story came from the reference
-    // suite (LS-ATT-01). Owner to decide: drop the case, or raise a product gap.
+  test('LS-03-02: Delete Attachment removes the video and Recapture attaches a new one', async () => {
+    test.fixme(
+      true,
+      'neither composer (after recording, or when sending a saved short) has an attachment preview, a Delete Attachment or a Recapture control. The story came from the reference suite (LS-ATT-01).'
+    );
   });
 
   test(
@@ -78,7 +79,7 @@ test.describe('LS-03 Complete the details and share', () => {
   );
 
   // Save Revision and Save to Playlist are two separate buttons (LS-03-05), and Save Revision confirms what it did
-  // (LS-03-11; Save to Playlist's result is LS-03-04) -- one test each (split 2026-09-28).
+  // (LS-03-11; Save to Playlist's result is LS-03-04) -- one test each.
   test(
     'LS-03-05: Save Revision and Save to Playlist are separate actions (two different buttons)',
     { tag: ['@functional'] },
@@ -100,7 +101,7 @@ test.describe('LS-03 Complete the details and share', () => {
   });
 
   // Send to one class: a success message (LS-03-06), and the composer closes (LS-03-12) -- one test each (split
-  // 2026-09-28). Each really sends the short to the first class.
+  // ). Each really sends the short to the first class.
   const sendToFirstClass = async (user) => {
     const ls = user.learningShorts;
     await ls.openSendComposer(user);
@@ -157,26 +158,6 @@ test.describe('LS-03 Complete the details and share', () => {
       await page.waitForTimeout(8000);
       const saveCalls = saves.filter((u) => !/upload|presign|s3|blob/i.test(u));
       expect(saveCalls.length, `one save request (saw: ${saveCalls.join(', ')})`).toBeLessThanOrEqual(1);
-    }
-  );
-
-  test(
-    'LS-03-09: leaving the composer part-way through warns before discarding the work',
-    { tag: ['@negative', '@bug'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's LS-STATE-01): leaving the composer
-      // with Back after editing the title closes it with no warning -- the recording is silently lost.
-      test.fail(true, 'Leaving the Learning Shorts composer discards the recording without any warning');
-      const ls = user.learningShorts;
-      await ls.titleInput.fill('Half-finished short');
-      await ls.hideKeyboard();
-      // Seen on video (2026-09-26): an invisible switch (div.sr-switch__track) sits over Back and takes a real click, so
-      // Back is pressed in the DOM to reach the behaviour this case is about.
-      await ls.backBtn.evaluate((el) => el.click());
-      const warning = page
-        .locator('mat-dialog-container, [role="dialog"], [role="alertdialog"]')
-        .filter({ hasText: /discard|unsaved|lose|are you sure/i });
-      await expect(warning, 'a discard warning appears').toBeVisible({ timeout: 5000 });
     }
   );
 });

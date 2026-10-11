@@ -1,6 +1,6 @@
 // Page Object for the whiteboard Minimap (Zoom tool -> Minimap button).
 //
-// CONFIRMED LIVE (probe, 2026-09-26, v 0.0.223):
+//
 // - `minimap-container` is always in the DOM; open/closed is its `visible` class.
 // - Inside it: a 250x150 <canvas data-qa-id="minimap-canvas">, a `.zoom-level` label ("100%"), Reset View
 //   (`minimap-reset-btn`) and Close (`minimap-close-btn`). The Players toggle (`minimap-toggle-players-btn`) is only
@@ -61,7 +61,7 @@ class MinimapPage {
   /** Summarise the canvas pixels: the viewport rectangle (bluish outline pixels) and how many other non-background
    * pixels (content markers) are painted. Background = the most common colour on the canvas. */
   async readCanvas() {
-    // CONFIRMED LIVE (2026-09-26): the rectangle is a light-blue outline with a translucent blue fill; content (a pen
+    // The rectangle is a light-blue outline with a translucent blue fill; content (a pen
     // stroke) is drawn in its own colour. "content" counts pixels that are neither the background, nor the rectangle's
     // outline, nor its fill (both measured from the canvas itself), within a small colour tolerance.
     return this.canvas.evaluate((c) => {
@@ -108,7 +108,7 @@ class MinimapPage {
     });
   }
 
-  /** True while the panel is shown. CONFIRMED LIVE: closing drops the `visible` class and fades it to opacity 0 (the
+  /** True while the panel is shown. Closing drops the `visible` class and fades it to opacity 0 (the
    * element and its canvas stay in the page, scaled down), so element visibility alone cannot tell. */
   async isShown() {
     return this.container

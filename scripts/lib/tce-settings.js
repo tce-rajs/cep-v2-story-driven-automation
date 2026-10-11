@@ -9,7 +9,7 @@ const os = require('os');
 const TCE_SETTINGS_PATH = process.env.TCE_SETTINGS_PATH || 'C:\\Users\\Public\\tce_settings.json';
 
 /** Sets the client's connected server to `url`, collapsing to exactly one saved profile in the process.
- * CONFIRMED LIVE (client-automation/tests/04-multi-profile.spec.js): with 2+ saved profiles, the client shows a
+ * With 2+ saved profiles, the client shows a
  * "SELECT PROFILE" picker on launch instead of connecting directly, which the main test suite's launch fixture
  * has no code path for -- every test hangs until timeout. Throws on failure rather than returning a status, so
  * callers fail loudly instead of silently continuing with an unconfigured client. */

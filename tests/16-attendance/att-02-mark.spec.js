@@ -17,7 +17,7 @@ test.describe('ATT-02 Mark students present or absent', () => {
   });
 
   // Tapping a present student marks them absent (ATT-02-01); tapping again marks them present (ATT-02-06) -- one test
-  // each (split 2026-09-28).
+  // each.
   test(
     'ATT-02-01: tapping a present student marks them absent',
     { tag: ['@smoke', '@functional'] },
@@ -49,11 +49,8 @@ test.describe('ATT-02 Mark students present or absent', () => {
 
   test(
     'ATT-02-03: dragging a finger across the roll numbers marks every student dragged over as present',
-    { tag: ['@functional', '@bug'] },
+    { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232): the register says "Drag all the roll numbers to mark all
-      // as present", but a drag marks nobody -- with the mouse (2026-09-26) and with a real finger (touch input, 2026-09-27).
-      test.fail(true, 'Dragging across the roll numbers (mouse or finger) marks nobody present');
       const { TouchInput } = require('../../pages/touch-input');
       const touch = new TouchInput(user.page);
       const att = user.attendance;
@@ -91,7 +88,7 @@ test.describe('ATT-02 Mark students present or absent', () => {
   );
 
   // Marking every student absent: the register accepts it (ATT-02-05), and the summary shows it (ATT-02-07) -- one test
-  // each (split 2026-09-28).
+  // each.
   /** Mark everyone present, then tap each student once; returns how many students there are. */
   const markEveryoneAbsent = async (att) => {
     await att.markAllPresent();
@@ -120,6 +117,22 @@ test.describe('ATT-02 Mark students present or absent', () => {
       const s = await att.summary();
       expect(s.boys.p + s.girls.p, 'nobody present').toBe(0);
       expect(s.boys.ab + s.girls.ab, 'everyone absent').toBe(total);
+    }
+  );
+
+  test(
+    'ATT-02-08: tapping the same student twice brings them back to their first state',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const att = user.attendance;
+      await att.markAllPresent();
+      await expect.poll(() => att.cellState(1), { message: 'set-up: present' }).toBe('present');
+      const others = async () => (await att.gridCounts()).present;
+      const presentBefore = await others();
+      await att.tap(1);
+      await att.tap(1);
+      await expect.poll(() => att.cellState(1), { message: 'back to present' }).toBe('present');
+      expect(await others(), 'nobody else changed').toBe(presentBefore);
     }
   );
 });

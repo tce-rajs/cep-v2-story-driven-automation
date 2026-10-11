@@ -1,6 +1,6 @@
 // PL-04 — Playlist Menu (Edit / Reset / Filter)
 // Source: CEPV2_Stories/08_Playlist.md
-// Flows confirmed live in the previous suite: Options > Edit enters editing mode (a "Finish editing" button appears,
+// Options > Edit enters editing mode (a "Finish editing" button appears,
 // per-card remove asks for confirmation); Options > Reset asks "Are you sure you want to reset your playlist?";
 // Options lists one checkable entry per resource type (aria-selected), all checked by default.
 
@@ -85,7 +85,7 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
       await playlist.openOptionsMenu();
       const total = await playlist.filterOptions.count();
 
-      // CONFIRMED LIVE (v 0.0.223): the filter menu lists only the resource types this topic actually has ("Video (2)",
+      // The filter menu lists only the resource types this topic actually has ("Video (2)",
       // "Quiz (1)", ...), so there is never a type to filter down to nothing. Unchecking every type is how a filter ends up
       // matching nothing, and the strip then reads "No resources found!".
       for (let i = 0; i < total; i++) {
@@ -104,8 +104,6 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Playlist workbook) ---
-
   const checked = (option) => option.getAttribute('aria-selected').then((v) => v === 'true');
   const masterFilter = (page) =>
     page
@@ -113,7 +111,7 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
       .filter({ hasText: /^\s*filter resources\s*$/i })
       .first();
 
-  // Unticking Filter Resources (PL-04-05) and ticking it again (PL-04-11): one test each (split 2026-09-28). Both leave
+  // Unticking Filter Resources (PL-04-05) and ticking it again (PL-04-11): one test each. Both leave
   // the filter ticked.
   test('PL-04-05: unticking Filter Resources hides every card', { tag: ['@functional'] }, async ({ user, page }) => {
     const pl = user.playlist;
@@ -188,7 +186,7 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
     }
   );
 
-  // Reset asks for confirmation (PL-04-08), and cancelling changes nothing (PL-04-12): one test each (split 2026-09-28).
+  // Reset asks for confirmation (PL-04-08), and cancelling changes nothing (PL-04-12): one test each.
   const resetQuestion = (page) => page.getByText(/are you sure you want to reset your playlist/i);
 
   test('PL-04-08: Reset asks for confirmation first', { tag: ['@functional'] }, async ({ user, page }) => {
@@ -245,6 +243,32 @@ test.describe('PL-04 Playlist Menu (Edit / Reset / Filter)', () => {
       }
       await pl.closeOptionsMenu();
       await expect.poll(() => pl.cardTitles(), { message: 'every card showing' }).toEqual(before);
+    }
+  );
+
+  test(
+    'PL-04-13: Reset while the network is down shows a message and changes nothing',
+    { tag: ['@interruption'] },
+    async ({ user, page }) => {
+      const { playlist } = user;
+      const before = await playlist.cardTitles();
+      await page.route('**/*', (route) => route.abort('internetdisconnected'));
+      try {
+        await playlist.resetPlaylist().catch(() => {});
+        await expect(
+          page
+            .getByText(/fail|error|could not|couldn.t|unable|try again|network|offline/i)
+            .filter({ visible: true })
+            .first(),
+          'a message says it did not work'
+        ).toBeVisible({ timeout: 10000 });
+      } finally {
+        await page.unroute('**/*');
+      }
+      await page.reload();
+      await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
+      await playlist.ensureDrawerVisible();
+      expect(await playlist.cardTitles(), 'the Playlist is unchanged').toEqual(before);
     }
   );
 });

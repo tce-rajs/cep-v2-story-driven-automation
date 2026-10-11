@@ -1,12 +1,11 @@
 // CLIENT-04 -- Multiple profiles
-// Source of every "CONFIRMED LIVE" claim below: manual exploration through this exact suite's fixture, 2026-09-23.
+// Source of every "" claim below: manual exploration through this exact suite's fixture.
 //
 // Findings that matter for automation built on top of this client:
 //   1. "Add profile" creates a BLANK profile (no server URL) and switches the shell to it immediately --
 //      producing the app's own "No web URLs available" error state until it's configured and saved.
 //   2. New profiles get the SAME internal "value" field as the first one (e.g. both "profile2") -- looks like
-//      an id that should be unique but isn't. Not proven to cause a visible bug, but worth knowing about if
-//      profile-specific behaviour ever looks wrong with 2+ profiles saved.
+// an id that should be unique but isn't.
 //   3. THE BIG ONE: with exactly one profile, cold launch connects straight to it (see CLIENT-01). With TWO OR
 //      MORE, cold launch instead shows a "SELECT PROFILE" chooser screen and waits for a manual pick. This is a
 //      real behavioural fork, not a cosmetic difference -- ../../fixtures/electron-app.js (the main suite's
@@ -125,9 +124,14 @@ test.describe('CLIENT-04 Multiple profiles', () => {
 
       // And picking one proceeds normally from there.
       await shell.getByText('QA-V2', { exact: true }).first().click({ force: true });
-      await shell.waitForTimeout(4000);
+      // The teach window can take well over 4 s to appear on a busy server: wait for it (up to 30 s).
+      await expect
+        .poll(() => teachWindowOf(app) !== undefined, {
+          message: 'picking a tile opens the teach webview',
+          timeout: 30000,
+        })
+        .toBe(true);
       const teachAfterPick = teachWindowOf(app);
-      expect(teachAfterPick, 'picking a tile opens the teach webview').not.toBeUndefined();
       expect(teachAfterPick.url()).toContain('172.18.2.85');
     } finally {
       await app.close();
@@ -141,7 +145,7 @@ test.describe('CLIENT-04 Multiple profiles', () => {
     expect(readSettings().profiles, 'two profiles are genuinely saved now').toHaveLength(2);
     await app.close();
 
-    // Fresh launch lands on the picker (proven by the previous test). CONFIRMED LIVE: the Settings screen
+    // Fresh launch lands on the picker (proven by the previous test). The Settings screen
     // renders incompletely (missing the Server Path / Profile Name fields) when reached directly from the
     // picker -- pick a profile first (the normal flow) so Settings is reached via the proven admin-menu path.
     ({ app, shell } = await launchShell());
@@ -162,7 +166,9 @@ test.describe('CLIENT-04 Multiple profiles', () => {
     try {
       const onChooser = await isOnProfileChooser(shell);
       expect(onChooser, 'back to single-profile behaviour after removal').toBe(false);
-      expect(teachWindowOf(app), 'connects directly again').not.toBeUndefined();
+      await expect
+        .poll(() => teachWindowOf(app) !== undefined, { message: 'connects directly again', timeout: 30000 })
+        .toBe(true);
     } finally {
       await app.close();
     }

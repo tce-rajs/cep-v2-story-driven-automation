@@ -8,7 +8,7 @@ test.use({ freshSpace: true });
 
 test.describe('TB-03 Background', () => {
   // Changing the background: it becomes the active one (TB-03-01), and existing content is untouched (TB-03-05) -- one
-  // test each (split 2026-09-28). Every test leaves the board on the plain background.
+  // test each. Every test leaves the board on the plain background.
   test(
     'TB-03-01: choosing a whiteboard background makes it the active background',
     { tag: ['@smoke', '@functional'] },
@@ -45,7 +45,7 @@ test.describe('TB-03 Background', () => {
   );
 
   // A background chosen at random: every UI element is still visible (TB-03-02), and the board can still be drawn on
-  // (TB-03-06) -- one test each (split 2026-09-28).
+  // (TB-03-06) -- one test each.
   const chooseRandomBackground = async (user) => {
     const tb = user.toolbar;
     await tb.openToolPanel('gtBackground');
@@ -138,4 +138,52 @@ test.describe('TB-03 Background', () => {
     });
     expect(pattern, 'no grid/ruled pattern left behind').toBe('');
   });
+
+  test(
+    'TB-03-07: the chosen background is still set after the app reloads',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      try {
+        await tb.chooseBackground('gtGraphCms');
+        await page.waitForTimeout(12000); // past the autosave countdown
+        await page.reload();
+        await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
+        await tb.openToolPanel('gtBackground');
+        await expect(tb.backgroundActive, 'the chosen background is still active').toHaveAttribute(
+          'data-qa-id',
+          'toolbar-background-gtGraphCms'
+        );
+        await tb.closePanelByTappingOutside();
+      } finally {
+        await tb.chooseBackground('gtBlankPage');
+      }
+    }
+  );
+
+  test(
+    'TB-03-08: choosing the background that is already selected changes nothing on the board',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      await tb.penStroke({ x: 400, y: 400 }, { x: 600, y: 470 });
+      await tb.openToolPanel('gtBackground');
+      const active = (await tb.backgroundActive.first().getAttribute('data-qa-id')).replace('toolbar-background-', '');
+      await tb.closePanelByTappingOutside();
+      const snapshot = await user.content.snapshot();
+      const geometry = await user.content.pathGeometry();
+      const look = () => tb.wbContainer.evaluate((el) => getComputedStyle(el).backgroundImage);
+      const lookBefore = await look();
+
+      await tb.chooseBackground(active);
+
+      await tb.openToolPanel('gtBackground');
+      await expect(tb.backgroundActive, 'the same background is still the only active one').toHaveCount(1);
+      await expect(tb.backgroundActive).toHaveAttribute('data-qa-id', `toolbar-background-${active}`);
+      await tb.closePanelByTappingOutside();
+      expect(await look(), 'the background looks the same').toBe(lookBefore);
+      expect(await user.content.snapshot(), 'no content added or lost').toEqual(snapshot);
+      expect(await user.content.pathGeometry(), 'no stroke changed').toEqual(geometry);
+    }
+  );
 });

@@ -3,7 +3,7 @@
 //
 // Needs raw control over closing and relaunching a whole separate client (like LOG-01-14), so it uses Playwright's own
 // `test` and launchWithRetry() instead of this suite's fixtures. Data: 'toolbarGeneral' (Class 12A Physics, 1.1),
-// never cleared (owner rule 2026-09-29): the test writes on fresh space below the teacher's writing and compares only
+// never cleared: the test writes on fresh space below the teacher's writing and compares only
 // its own strokes, in the reopened client too.
 
 const { test, expect } = require('@playwright/test');
@@ -26,9 +26,6 @@ test(
   async () => {
     test.skip(!!process.env.RUN_IN_BROWSER, 'closing the desktop client has no browser-mode equivalent');
     test.setTimeout(10 * 60 * 1000);
-    // Known product bug (found 2026-09-27 on QA, video in test-evidence/; reproduced on 172.18.2.85 on 2026-09-29,
-    // closed during "Saving whiteboard ... in 10s"): the pending save is dropped when the app closes.
-    test.fail(true, 'Closing the app during the autosave countdown loses everything written since the last save');
 
     let written;
     let existing;

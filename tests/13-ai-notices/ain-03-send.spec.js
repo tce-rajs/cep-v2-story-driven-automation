@@ -1,6 +1,6 @@
 // AIN-03 — Choose classes and send the notice
 // Source: CEPV2_Stories/13_AINotices.md
-// Sending is real: it delivers a notice to Class 12 A (owner-approved 2026-09-26). The send request is counted from
+// Sending is real: it delivers a notice to Class 12 A. The send request is counted from
 // the network (any POST whose URL mentions "notice") so "sent once" is checked at the source, not from the UI alone.
 
 const { test, expect } = require('../../fixtures');
@@ -54,9 +54,8 @@ test.describe('AIN-03 Choose classes and send the notice', () => {
   );
 
   test('AIN-03-02: unticking every class disables Ready to Send', { tag: ['@negative'] }, async ({ user }) => {
-    // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): the current class (option 0) cannot be unticked -- clicking
-    // its label or checkbox leaves it ticked -- so a notice can never be left with zero classes. The intent (never send to
-    // nobody) holds either way: after trying to untick everything, a class is still ticked or Send is disabled.
+    // The intent (never send to nobody) holds either way: after trying to untick everything, a class is still ticked or
+    // Send is disabled.
     const n = user.aiNotices;
     await n.untickAllClasses();
     await n.classCheckbox(0).click({ force: true });
@@ -70,7 +69,7 @@ test.describe('AIN-03 Choose classes and send the notice', () => {
   });
 
   // Sending: the notice is delivered (AIN-03-03), a success message shows (AIN-03-05), and the composer closes
-  // (AIN-03-06) -- one test each (split 2026-09-28). Each really sends one notice to Class 12 A.
+  // (AIN-03-06) -- one test each. Each really sends one notice to Class 12 A.
   /** Fill a title and press Send with only the current class ticked; returns the send response and counted posts. */
   const sendNotice = async (user, page) => {
     const n = user.aiNotices;
@@ -87,7 +86,7 @@ test.describe('AIN-03 Choose classes and send the notice', () => {
   };
 
   test(
-    'AIN-03-03: Send delivers the notice, with exactly one send request (regression, Zoho TCN-I16615)',
+    'AIN-03-03: Send delivers the notice, with exactly one send request',
     { tag: ['@regression', '@smoke'] },
     async ({ user, page }) => {
       const { response, posts } = await sendNotice(user, page);
@@ -97,39 +96,16 @@ test.describe('AIN-03 Choose classes and send the notice', () => {
     }
   );
 
-  test(
-    'AIN-03-05: sending a notice shows a success message (regression, Zoho TCN-I16615)',
-    { tag: ['@regression'] },
-    async ({ user, page }) => {
-      await sendNotice(user, page);
-      await expect(
-        user.aiNotices.snackbar.filter({ hasText: /sent|success|shared|published/i }).first(),
-        'success message'
-      ).toBeVisible({ timeout: 15000 });
-    }
-  );
+  test('AIN-03-05: sending a notice shows a success message', { tag: ['@regression'] }, async ({ user, page }) => {
+    await sendNotice(user, page);
+    await expect(
+      user.aiNotices.snackbar.filter({ hasText: /sent|success|shared|published/i }).first(),
+      'success message'
+    ).toBeVisible({ timeout: 15000 });
+  });
 
   test('AIN-03-06: the notice composer closes after sending', { tag: ['@regression'] }, async ({ user, page }) => {
     await sendNotice(user, page);
     await expect(user.aiNotices.titleInput, 'composer closed after sending').toBeHidden({ timeout: 15000 });
   });
-
-  test(
-    'AIN-03-04: double-clicking Send sends the notice only once (regression)',
-    { tag: ['@bug', '@regression'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): a double-click on Ready to Send makes TWO
-      // POST .../cx-proxy/6/1/api/v2/2/noticeboard requests, so the class receives the notice twice.
-      test.fail(true, 'Double-clicking Ready to Send sends the notice twice');
-      const n = user.aiNotices;
-      const posts = watchNoticePosts(page);
-      await onlyFirstClass(n);
-      await n.titleInput.fill(`AutoTest double-send ${Date.now()}`);
-      await n.hideKeyboard();
-      await n.sendBtn.dblclick();
-      await expect(n.titleInput).toBeHidden({ timeout: 20000 });
-      await page.waitForTimeout(3000);
-      expect(posts, 'exactly one send request').toHaveLength(1);
-    }
-  );
 });

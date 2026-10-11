@@ -1,7 +1,7 @@
 // AIN-05 — Sending a notice when the network fails
 // Source: CEPV2_Stories/13_AINotices.md
 // Only the notice's own send request (POST .../noticeboard) is made to fail; everything else keeps working. AIN-05-02
-// really sends one notice to the current class (owner-approved real sends, 2026-09-26).
+// really sends one notice to the current class.
 
 const { test, expect } = require('../../fixtures');
 
@@ -20,7 +20,7 @@ test.describe('AIN-05 Sending a notice when the network fails', () => {
   });
 
   // A failed send: the teacher is told (AIN-05-01), no success message shows (AIN-05-03), and the composer stays open
-  // with the teacher's text (AIN-05-04) -- one test each (split 2026-09-28).
+  // with the teacher's text (AIN-05-04) -- one test each.
   /** Fill a title, make only the send request fail, and press Send; returns the title typed. */
   const sendWhileSendFails = async (user, page) => {
     const n = user.aiNotices;

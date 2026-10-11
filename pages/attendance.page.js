@@ -1,17 +1,15 @@
 // Page Object for Attendance (Magnet -> Attendance).
 //
-// CONFIRMED LIVE (probe, 2026-09-26, v 0.0.232, primary account, Class 12A Physics):
+//
 // - The Magnet entry reads "Attendance" + a status badge ("Pending" before today's attendance is taken).
 // - Opening shows today's date, "Tap Play to start taking attendance, or select Mark Attendance to complete it
-//   quickly.", a Play Attendance button (.btn-start), Close and Mark Attendance. The old "hangs on its loading
-//   spinner" bug no longer reproduces.
+// quickly.", a Play Attendance button (.btn-start), Close and Mark Attendance.
 // - Mark Attendance shows the summary table (rows Boys / Girls / Total; columns P, Ab, T -- e.g.
 //   "Boys 0 0 85 Girls 0 0 65 Total 150"), "Drag all the roll numbers to mark all as present. Tap on a roll number to
 //   mark 'absent'.", a grid of .grid-cell roll numbers (150), and Close / Mark All Present / Done.
-// - From the reference suites: after submitting, the buttons change to Edit Attendance / Submit Attendance; Edit
 //   re-opens the register with the previous marks; a cell's state is its `present` / `absent` class; the class
 //   teacher gets an attendance-close-dialog-* confirmation on Close.
-// Everything here is real: marks and submits create today's attendance record (owner-approved 2026-09-26).
+// Everything here is real: marks and submits create today's attendance record.
 
 class AttendancePage {
   constructor(page) {
@@ -41,6 +39,22 @@ class AttendancePage {
     this.speedSelector = this.container.locator('.speed-selector');
     this.speedDisplay = this.container.locator('.speed-display');
     this.birthdayText = this.container.getByText(/birthday/i);
+    // Play Attendance controls. "Speed: 1x" opens a menu of .speed-option buttons (Fast | 1.5x, Normal | 1x,
+    // Slow | 0.5x); the menu gets the `visible` class while open.
+    this.speedToggle = this.speedSelector.getByText(/Speed:/).first();
+    this.speedMenu = this.container.locator('.speed-menu');
+    this.speedOptions = this.container.locator('.speed-option');
+    this.pauseBtn = btn(/Pause/);
+    this.resumePlayBtn = btn(/play_arrow/);
+    this.activeRollNumber = this.container.locator('.carousel-item.active .roll-number');
+
+    // Date bar under the register: previous day / next day around the date label. Earlier days open read-only.
+    this.prevDayBtn = this.container.locator('button.tce-icon-btn').first();
+    this.nextDayBtn = this.container.locator('button.tce-icon-btn').nth(1);
+    this.lockedNotice = this.container.getByText(/already submitted and locked/i);
+    this.noStudentsText = this.container.getByText(/No students found/i);
+    // "3 students, absent today." followed by one "<roll> | <name>" card per absent student.
+    this.absentHeading = this.container.getByText(/absent today/i).first();
 
     this.closeDialogConfirmBtn = page.locator('[data-qa-id="attendance-close-dialog-confirm-btn"]');
     this.closeDialogCancelBtn = page.locator('[data-qa-id="attendance-close-dialog-cancel-btn"]');
@@ -48,7 +62,7 @@ class AttendancePage {
   }
 
   /** Magnet -> Attendance, then wait until the register shows one of its entry states.
-   * CONFIRMED LIVE (2026-09-26, v 0.0.232) -- the register opens in one of three states:
+   * The register opens in one of three states:
    *  - fresh day: Play Attendance / Mark Attendance;
    *  - a draft in progress (closed part-way): a "Resume Attendance -- resume marking from where you left off" prompt with
    *    Cancel / Resume. Resume always continues in Play Attendance (even if the draft was started with Mark Attendance);
@@ -56,11 +70,22 @@ class AttendancePage {
    *  - already submitted today: Edit Attendance / Submit Attendance. */
   async open(magnet) {
     await magnet.choose('attendance');
-    await this.container.waitFor({ state: 'visible', timeout: 15000 });
+    // Right after the register closes, the first Magnet choice can be swallowed; choose once more if nothing opened.
+    const opened = await this.container
+      .waitFor({ state: 'visible', timeout: 8000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!opened) {
+      await this.page.keyboard.press('Escape');
+      await magnet.choose('attendance');
+      await this.container.waitFor({ state: 'visible', timeout: 15000 });
+    }
+    // It can also open straight onto the roster (Mark All Present / Done), when marking has already started today.
     await this.markAttendanceBtn
       .or(this.editBtn)
       .or(this.submitBtn)
       .or(this.resumeBtn)
+      .or(this.markAllPresentBtn)
       .first()
       .waitFor({ state: 'visible', timeout: 30000 });
   }
@@ -135,6 +160,73 @@ class AttendancePage {
     });
   }
 
+  /** Roll numbers (1-based, as printed on the cells) currently marked absent on the grid. */
+  async absentRolls() {
+    return this.cells.evaluateAll((els) =>
+      els.filter((e) => e.classList.contains('absent')).map((e) => Number(e.innerText.trim()))
+    );
+  }
+
+  /** The cell showing a roll number. */
+  cell(roll) {
+    return this.cells.filter({ hasText: new RegExp(`^\\s*${roll}\\s*$`) }).first();
+  }
+
+  /** The "N students, absent today." notice: { count, rolls } read from the panel text, or null when not shown. */
+  async absentNotice() {
+    const text = (await this.container.innerText()).replace(/\s+/g, ' ');
+    const m = text.match(/(\d+)\s+students?,\s*absent today\.?(.*?)(?:Drag all|lock|Student|Close|$)/i);
+    if (!m) return null;
+    const rolls = [...m[2].matchAll(/(\d+)\s*\|/g)].map((x) => Number(x[1]));
+    return { count: Number(m[1]), rolls, text: m[0].trim() };
+  }
+
+  /** A button counts as disabled when it has the `disabled` attribute or class (the app uses both). */
+  async isDisabled(locator) {
+    return locator
+      .first()
+      .evaluate((e) => e.disabled || e.classList.contains('disabled'))
+      .catch(() => null);
+  }
+
+  /** Make the grid show exactly `rolls` absent and everyone else present. */
+  async markExactlyAbsent(rolls) {
+    if (!(await this.isDisabled(this.markAllPresentBtn))) await this.markAllPresent();
+    for (let i = 0, n = await this.cells.count(); i < n; i++) {
+      const roll = Number((await this.cells.nth(i).innerText()).trim());
+      const want = rolls.includes(roll) ? 'absent' : 'present';
+      for (let k = 0; k < 2 && (await this.cellState(i)) !== want; k++) await this.tap(i);
+    }
+  }
+
+  /** Open the register, mark exactly `absentRolls` absent (everyone else present) and submit. A real submit. */
+  async recordAttendance(magnet, absentRolls) {
+    await this.open(magnet);
+    await this.startMarking();
+    await this.markExactlyAbsent(absentRolls);
+    await this.done();
+    // Submit stays disabled when the marks are the same as the saved record: nothing to send.
+    if (await this.isDisabled(this.submitBtn.filter({ visible: true }))) {
+      await this.closeAll();
+      return false;
+    }
+    await this.submit();
+    return true;
+  }
+
+  /** Done, then wait for the locked review view (Edit Attendance / Submit Attendance). */
+  async done() {
+    await this.doneBtn.click({ force: true });
+    await this.submitBtn.filter({ visible: true }).first().waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /** Close part-way through and confirm the "Close Attendance?" dialog. */
+  async closeAndConfirm() {
+    await this.closeBtn.first().click({ force: true });
+    await this.closeDialogConfirmBtn.click({ force: true, timeout: 5000 });
+    await this.container.waitFor({ state: 'hidden', timeout: 15000 });
+  }
+
   /** Drag across the roster grid from the first cell to the last visible one. */
   async dragAcrossRoster() {
     const first = await this.cells.first().boundingBox();
@@ -154,7 +246,7 @@ class AttendancePage {
     return cellsVisible;
   }
 
-  /** Done -> Submit Attendance. CONFIRMED LIVE (2026-09-26): Done shows the locked view (Edit Attendance / Submit
+  /** Done -> Submit Attendance.  Done shows the locked view (Edit Attendance / Submit
    * Attendance); Submit sends one POST .../tce-repo-api/1/res/v1/content/file and closes the whole panel. Reopening
    * then offers Edit Attendance. */
   async submit() {

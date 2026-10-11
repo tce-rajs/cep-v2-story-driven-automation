@@ -5,7 +5,7 @@
 // Glyphs are single-stroke polylines in letter units: x 0..width, y 0 = baseline, -1 = x-height, -1.8 = ascender,
 // +0.8 = descender. Lower-case a-z are drawn; with the `caps` option upper case is printed as capitals (CAPS), otherwise
 // it is written in lower case. Digits and punctuation other
-// than . , are skipped, which is fine for a volume/persistence test.
+// than., are skipped, which is fine for a volume/persistence test.
 
 const GLYPHS = {
   a: {

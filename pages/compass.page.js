@@ -10,9 +10,7 @@
 //      profile popover's Classroom Mode switch) -> Create Quiz / Create
 //      Revision Test content-authoring flows, outside live teaching.
 //
-// Teaching-mode selectors are taken from the workbook's own Cypress-ground-
-// truth cross-check (CMP-TRIG-01..07); Planning-mode selectors are mostly
-// text-based since no data-qa-id was confirmed for most of that surface.
+// Planning-mode selectors are mostly text-based: that app has no data-qa-id attributes.
 
 class CompassPage {
   constructor(page) {
@@ -28,15 +26,15 @@ class CompassPage {
     this.questionToggleAnswerBtn = page.locator('[data-qa-id="compass-question-toggle-answer-btn"]');
     this.detailCancelBtn = page.locator('[data-qa-id="compass-detail-cancel-btn"]');
     this.listCancelBtn = page.locator('[data-qa-id="compass-list-cancel-btn"]');
-    // Real Revision Test list cards -- CONFIRMED LIVE (2026-09-25): listAssignment(cxId) above never matches
+    // Real Revision Test list cards --: listAssignment(cxId) above never matches
     // (0 count on a topic with 3 real assignments); the actual card is `.resource-card` inside a
     // `[data-qa-id^="player-student-test-item-"]` wrapper, with `.title`/`.image`/`.type-icon`/
     // `.checkpoint-description` children -- no per-card data-qa-id suffix the test can predict in advance.
     this.revisionTestCards = page.locator('[data-qa-id^="player-student-test-item-"]');
     // Clicking a card opens an Angular Material dialog (student-test detail/results view), not the
-    // list-view's own detail panel above -- CONFIRMED LIVE via its real class, cdk-overlay-backdrop's sibling.
+    // list-view's own detail panel above -- via its real class, cdk-overlay-backdrop's sibling.
     this.revisionTestDialog = page.locator('.mat-mdc-dialog-container');
-    // CONFIRMED LIVE (2026-09-26, v 0.0.232): Explore It lists each widget as compass-exploreit-widget-tool-<uuid>
+    // Explore It lists each widget as compass-exploreit-widget-tool-<uuid>
     // (label in .widget-label) with a separate "Open Widgets" link (compass-exploreit-open-widgets). The "no homework"
     // message sits at the top of the menu as compass-no-homework-create, split over several <p> ("Currently, there is no
     // Homework available / to analyse. Would you like to create a new / Homework ?"), so it is matched by id, not text;
@@ -52,7 +50,7 @@ class CompassPage {
     this.profileAvatar = page.locator('[data-qa-id="toolbar-user-avatar"]');
     this.planningModeOption = page.getByText('Planning', { exact: true });
     this.teachingModeOption = page.getByText('Teaching', { exact: true });
-    // CONFIRMED LIVE: switching to Planning mode navigates to a genuinely
+    // Switching to Planning mode navigates to a genuinely
     // different app/URL (teach/whiteboard -> plan/#/canvas) whose left nav
     // is a Nebular sidebar (<nb-sidebar class="... compacted">) collapsed to
     // icon-only (56px wide) by default. Its item labels are real
@@ -73,25 +71,8 @@ class CompassPage {
   }
 
   /**
-   * Open the Compass floating trigger's popover.
-   *
-   * CONFIRMED LIVE this pass: the 19/32 timeouts originally seen waiting on
-   * compass-analyseit-item were NOT the same pointer-events:none click-
-   * through bug confirmed for the Add Resources picker -- on 'Class 11 A
-   * Mathematics' the AnalyseIt entry simply never renders in the DOM at all
-   * (0 count, 5/5 reproductions including full reloads), because it's
-   * gated per class/subject (see CMP-TRIG-02); ExploreIt rendered fine the
-   * whole time. The fix for that was choosing a better fixture class (see
+   * Open the Compass floating trigger's popover. The fix for that was choosing a better fixture class (see
    * compass.spec.js's beforeEach), not this method.
-   *
-   * That said, this method still guards against the GENERIC version of the
-   * Add Resources bug class (a stuck `pointer-events: none` on the popover
-   * container after a click that otherwise "took") and against the trigger
-   * button being genuinely absent (some class/subject/topic combos have no
-   * compass-trigger-btn in the DOM at all -- confirmed live for 'Class 5 A
-   * Mathematics' and 'Class 9 A Hindi Language') -- in that case it returns
-   * quietly instead of hanging on an unguarded click() for its full default
-   * actionability timeout.
    */
   async openTrigger(maxReloadAttempts = 2) {
     for (let attempt = 0; attempt < maxReloadAttempts; attempt++) {
@@ -106,7 +87,7 @@ class CompassPage {
       const triggerVisible = await this.triggerBtn.isVisible({ timeout: 5000 }).catch(() => false);
       if (!triggerVisible) continue; // may be a transient render race -- retry once via reload
 
-      // CONFIRMED LIVE: on some class/subject/topic combos (e.g. 'Class 5 A
+      // On some class/subject/topic combos (e.g. 'Class 5 A
       // Mathematics') the trigger button can be transiently visible for an
       // isVisible() check and then vanish again before the click actually
       // dispatches -- a plain `.click({force:true})` with no explicit
@@ -132,22 +113,14 @@ class CompassPage {
   }
 
   /**
-   * Open the avatar's outer profile menu, retrying the click if it didn't
-   * actually register. CONFIRMED LIVE this pass: clicking the avatar and
-   * immediately clicking the "Planning"/"Teaching" text label right after
-   * (a fixed 600ms wait, no verification the menu actually opened) is
-   * flaky across repeated live runs -- 3 separate reproduction attempts saw
-   * it succeed once, then fail twice with the SAME label resolving but
-   * reporting `hidden`/no bounding box, meaning the outer menu simply
-   * hadn't opened yet (or the click missed) rather than a real app timing
-   * gate. Wait for a stable, always-present menu anchor
-   * (toolbar-profile-planning-mode, the Classroom Mode switcher) to
-   * actually be visible before proceeding, retrying the avatar click if not.
+   * Open the avatar's outer profile menu, retrying the click if it did not register. Waits for an always-present
+   * menu anchor (toolbar-profile-planning-mode, the Classroom Mode switcher) to be visible before going on, because
+   * the menu can still be closed straight after the avatar click.
    */
   async _openProfileMenuReliably(maxAttempts = 3) {
     const menuAnchor = this.page.locator('[data-qa-id="toolbar-profile-planning-mode"]');
     for (let i = 0; i < maxAttempts; i++) {
-      // CONFIRMED LIVE this pass: the Planning-mode app (/plan/#/canvas) has
+      // This pass: the Planning-mode app (/plan/#/canvas) has
       // ZERO data-qa-id attributes anywhere in its entire DOM (confirmed via
       // a full-page querySelectorAll('[data-qa-id]') returning an empty
       // array) and no toolbar-user-avatar/header at all -- it's a
@@ -175,7 +148,7 @@ class CompassPage {
     await this.planningModeOption.click({ force: true }).catch(() => {});
     await this.page.waitForTimeout(2000);
     const switched = this.page.url().includes('/plan/');
-    // CONFIRMED LIVE: the Planning app's own sidebar (Question Bank/Content
+    // The Planning app's own sidebar (Question Bank/Content
     // Library nav) can still be empty/unrendered for several seconds right
     // after switching into it -- observed anywhere from ~2s to needing a
     // full reload to recover, across repeated live runs (worse under
@@ -204,7 +177,7 @@ class CompassPage {
       await this.page.waitForTimeout(2000);
       if (this.page.url().includes('/teach/')) return { switched: true };
     }
-    // FALLBACK (real, confirmed structural constraint, not a workaround for
+    // (real, confirmed structural constraint, not a workaround for
     // a test-tooling gap): the Planning app exposes no avatar/menu control
     // at all to get back to Teaching mode via the UI with a stable
     // selector. Every test using this method re-logs-in via its own

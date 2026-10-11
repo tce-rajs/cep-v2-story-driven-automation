@@ -1,22 +1,18 @@
 // HDR-05 — Compass (Explore It / Analyse It)
 // Source: CEPV2_Stories/04_Header.md
-// Not automated (per PROCESS.md, Plan Mode is manual-only): HDR-05-05, HDR-05-08 (needs Plan Mode to author
-// the triggering content).
-// Blocked (see HDR-05-07's own fixme comment): the popup's modal backdrop blocks reaching Sign Out at all
-// while it's open, so that bug's exact repro can't currently be driven through the UI.
+// Not automated (Plan Mode is manual-only): HDR-05-05, HDR-05-08 (needs Plan Mode to author the triggering content).
 //
-// Fixtures (config/moduleClassMap.js): 'compassBaseline' = Class 12A Physics chapter 1, where AnalyseIt and
-// Revision Tests render; 'compassExploreIt' = the same class, chapter 4, where ExploreIt widgets render too;
-// 'compassNoAnalyseIt' = Class 11A Mathematics, where AnalyseIt never does.
+// Data (config/moduleClassMap.js, on the account each entry names): 'compassBaseline' and 'compassExploreIt' show
+// AnalyseIt and ExploreIt widgets; 'compassRevisionTest' has a Revision Test; 'compassNoAnalyseIt' never shows
+// AnalyseIt.
 
 const { test, expect } = require('../../fixtures');
 
 test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
-  test.beforeEach(async ({ user }) => {
-    await user.nav.applyClassMap('compassBaseline');
-  });
+  // Signs in with the account that holds the Compass data and lands on the baseline topic.
+  test.use({ classMap: 'compassBaseline' });
 
-  // "Explore It" (HDR-05-01) and "Analyse It" (HDR-05-15) are one test each (split 2026-09-28). Explore It only renders
+  // "Explore It" (HDR-05-01) and "Analyse It" (HDR-05-15) are one test each. Explore It only renders
   // where the chapter has widgets, so both use the ExploreIt fixture, not the baseline.
   test(
     'HDR-05-01: the Compass icon opens with the "Explore It" option visible',
@@ -69,7 +65,7 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     }
   );
 
-  // Conditional per topic: absent from the DOM entirely, not just hidden. One test per section (split 2026-09-28).
+  // Conditional per topic: absent from the DOM entirely, not just hidden. One test per section.
   test(
     'HDR-05-04: a topic without Homework does not show the Homework (Analyse It) section',
     { tag: ['@negative'] },
@@ -98,16 +94,10 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     async ({ user }) => {
       // Needs Revision Test cards: 'compassRevisionTest' (none on 172.18.2.85 yet -- fails as DATA MISSING).
       await user.nav.applyClassMap('compassRevisionTest');
-      // Zoho TCN-I16045: a card's title text overlapped other card text, making the details unreadable.
-      // compassBaseline's real, existing cards already include one titled "testing title overlap issue" --
-      // reused here rather than creating fresh content, since authoring a Revision Test happens in Plan
-      // Mode, out of this suite's automation scope (PROCESS.md).
       //
-      // CONFIRMED LIVE: `.title` is deliberately laid out ON TOP of `.image` (a darkened thumbnail, by
-      // design -- a caption-on-image card, not a bug), so that pair is not checked here. `.checkpoint-
-      // description` (the "30 MIN, 6 Q'S" / date / status info block) and `.type-icon` are real, separate
-      // text/graphic elements the title should never visually collide with, including when a long title
-      // wraps to 2 lines (as "testing title overlap issue" does, confirmed live).
+      // `.checkpoint- description` (the "30 MIN, 6 Q'S" / date / status info block) and `.type-icon` are real, separate
+      // text/graphic elements the title should never visually collide with, including when a long title wraps to 2
+      // lines.
       const { opened } = await user.compass.openTrigger();
       expect(opened, 'Compass menu opened').toBe(true);
       await user.compass.revisionTestsItem.click({ force: true });
@@ -132,20 +122,12 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
     }
   );
 
-  test.fixme('HDR-05-07: the Revision Test popup does not persist after signing out and back in (regression)', async () => {
-    // Zoho TCN-I16051: opening a Revision Test's popup and then signing out (without closing it first)
-    // left the popup visible on screen even after signing back in.
-    //
-    // BLOCKED: CONFIRMED LIVE (2026-09-25) the popup's own modal backdrop (cdk-overlay-backdrop, Angular
-    // Material, disableClose -- Escape does not dismiss it either) blocks ALL other UI interaction,
-    // including opening the toolbar's profile menu -- clicking the avatar while this popup is open does
-    // nothing (toolbar-profile-trigger stays hidden, force:true click included). So the bug's own repro
-    // ("without closing the popup, sign out") cannot currently be reached through the UI at all, which
-    // may mean this was already fixed at the point of entry rather than the exit this ticket describes.
-    // Worth a manual re-check against the original repro before writing this off.
+  test('HDR-05-07: the Revision Test popup does not persist after signing out and back in (regression)', async () => {
+    test.fixme(
+      true,
+      'The popup’s own modal backdrop (cdk-overlay-backdrop, Angular Material, disableClose Escape does not dismiss it either) blocks ALL other UI interaction, including opening the toolbar’s profile menu -- clicking the avatar while this popup is open does nothing (toolbar-profile-trigger stays hidden, force:true click included). Worth a manual re-check against the original repro before writing this off.'
+    );
   });
-
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Compass workbook and Zoho bugs) ---
 
   test("HDR-05-09: Explore It lists the chapter's widgets, each named", { tag: ['@functional'] }, async ({ user }) => {
     await user.nav.applyClassMap('compassExploreIt');
@@ -223,14 +205,14 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
   const openAnalyseItDetails = async (user) => {
     const { opened } = await user.compass.openTrigger();
     expect(opened, 'set-up: Compass menu opened').toBe(true);
-    // The Analyse It entry itself reads "No Homework" when the topic has none (confirmed live 2026-09-26).
+    // The Analyse It entry itself reads "No Homework" when the topic has none.
     const noHomework = /no homework/i.test(await user.compass.analyseItItem.innerText());
     test.skip(noHomework, 'Needs a topic whose Analyse It lists homework; this class/topic has none (see HDR-05-11).');
     await user.compass.analyseItItem.click({ force: true });
   };
 
   test(
-    'HDR-05-12: in Analyse It, "View Questions" opens the questions view (regression, Zoho TCN-I16623)',
+    'HDR-05-12: in Analyse It, "View Questions" opens the questions view',
     { tag: ['@regression'] },
     async ({ user }) => {
       await openAnalyseItDetails(user);
@@ -242,7 +224,7 @@ test.describe('HDR-05 Compass (Explore It / Analyse It)', () => {
   );
 
   test(
-    'HDR-05-19: in Analyse It, "View Last 5 Homework" opens the list (regression, Zoho TCN-I16623)',
+    'HDR-05-19: in Analyse It, "View Last 5 Homework" opens the list',
     { tag: ['@regression'] },
     async ({ user }) => {
       await openAnalyseItDetails(user);

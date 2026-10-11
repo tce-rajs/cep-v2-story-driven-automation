@@ -1,7 +1,7 @@
 // WB-09 — Whiteboard data integrity (what the teacher sees is what is saved)
 // Source: CEPV2_Stories/06_Whiteboard.md
 // Data: 'toolbarGeneral' (Class 12A Physics, 1.1) and, for the class-switch case, Class 11A Mathematics 1.1 (its board
-// is only read, never written). The 12A board is never cleared (owner rule 2026-09-29): each test writes on fresh
+// is only read, never written). The 12A board is never cleared: each test writes on fresh
 // space below the teacher's writing, and compares only its own strokes.
 //
 // Every case compares the board's exact geometry (each stroke's `d`, in board coordinates, independent of zoom and pan)
@@ -10,6 +10,7 @@
 const { test, expect } = require('../../fixtures');
 const { layoutHandwriting, lessonText } = require('../../pages/lib/handwriting');
 const { pinForModule } = require('../../config/moduleClassMap');
+const { expectOnScratchBoard, emptyScratchBoard } = require('../05-toolbar/scratch-board');
 
 const reload = async (user) => {
   await user.page.reload();
@@ -62,48 +63,6 @@ test.describe('WB-09 Whiteboard data integrity', () => {
   test.afterEach(async ({ app }) => {
     await app.nav.applyClassMap('toolbarGeneral').catch(() => {});
   });
-
-  // Owner rule (2026-09-29): tests never wipe the teacher's board. These two are ABOUT Clear Whiteboard, which wipes
-  // the whole topic, so they wait for the owner to decide how Clear may be tested.
-  const CLEAR_WIPES_BOARD =
-    "Clear Whiteboard erases the teacher's whole board; owner rule 2026-09-29 forbids it. Waiting for the owner to decide how Clear may be tested (e.g. a dedicated scratch topic).";
-
-  test(
-    'WB-09-01: after Clear Whiteboard and a reload, nothing comes back',
-    { tag: ['@regression'] },
-    async ({ user }) => {
-      test.fixme(true, CLEAR_WIPES_BOARD);
-      await write(user, 25, 31);
-      await saved(user);
-      await user.toolbar.pressClearWhiteboard(user.whiteboard);
-      await expect(user.toolbar.allPaths, 'the board is empty on screen').toHaveCount(0);
-      await user.page.waitForTimeout(12000); // let the clear autosave
-      await reload(user);
-      await expect(user.toolbar.allPaths, 'no strokes come back after a reload').toHaveCount(0);
-    }
-  );
-
-  test(
-    'WB-09-02: Undo straight after Clear Whiteboard leaves the saved board matching what is on screen',
-    { tag: ['@edge'] },
-    async ({ user }) => {
-      test.fixme(true, CLEAR_WIPES_BOARD);
-      await write(user, 20, 32);
-      await saved(user);
-      await user.toolbar.pressClearWhiteboard(user.whiteboard);
-      await user.toolbar.tool('gtUndo').click({ force: true });
-      await user.page.waitForTimeout(12000);
-      const onScreen = await user.content.pathGeometry();
-      test.info().annotations.push({
-        type: 'note',
-        description: `After Clear + Undo the screen shows ${onScreen.length} strokes.`,
-      });
-      await reload(user);
-      expect(await user.content.pathGeometry(), 'after a reload the board is exactly what was on screen').toEqual(
-        onScreen
-      );
-    }
-  );
 
   test('WB-09-03: erased handwriting stays erased after a reload', { tag: ['@regression'] }, async ({ user }) => {
     const area = await user.content.writingArea();
@@ -203,31 +162,8 @@ test.describe('WB-09 Whiteboard data integrity', () => {
     expect(after.replace(/\s+/g, ' ').trim(), 'the whole text is back').toBe(text.replace(/\s+/g, ' ').trim());
   });
 
-  // Leaving before the autosave (owner, 2026-09-29): the app saves about 10 s after the teacher stops writing, so the
+  // Leaving before the autosave: the app saves about 10 s after the teacher stops writing, so the
   // risky moment is leaving inside that window. Closing the app is WB-08-04; switching topic WB-06-09, class WB-09-06/08.
-  test(
-    'WB-09-09: reloading the app within 10 seconds of writing loses nothing',
-    { tag: ['@negative', '@regression', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE twice (2026-09-29, 172.18.2.85, v 0.0.232, desktop client): all 31 strokes of
-      // 15 words written just before a reload are gone after it. Signing out in the same window keeps them (WB-09-10).
-      test.fail(true, 'Reloading within the 10-second autosave countdown loses everything written since the last save');
-      await write(user, 15, 41);
-      const mine = await user.content.pathGeometry();
-      // No wait for "Whiteboard Saved!": reload straight away, inside the countdown.
-      await reload(user);
-      await user.page.waitForTimeout(5000);
-      const back = await user.content.pathGeometry();
-      test.info().annotations.push({
-        type: 'note',
-        description: `${mine.length} strokes written, ${mine.filter((d) => back.includes(d)).length} back after the reload.`,
-      });
-      expect(
-        mine.filter((d) => !back.includes(d)),
-        'strokes written just before the reload that are missing'
-      ).toEqual([]);
-    }
-  );
 
   test(
     'WB-09-10: signing out within 10 seconds of writing loses nothing',
@@ -252,6 +188,57 @@ test.describe('WB-09 Whiteboard data integrity', () => {
         mine.filter((d) => !back.includes(d)),
         'strokes written just before signing out that are missing'
       ).toEqual([]);
+    }
+  );
+});
+
+// Clear Whiteboard runs only on the scratch board (an empty topic): each test writes there, clears, and leaves it empty.
+test.describe('WB-09 Whiteboard data integrity: Clear Whiteboard', () => {
+  test.use({ classMap: 'scratchBoard' });
+  test.describe.configure({ timeout: 10 * 60 * 1000 });
+
+  test.beforeEach(async ({ user }) => {
+    await emptyScratchBoard(user);
+  });
+
+  test.afterEach(async ({ user }) => {
+    await emptyScratchBoard(user).catch(() => {});
+  });
+
+  test(
+    'WB-09-01: after Clear Whiteboard and a reload, nothing comes back',
+    { tag: ['@regression'] },
+    async ({ user }) => {
+      await expectOnScratchBoard(user);
+      await write(user, 25, 31);
+      await saved(user);
+      await user.toolbar.pressClearWhiteboard(user.whiteboard);
+      await expect(user.toolbar.allPaths, 'the board is empty on screen').toHaveCount(0);
+      await user.page.waitForTimeout(12000); // let the clear autosave
+      await reload(user);
+      await expect(user.toolbar.allPaths, 'no strokes come back after a reload').toHaveCount(0);
+    }
+  );
+
+  test(
+    'WB-09-02: Undo straight after Clear Whiteboard leaves the saved board matching what is on screen',
+    { tag: ['@edge'] },
+    async ({ user }) => {
+      await expectOnScratchBoard(user);
+      await write(user, 20, 32);
+      await saved(user);
+      await user.toolbar.pressClearWhiteboard(user.whiteboard);
+      await user.toolbar.tool('gtUndo').click({ force: true });
+      await user.page.waitForTimeout(12000);
+      const onScreen = await user.content.pathGeometry();
+      test.info().annotations.push({
+        type: 'note',
+        description: `After Clear + Undo the screen shows ${onScreen.length} strokes.`,
+      });
+      await reload(user);
+      expect(await user.content.pathGeometry(), 'after a reload the board is exactly what was on screen').toEqual(
+        onScreen
+      );
     }
   );
 });

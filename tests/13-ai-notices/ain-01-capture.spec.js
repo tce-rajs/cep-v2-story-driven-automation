@@ -33,7 +33,7 @@ test.describe('AIN-01 Capture text from the whiteboard into a notice', () => {
   );
 
   // Discard: removes the selection (AIN-01-03), and does not open the composer (AIN-01-07) -- one test each (split
-  // 2026-09-28).
+  // ).
   test('AIN-01-03: Discard removes the selection', { tag: ['@functional'] }, async ({ user }) => {
     await user.aiNotices.captureText(user);
     await user.aiNotices.discardBtn.click({ force: true });
@@ -48,7 +48,7 @@ test.describe('AIN-01 Capture text from the whiteboard into a notice', () => {
   });
 
   // Approving a selection over real text: an AI-written title (AIN-01-04), and the captured text as the body
-  // (AIN-01-08) -- one test each (split 2026-09-28).
+  // (AIN-01-08) -- one test each.
   test(
     'AIN-01-04: approving a selection over real text opens the composer with an AI-written title',
     { tag: ['@smoke', '@functional'] },

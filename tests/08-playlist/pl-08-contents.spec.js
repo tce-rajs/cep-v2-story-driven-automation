@@ -19,7 +19,7 @@ test.describe('PL-08 Contents (table of contents)', () => {
     }).toPass({ timeout: 20000 });
   };
 
-  // Split 2026-09-28: the list opens (PL-08-01) and the current topic is highlighted in it (PL-08-07); choosing a topic
+  // Split: the list opens (PL-08-01) and the current topic is highlighted in it (PL-08-07); choosing a topic
   // changes the current topic (PL-08-02) and reloads the Playlist (PL-08-08).
   test('PL-08-01: Contents opens the chapter and topic list', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
     await user.playlist.openContentsPopup();
@@ -97,24 +97,6 @@ test.describe('PL-08 Contents (table of contents)', () => {
     await expect.poll(() => user.nav.chapterItems.count(), { message: 'full chapter list back' }).toBe(chapters);
   });
 
-  test(
-    'PL-08-05: a search with no matches shows a message, not a blank panel',
-    { tag: ['@negative', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): same defect as NAV-02-02 -- a Contents search with no
-      // matches shows an empty panel, with no "no results" message.
-      test.fail(true, 'A Contents search with no matches shows a blank panel, no empty-state message');
-      await user.playlist.openContentsPopup();
-      await openSearch(user);
-      await user.nav.searchContents('zzqxwv');
-      await expect(user.nav.topicItems).toHaveCount(0);
-      await expect(
-        user.playlist.contentsPopup.getByText(/no (result|match|topic)s?|not found/i),
-        'a no-results message'
-      ).toBeVisible();
-    }
-  );
-
   test('PL-08-06: a very long search is handled without error', { tag: ['@edge'] }, async ({ user, page }) => {
     const errors = [];
     page.on('pageerror', (err) => errors.push(err.message));
@@ -126,4 +108,25 @@ test.describe('PL-08 Contents (table of contents)', () => {
     await expect(user.nav.chapterItems.first()).toBeVisible();
     expect(errors).toEqual([]);
   });
+
+  test(
+    'PL-08-09: a Contents search with no match shows a message and Cancel restores the full list',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      await user.playlist.openContentsPopup();
+      const chapters = await user.nav.chapterItems.count();
+      await openSearch(user);
+      await user.nav.searchContents('zzqxjvw');
+      await expect(user.nav.topicItems.filter({ visible: true }), 'no topic matches').toHaveCount(0);
+      await expect(
+        user.playlist.contentsPopup.getByText(/no (result|match|topic)|not found|nothing found/i).first(),
+        'a message says nothing matched'
+      ).toBeVisible({ timeout: 5000 });
+      await user.nav.chapterTpSearchCancel.click();
+      await expect
+        .poll(() => user.nav.chapterItems.count(), { message: 'the full chapter list is back' })
+        .toBe(chapters);
+      await expect(page.getByText(/no (result|match|topic)|not found/i).filter({ visible: true })).toHaveCount(0);
+    }
+  );
 });

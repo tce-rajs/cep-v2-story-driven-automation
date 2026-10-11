@@ -1,7 +1,7 @@
 // Text -> pen strokes from a real handwriting font (Kalam: made from real Indian handwriting, Latin + Devanagari).
 // Renders the text in a browser canvas, thins every letter to a 1-pixel centre line (Zhang-Suen), traces the centre
 // lines into polylines, simplifies and smooths them. The result is what a pen would trace: single lines, not outlines.
-// Moved here 2026-10-05 from the long-writing scripts (used for the Marathi essays on the Ultra server).
+// Moved here from the long-writing scripts (used for the Marathi essays on the Ultra server).
 //
 // textToStrokes(page, text, { fontSize, maxWidth, lineHeight, weight }) -> { strokes: [{ x, y }[]], width, height, ... }
 // in px, origin top-left. `page` is only a drawing surface for measuring the font -- give it a plain browser page of its

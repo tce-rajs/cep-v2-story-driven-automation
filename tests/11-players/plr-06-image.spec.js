@@ -12,7 +12,7 @@ test.describe('PLR-06 View an image resource', () => {
     await user.player.openResourceCard(user.player.imageCards);
   };
 
-  /** Open image resources one by one until one actually loads; returns its index, or -1 if none does. CONFIRMED LIVE: this
+  /** Open image resources one by one until one actually loads; returns its index, or -1 if none does. This
    * topic's Playlist holds several image cards and some are stale assets whose file returns 404 (the player then shows a
    * blank, hidden image), so "the first image card" is not a safe thing to test rendering on. */
   const openWorkingImage = async (user) => {
@@ -37,7 +37,7 @@ test.describe('PLR-06 View an image resource', () => {
     expect(await user.player.isPlayerOpen(), 'the image player opened').toBe(true);
     await expect(user.player.imageWrapper).toBeVisible({ timeout: 15000 });
     // isPlayerOpen()/toBeVisible() only prove the close icon and wrapper exist — not that the player occupies a
-    // real amount of screen, not a broken sliver. CONFIRMED LIVE: a correctly-opened image player is ~980x620.
+    // real amount of screen, not a broken sliver. A correctly-opened image player is ~980x620.
     await expect
       .poll(async () => (await user.player.imageWrapper.boundingBox())?.width || 0, {
         message: 'the image player finishes rendering to a real size',
@@ -49,7 +49,7 @@ test.describe('PLR-06 View an image resource', () => {
   });
 
   test('PLR-06-02: the image renders correctly', { tag: ['@functional'] }, async ({ user }) => {
-    // CONFIRMED LIVE (2026-09-20): this topic's only remaining image card is a stale asset whose file 404s, so when no
+    // This topic's only remaining image card is a stale asset whose file 404s, so when no
     // curriculum image loads the test uploads its own image (a real 1x1 PNG, which does render) and removes it again.
     let ownTitle = null;
     let ownCard = null;
@@ -106,7 +106,7 @@ test.describe('PLR-06 View an image resource', () => {
     'PLR-06-04: an image that fails to load shows an error, not a blank player',
     { tag: ['@negative'] },
     async ({ user, page }) => {
-      // CONFIRMED LIVE (v 0.0.223): unlike a PDF that will not load (a silent blank loader, PL-01-06), the image player
+      // Unlike a PDF that will not load (a silent blank loader, PL-01-06), the image player
       // handles a failed load properly -- an icon and "Unable to load the image!" with a close button. The failure is
       // reproduced deterministically by blocking the image file.
       const block = (route) => route.abort();
@@ -125,9 +125,7 @@ test.describe('PLR-06 View an image resource', () => {
     }
   );
 
-  test.fixme('PLR-06-05: zooming and panning work on an open image', async () => {
-    // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): the image player has no zoom or pan control, and the mouse
-    // wheel over the image does nothing (the image stayed 981px wide). The story came from the reference suite's
-    // PLR-IMG-03. Owner to decide: drop the case, or raise a product gap.
+  test('PLR-06-05: zooming and panning work on an open image', async () => {
+    test.fixme(true, 'The image player has no zoom or pan control, and the mouse wheel over the image does nothing');
   });
 });

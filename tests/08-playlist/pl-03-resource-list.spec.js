@@ -9,7 +9,7 @@ test.describe('PL-03 Resource List', () => {
   test.describe('after closing resource previews', () => {
     test.use({ classMap: 'playersDefault' });
 
-    // One test per preview type (split 2026-09-28), so one type failing does not hide the others.
+    // One test per preview type, so one type failing does not hide the others.
     const previews = [
       ['PDF', (p) => p.worksheetCards, (p, page) => p.worksheetHeader.or(page.locator('canvas').first())],
       ['video', (p) => p.videoCards, (p) => p.videoElement],
@@ -34,7 +34,7 @@ test.describe('PL-03 Resource List', () => {
           await player.openResourceCard(cards);
           expect(await player.isPlayerOpen(), `${name} opened`).toBe(true);
           // isPlayerOpen() only proves the close icon exists, not that the player occupies a real amount of
-          // screen. CONFIRMED LIVE elsewhere in this suite: each of these types renders at ~150px+ in both
+          // screen. elsewhere in this suite: each of these types renders at ~150px+ in both
           // dimensions when working correctly.
           await expect
             .poll(async () => (await rendered.boundingBox())?.width || 0, {

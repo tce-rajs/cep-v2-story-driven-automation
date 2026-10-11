@@ -1,6 +1,6 @@
 // LOG-02 — All core UI components load after a valid login
 // Source: CEPV2_Stories/03_Login.md
-// One test per component and per check (split 2026-09-28), so one failing piece cannot hide behind the others.
+// One test per component and per check, so one failing piece cannot hide behind the others.
 
 const { test, expect } = require('../../fixtures');
 const { TOOL_IDS } = require('../../pages/toolbar.page');
@@ -72,9 +72,11 @@ test.describe('LOG-02 All core UI components load after a valid login', () => {
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       await user.nav.openChaptersPopup();
-      await expect(user.nav.chapterItems.first()).toBeVisible();
-      await user.nav.chapterItems.first().click({ timeout: 10000 });
-      await expect(user.nav.topicItems.first()).toBeVisible();
+      await expect(user.nav.chapterItems.first(), 'the chapter list').toBeVisible();
+      await user.nav.openChaptersPopup(); // close
+      // A chapter shows its topics (showTopicsOf opens the list on that chapter).
+      await user.nav.showTopicsOf(0);
+      await expect(user.nav.topicItems.first(), 'its topics').toBeVisible();
     }
   );
 
@@ -168,6 +170,33 @@ test.describe('LOG-02 All core UI components load after a valid login', () => {
       await app.toolbar.penStroke({ x: 300, y: 300 }, { x: 600, y: 350 });
       expect(await app.toolbar.pathCount()).toBeGreaterThan(before);
       await expect(app.login.avatar).toBeVisible();
+    }
+  );
+
+  test(
+    'LOG-02-15: if the Playlist fails to load, the board and toolbar still work and the teacher is told',
+    { tag: ['@negative'] },
+    async ({ app, page }) => {
+      // The same failure as LOG-02-08; this case checks the teacher is told about it.
+      await page.route(/playlist|resources?\b/i, (route) =>
+        ['fetch', 'xhr'].includes(route.request().resourceType()) ? route.abort() : route.continue()
+      );
+      try {
+        await app.signIn();
+        await expect(app.toolbar.container, 'the toolbar is there').toBeVisible();
+        const before = await app.toolbar.waitForBoardToSettle();
+        await app.toolbar.penStroke({ x: 300, y: 300 }, { x: 600, y: 350 });
+        expect(await app.toolbar.pathCount(), 'the board still works').toBeGreaterThan(before);
+        await expect(
+          page
+            .getByText(/unable to|could not|couldn't|failed|error|try again|something went wrong|not available/i)
+            .filter({ visible: true })
+            .first(),
+          'a message tells the teacher the Playlist did not load'
+        ).toBeVisible({ timeout: 15000 });
+      } finally {
+        await page.unroute(/playlist|resources?\b/i).catch(() => {});
+      }
     }
   );
 });

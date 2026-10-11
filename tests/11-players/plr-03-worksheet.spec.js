@@ -37,9 +37,9 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
       await expect(rendered).toBeVisible({ timeout: 15000 });
       expect(await currentPage(user), 'it opens on a numbered page').not.toBeNull();
       // isPlayerOpen()/toBeVisible() only prove the close icon and a header/canvas exist — not that the PDF
-      // occupies a real amount of screen. CONFIRMED LIVE: the canvas can still be mid-layout (a narrow sliver)
+      // occupies a real amount of screen. The canvas can still be mid-layout (a narrow sliver)
       // right after becoming visible, then settle to its real ~1200px-tall size — poll rather than measure once.
-      // CONFIRMED LIVE on a second server: a real multi-page curriculum PDF can take longer than 10s to settle;
+      // On a second server: a real multi-page curriculum PDF can take longer than 10s to settle;
       // 20s covers both.
       await expect
         .poll(async () => (await rendered.first().boundingBox())?.width || 0, {
@@ -91,10 +91,8 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
       await user.page.waitForTimeout(1200);
       expect(await currentPage(user), 'jumped to page 3').toBe(3);
 
-      // CONFIRMED LIVE (v 0.0.223): the up / down arrows at the left of the toolbar do NOT step the "Go to Page" number (the
-      // box keeps what was typed) and do not change the page on this 3-page document -- they can only scroll a taller page.
-      // What the story means by "with the up/down buttons" is unclear, so they are checked only for being present and
-      // harmless; that gap is recorded in the notes.
+      // The up / down arrows at the left of the toolbar do NOT step the "Go to Page" number (the box keeps what was
+      // typed) and do not change the page on this 3-page document -- they can only scroll a taller page.
       const { worksheetUpBtn: up, worksheetDownBtn: down } = user.player;
       await expect(up.first()).toBeVisible();
       await expect(down.first()).toBeVisible();
@@ -195,7 +193,7 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
   );
 
   // A Worksheet and a Weblink open together: the weblink opens properly alongside (PLR-03-08), and the worksheet keeps
-  // working (PLR-03-14) -- one test each (split 2026-09-28).
+  // working (PLR-03-14) -- one test each.
   const openWeblinkOverWorksheet = async (user, page) => {
     // .85: the only topic found with a Worksheet and a Web link together (moduleClassMap).
     await user.nav.applyClassMap('playersWeblink');
@@ -215,7 +213,7 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
       await openWeblinkOverWorksheet(user, page);
       await expect(user.player.weblinkWrapper, 'the weblink opened').toBeVisible({ timeout: 15000 });
       // toBeVisible() only proves the wrapper exists, not that it occupies a real amount of screen alongside the
-      // worksheet. CONFIRMED LIVE: a correctly-opened weblink wrapper is ~980x760 in this window.
+      // worksheet. A correctly-opened weblink wrapper is ~980x760 in this window.
       const weblinkBox = await user.player.weblinkWrapper.boundingBox();
       expect(weblinkBox.width, 'the weblink renders at a real size, not collapsed').toBeGreaterThan(150);
       expect(weblinkBox.height, 'the weblink renders at a real size, not collapsed').toBeGreaterThan(150);
@@ -237,18 +235,17 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Players workbook) ---
-
   const pdfCanvas = (user) => user.page.locator('.pdfViewer canvas, canvas').filter({ visible: true }).first();
 
-  test.fixme("PLR-03-09: the zoom buttons change the worksheet's zoom", async () => {
-    // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): the worksheet player has no zoom control. Its only controls are
-    // the page numbers with prev/next, Scroll-up / Scroll-down, GO, "switch view", Answer Toggle, Print and close.
-    // The story came from the reference suite's PLR-WS-09. Owner to decide: drop the case, or raise a product gap.
+  test("PLR-03-09: the zoom buttons change the worksheet's zoom", async () => {
+    test.fixme(
+      true,
+      'The worksheet player has no zoom buttons (only page navigation, scroll, switch view, answer key, print and close)'
+    );
   });
 
   // The answer key button shows the answers (PLR-03-10) and hides them again (PLR-03-15) -- one test each (split
-  // 2026-09-28).
+  // ).
   /** Open the worksheet, skip if it has no answer key; returns a function reading the page's current render. */
   const openWithAnswerKey = async (user) => {
     await openWorksheet(user);
@@ -286,7 +283,7 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
 
   test('PLR-03-11: the orientation button changes the page orientation', { tag: ['@functional'] }, async ({ user }) => {
     await openWorksheet(user);
-    // CONFIRMED LIVE (2026-09-26): the control is labelled "switch view"; it changes how the pages are laid out rather
+    // The control is labelled "switch view"; it changes how the pages are laid out rather
     // than rotating the page, so the check is that the layout changes and a second press restores it.
     const layout = async () => {
       const boxes = await user.page
@@ -335,4 +332,33 @@ test.describe('PLR-03 Complete a worksheet (PDF)', () => {
     await user.playlist.ensureDrawerVisible();
     await expect(user.playlist.contentsTile, 'back on the whiteboard with the Playlist').toBeVisible();
   });
+
+  test(
+    'PLR-03-16: a large worksheet on a slow network shows loading progress, not a blank player',
+    { tag: ['@interruption'] },
+    async ({ user, page }) => {
+      // Every request from now on answers 10 s late, as on a very slow network.
+      await page.route('**/*', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+        await route.continue().catch(() => {});
+      });
+      try {
+        await expect(user.player.worksheetCards.first()).toBeAttached({ timeout: 10000 });
+        await user.player.worksheetCards.first().click({ force: true });
+        await page.waitForTimeout(3000);
+        await expect(
+          page
+            .locator(
+              'ngx-spinner, .ngx-spinner-overlay, mat-spinner, mat-progress-spinner, mat-progress-bar, [class*="loading" i], [class*="spinner" i], [class*="loader" i]'
+            )
+            .filter({ visible: true })
+            .first(),
+          'a loading indicator is shown while the worksheet arrives'
+        ).toBeVisible({ timeout: 5000 });
+      } finally {
+        await page.unroute('**/*');
+        await user.player.closePlayer().catch(() => {});
+      }
+    }
+  );
 });

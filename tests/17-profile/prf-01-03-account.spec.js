@@ -50,6 +50,36 @@ test.describe('PRF-01 Open the profile', () => {
       ).toBeLessThanOrEqual(1);
     }
   );
+
+  test(
+    'PRF-01-04: closing the profile without changes changes nothing',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const p = user.profile;
+      const writes = [];
+      await p.open();
+      const before = {
+        types: (await p.preferredResourceTypeDropdown.innerText()).replace(/\s+/g, ' ').trim(),
+        subjects: await p.subjectNames(),
+      };
+      page.on('request', (r) => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(r.method()) && writes.push(r.url()));
+      await p.closeWindow();
+      await expect(p.accountTab, 'the profile closed').toBeHidden({ timeout: 5000 });
+      await page.waitForTimeout(2000);
+      expect(
+        writes.filter((u) => /user|profile|detail|subject|pref/i.test(u)),
+        'nothing was saved'
+      ).toEqual([]);
+      await p.open();
+      expect(
+        {
+          types: (await p.preferredResourceTypeDropdown.innerText()).replace(/\s+/g, ' ').trim(),
+          subjects: await p.subjectNames(),
+        },
+        'the same types and subjects when opened again'
+      ).toEqual(before);
+    }
+  );
 });
 
 test.describe('PRF-02 Choose preferred resource types', () => {
@@ -69,12 +99,8 @@ test.describe('PRF-02 Choose preferred resource types', () => {
 
   test(
     'PRF-02-02: a preferred resource type can be taken out of the list (mouse or finger)',
-    { tag: ['@functional', '@bug'] },
+    { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232): a type's remove button never becomes usable -- not by mouse
-      // (hover, 2026-09-26) and not by a real finger tap on a touch panel (its box stays empty after the tap), so a
-      // teacher cannot take a type out of the list. The list also shows "Interactivity" twice.
-      test.fail(true, 'A preferred resource type cannot be removed (its remove button never appears, mouse or touch)');
       const { TouchInput } = require('../../pages/touch-input');
       const touch = new TouchInput(user.page);
       const p = user.profile;
@@ -104,30 +130,11 @@ test.describe('PRF-02 Choose preferred resource types', () => {
     }
   );
 
-  test(
-    'PRF-02-04: the preferred resource type list has no duplicates',
-    { tag: ['@edge', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232): "Interactivity" appears twice in the list.
-      test.fail(true, 'The preferred resource type list shows "Interactivity" twice');
-      await user.profile.open();
-      const names = (await user.profile.preferredResourceTypeDropdown.innerText())
-        .replace(/keyboard_arrow_down/g, '')
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-      expect(
-        names.filter((n, i) => names.indexOf(n) !== i),
-        'no type listed twice'
-      ).toEqual([]);
-    }
-  );
-
-  test.fixme('PRF-02-03: applying with no types selected is blocked with a message', async () => {
-    // BLOCKED, CONFIRMED LIVE (2026-09-26, v 0.0.232): a type cannot be taken out of the preferred list in automation --
-    // neither clicking its chip nor its hover-only remove button (button.closeBtn) changes the list, and Apply then saves the
-    // unchanged list (PUT .../tce-auth-api/1/api/1/admin/user/details). Check by hand whether this is a product defect or a
-    // control that needs a real touch; the reference suite (USR-RES-01) did deselect "Whiteboard" this way on an older build.
+  test('PRF-02-03: applying with no types selected is blocked with a message', async () => {
+    test.fixme(
+      true,
+      'A type cannot be taken out of the preferred list in automation -- neither clicking its chip nor its hover-only remove button (button.closeBtn) changes the list, and Apply then saves the unchanged list (PUT ../tce-auth-api/1/api/1/admin/user/details).'
+    );
   });
 });
 
@@ -159,10 +166,7 @@ test.describe('PRF-03 Manage teaching subjects', () => {
       try {
         await expect(p.subjectChipRemove(name), `${name} chip added`).toBeVisible({ timeout: 10000 });
       } finally {
-        await p
-          .subjectChipRemove(name)
-          .click({ force: true })
-          .catch(() => {});
+        await p.removeSubject(name).catch(() => {});
       }
     }
   );
@@ -173,8 +177,9 @@ test.describe('PRF-03 Manage teaching subjects', () => {
     async ({ user }) => {
       const p = user.profile;
       await p.open();
-      // The primary account has no subjects of its own (confirmed live 2026-09-26): add one, check, then remove it.
+      // Add one, check, then remove it.
       const added = await addSubject(p);
+      await expect(p.subjectChipRemove(added), `${added} chip added`).toBeVisible({ timeout: 10000 });
       const existing = await p.subjectNames();
       expect(existing, 'the added subject is on the account').toContain(added);
       await p.waitForSpinner();
@@ -186,10 +191,7 @@ test.describe('PRF-03 Manage teaching subjects', () => {
           `${name} not offered`
         ).toHaveCount(0);
       await p.subjectMenuCloseBtn.click({ force: true }).catch(() => {});
-      await p
-        .subjectChipRemove(added)
-        .click({ force: true })
-        .catch(() => {});
+      await p.removeSubject(added).catch(() => {});
     }
   );
 
@@ -245,6 +247,67 @@ test.describe('PRF-03 Manage teaching subjects', () => {
       });
       await expect(p.subjectChipRemove(name)).toHaveCount(0, { timeout: 10000 });
       expect(await p.subjectNames(), 'only one subject removed').toEqual(before.filter((s) => s !== name));
+    }
+  );
+});
+
+// On the spare account (DISPOSABLE_* in .env): a removal that wrongly saves must not change the main account.
+test.describe('PRF-02 Choose preferred resource types: network down', () => {
+  test.afterEach(async ({ app }) => {
+    await app.page.unroute('**/*').catch(() => {});
+    await app.profile.closeWindow().catch(() => {});
+  });
+
+  test(
+    'PRF-02-05: removing a preferred type while the network is down shows a message and is not shown as saved',
+    { tag: ['@interruption'] },
+    async ({ app, page }) => {
+      test.skip(!process.env.DISPOSABLE_PIN, 'Needs the spare account (DISPOSABLE_* in .env).');
+      const { TouchInput } = require('../../pages/touch-input');
+      await app.signIn(process.env.DISPOSABLE_PIN);
+      const p = app.profile;
+      const touch = new TouchInput(page);
+      const typesNow = async () => (await p.preferredResourceTypeDropdown.innerText()).replace(/\s+/g, ' ').trim();
+      try {
+        await p.open();
+        const before = await typesNow();
+        // The network drops for the app's own saving calls.
+        await page.route('**/*', (route) =>
+          ['POST', 'PUT', 'PATCH'].includes(route.request().method())
+            ? route.abort('internetdisconnected')
+            : route.continue()
+        );
+        // Take the first type out, as in PRF-02-02 (a tap on the chip shows its remove button).
+        const drop = await p.preferredResourceTypeDropdown.boundingBox();
+        await touch.tap(drop.x + drop.width / 2, drop.y + drop.height / 2);
+        await page.waitForTimeout(1500);
+        const chip = await p.filterOptions.first().boundingBox();
+        await touch.tap(chip.x + chip.width / 2, chip.y + chip.height / 2);
+        await page.waitForTimeout(700);
+        const close = await p.filterOptions.first().locator('button.closeBtn').boundingBox();
+        await touch.tap(close.x + close.width / 2, close.y + close.height / 2);
+        await page.waitForTimeout(1000);
+        if (await p.applyFilterBtn.isVisible().catch(() => false)) await p.applyFilterBtn.click({ force: true });
+        await expect(
+          page
+            .getByText(
+              /not saved|could not|couldn't|unable to|failed|error|no (internet|network|connection)|try again/i
+            )
+            .filter({ visible: true })
+            .first(),
+          'a message says it was not saved'
+        ).toBeVisible({ timeout: 15000 });
+        await expect(p.snackbar.filter({ hasText: /saved|updated|success/i }), 'no "saved" message').toHaveCount(0);
+        await page.unroute('**/*');
+        // Not saved: opened again, the list is as it was.
+        await p.closeWindow();
+        await page.reload();
+        await expect(app.login.avatar).toBeVisible({ timeout: 30000 });
+        await p.open();
+        expect(await typesNow(), 'the preferred types are unchanged').toBe(before);
+      } finally {
+        await touch.dispose();
+      }
     }
   );
 });

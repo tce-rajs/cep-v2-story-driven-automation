@@ -59,4 +59,50 @@ test.describe('PLR-08 Open a web link', () => {
     await expect(user.player.weblinkWrapper).toBeHidden({ timeout: 10000 });
     await expect(user.player.weblinkIframe).toHaveCount(0);
   });
+
+  test('PLR-08-04: a non-YouTube web link opens its page in the player', { tag: ['@functional'] }, async ({ user }) => {
+    const p = user.player;
+    await expect(p.weblinkCards.first()).toBeAttached({ timeout: 10000 });
+    const count = await p.weblinkCards.count();
+    let opened = null;
+    for (let i = 0; i < count && !opened; i++) {
+      await p.openResourceCard(p.weblinkCards.nth(i));
+      await expect(p.weblinkWrapper).toBeVisible({ timeout: 15000 });
+      const src = (await p.weblinkIframe.first().getAttribute('src')) || '';
+      if (!/youtube\.com|youtu\.be/i.test(src)) opened = src;
+      else await p.closePlayer();
+    }
+    if (!opened) throw new Error('DATA MISSING ON THIS SERVER: no non-YouTube web link in the playersWeblink topic');
+    expect(opened, 'the player shows the linked page').toMatch(/^https?:\/\//);
+    // The page itself loaded inside the player (not a blank frame).
+    const frame = p.page.frameLocator('.weblink-wrapper iframe').first();
+    await expect(frame.locator('body *').first(), 'the linked page has content').toBeAttached({ timeout: 20000 });
+  });
+
+  test(
+    'PLR-08-05: a web link that cannot load shows a message, not a blank player',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      // The linked page cannot be reached: every page loaded inside a frame fails.
+      const unreachable = (route) =>
+        route.request().resourceType() === 'document' && route.request().frame() !== page.mainFrame()
+          ? route.abort('namenotresolved')
+          : route.continue();
+      await page.route('**/*', unreachable);
+      try {
+        await openWeblink(user);
+        await expect(
+          page
+            .getByText(
+              /cannot be (opened|loaded|reached)|could not|couldn't|unable to|not available|failed|error|try again/i
+            )
+            .filter({ visible: true })
+            .first(),
+          'a message says the link cannot be opened'
+        ).toBeVisible({ timeout: 30000 });
+      } finally {
+        await page.unroute('**/*', unreachable);
+      }
+    }
+  );
 });

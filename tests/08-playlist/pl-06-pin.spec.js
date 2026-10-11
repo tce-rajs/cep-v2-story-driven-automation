@@ -1,19 +1,15 @@
 // PL-06 — Pin
 // Source: CEPV2_Stories/08_Playlist.md
 //
-// UNVERIFIED MECHANIC — read before verifying: the only Pin control found in the previous suite is the Playlist
-// strip's own pin/anchor icon (playlist-resource-nav-pin), which was only ever confirmed to TOGGLE ITS OWN STATE.
-// What it pins, and whether individual cards have their own pin, was never established. These tests therefore
-// assert what the story promises in observable terms (pinned state on/off, pinned item stays first) using that
-// control, and PL-06-03 looks for a per-card pin and skips with a reason if there is none. If verification shows
-// the mechanic is different, adjust the page object, not the story.
+// The only Pin control is the Playlist strip's own pin icon (playlist-resource-nav-pin), which toggles its own state.
+// Individual cards have no pin of their own.
 
 const { test, expect } = require('../../fixtures');
 
 test.describe('PL-06 Pin', () => {
   test.use({ classMap: 'playersDefault' });
 
-  // CONFIRMED LIVE (v 0.0.223): the pin button's own classes carry no pinned/unpinned state (only transient
+  // The pin button's own classes carry no pinned/unpinned state (only transient
   // "cdk-focused cdk-mouse-focused" focus classes). The state lives on its inner icon, which gains a "strike-icon" class
   // after one click and loses it after the next.
   const pinState = async (user) => (await user.playlist.pinBtn.locator('mat-icon').getAttribute('class')) || '';
@@ -66,7 +62,7 @@ test.describe('PL-06 Pin', () => {
     async ({ user, page }) => {
       const { playlist } = user;
       // Look for a per-card pin control (none is documented).
-      // CONFIRMED LIVE 2026-09-20 (v 0.0.223): a curriculum card's only control is its remove icon, so there is no per-card pin.
+      // A curriculum card's only control is its remove icon, so there is no per-card pin.
       const cardPins = playlist.resourceCards.locator('[data-qa-id*="pin" i], [class*="pin" i]');
       const available = await cardPins.count();
       test.skip(
@@ -87,6 +83,34 @@ test.describe('PL-06 Pin', () => {
       expect(new Set(afterPinning), 'both pinned items are among the originals').toEqual(
         new Set(titles.filter((t) => afterPinning.includes(t)))
       );
+    }
+  );
+
+  test(
+    'PL-06-04: unpinning never hides a card that is being opened',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const { playlist } = user;
+      const original = await pinState(user);
+      await playlist.pinBtn.click();
+      await page.waitForTimeout(500);
+      expect(await pinState(user), 'set-up: pinned').not.toBe(original);
+      const card = playlist.resourceCards.first();
+      const title = (await playlist.cardTitles())[0];
+      try {
+        // Open the first card and unpin straight away, while it is still opening.
+        await user.player.openResourceCard(card);
+        await playlist.pinBtn.click({ force: true });
+        expect(await user.player.isPlayerOpen(20000), 'the card still opens').toBe(true);
+        await user.player.closePlayer();
+        await playlist.ensureDrawerVisible();
+        await expect(
+          playlist.resourceCards.filter({ hasText: title }).first(),
+          'the card is still in the strip'
+        ).toBeVisible();
+      } finally {
+        if ((await pinState(user)) !== original) await playlist.pinBtn.click().catch(() => {});
+      }
     }
   );
 });

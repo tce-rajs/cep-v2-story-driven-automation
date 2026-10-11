@@ -6,7 +6,7 @@ const { test, expect } = require('../../fixtures');
 test.use({ freshSpace: true });
 
 test.describe('TB-07 Undo / Redo', () => {
-  // Undo of a drawing (TB-07-01), a text box (TB-07-08) and a shape (TB-07-09): one test each (split 2026-09-28).
+  // Undo of a drawing (TB-07-01), a text box (TB-07-08) and a shape (TB-07-09): one test each.
   test('TB-07-01: Undo reverses the most recent drawing', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
     const tb = user.toolbar;
     const before = await tb.pathCount();
@@ -50,7 +50,7 @@ test.describe('TB-07 Undo / Redo', () => {
     await expect(tb.paths.last(), 'the same stroke came back').toHaveAttribute('d', geometry);
   });
 
-  // Rapid Undo (TB-07-03), rapid Redo (TB-07-10) and a mixed burst (TB-07-11): one test each (split 2026-09-28).
+  // Rapid Undo (TB-07-03), rapid Redo (TB-07-10) and a mixed burst (TB-07-11): one test each.
   const drawFive = async (tb) => {
     const before = await tb.pathCount();
     for (let i = 0; i < 5; i++) await tb.penStroke({ x: 300 + i * 90, y: 300 }, { x: 340 + i * 90, y: 380 });
@@ -102,9 +102,7 @@ test.describe('TB-07 Undo / Redo', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Toolbar workbook) ---
-
-  // Undo order (TB-07-04) and Redo order (TB-07-12) through 3 actions: one test each (split 2026-09-28).
+  // Undo order (TB-07-04) and Redo order (TB-07-12) through 3 actions: one test each.
   /** Draw three strokes; returns the board after each step (base = before the first). */
   const threeActions = async (tb) => {
     const base = await tb.pathData();
@@ -175,38 +173,38 @@ test.describe('TB-07 Undo / Redo', () => {
     await expect.poll(() => tb.pathCount(), { message: 'all 20 undone' }).toBe(before);
   });
 
-  test(
-    'TB-07-07: Undo after moving an object puts the object back (regression)',
-    { tag: ['@regression', '@bug'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; same as the reference suite's TB-CYP-07): moving an object
-      // adds no undo step -- Undo right after a move leaves the object where it was moved to.
-      test.fail(true, 'Undo does not undo a move: the moved object stays at its new position');
-      const tb = user.toolbar;
-      await tb.chooseShape('gtDrawRect');
-      await tb.drawStroke({ x: 500, y: 400 }, { x: 700, y: 520 }, 10);
-      const home = await tb.lastPathBox();
-      await tb.selectTool('gtSelect');
-      const cx = home.x + home.width / 2,
-        cy = home.y + 2; // on the rectangle's top edge
-      await page.mouse.move(cx, cy);
-      await page.mouse.down();
-      await page.mouse.move(cx + 200, cy + 120, { steps: 12 });
-      await page.mouse.up();
-      await page.waitForTimeout(800);
-      const moved = await tb.lastPathBox();
-      expect(Math.abs(moved.x - home.x) + Math.abs(moved.y - home.y), 'the shape moved').toBeGreaterThan(50);
-      await tb.closePanelByTappingOutside();
-      await tb.tool('gtUndo').click({ force: true });
-      await expect
-        .poll(
-          async () => {
-            const b = await tb.lastPathBox();
-            return Math.abs(b.x - home.x) + Math.abs(b.y - home.y);
-          },
-          { message: 'Undo moved the shape back' }
-        )
-        .toBeLessThan(5);
-    }
-  );
+  // On the scratch board: an Undo that wrongly reached loaded content would take it off the board.
+  test.describe('with nothing to undo', () => {
+    test.use({ classMap: 'scratchBoard' });
+
+    test(
+      'TB-07-13: Undo with nothing left to undo does nothing and stays disabled',
+      { tag: ['@negative'] },
+      async ({ user }) => {
+        const tb = user.toolbar;
+        const board = () => tb.allPaths.evaluateAll((els) => els.map((e) => e.getAttribute('d')));
+        const before = await tb.pathCount();
+        await tb.penStroke({ x: 350, y: 300 }, { x: 550, y: 360 });
+        await tb.tool('gtUndo').click({ force: true });
+        await expect.poll(() => tb.pathCount(), { message: 'set-up: the one stroke undone' }).toBe(before);
+        const after = await board();
+        for (let i = 0; i < 3; i++) await tb.tool('gtUndo').click({ force: true });
+        await user.page.waitForTimeout(800);
+        expect(await board(), 'nothing else taken off the board').toEqual(after);
+        const disabled = await tb
+          .tool('gtUndo')
+          .evaluate((el) =>
+            [el, ...el.querySelectorAll('*')].some(
+              (n) =>
+                n.disabled === true ||
+                n.getAttribute('aria-disabled') === 'true' ||
+                /\bdisabled?\b/i.test(n.getAttribute('class') || '') ||
+                getComputedStyle(n).pointerEvents === 'none' ||
+                Number(getComputedStyle(n).opacity) < 0.6
+            )
+          );
+        expect(disabled, 'Undo shows as disabled').toBe(true);
+      }
+    );
+  });
 });

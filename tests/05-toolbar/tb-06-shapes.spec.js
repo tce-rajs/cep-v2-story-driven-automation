@@ -1,6 +1,6 @@
 // TB-06 — Shapes (Choose / Draw / Symbols)
 // Source: CEPV2_Stories/05_Toolbar.md
-// Shapes panel entries (confirmed live, signed out and in): gtDrawRect, gtDrawCircle, gtDrawLine (drag to draw),
+// Shapes panel entries: gtDrawRect, gtDrawCircle, gtDrawLine (drag to draw),
 // gtInsertRect etc. (click to place), gtMoreShapes ("More symbols..."). The tool must be re-chosen before EVERY shape.
 
 const { test, expect } = require('../../fixtures');
@@ -115,6 +115,58 @@ test.describe('TB-06 Shapes (Choose / Draw / Symbols)', () => {
       );
       expect(tiny, 'no zero-size shape on the board').toBe(0);
       expect(await tb.pathCount()).toBeLessThanOrEqual(before + 1);
+    }
+  );
+
+  test(
+    'TB-06-05: a drawn shape can be moved and resized with Select',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      await tb.chooseShape('gtDrawRect');
+      await tb.drawStroke({ x: 500, y: 350 }, { x: 680, y: 470 }, 12);
+      // The selection handles are drawn as paths too, so the shape is found by its index (see WB-10-09).
+      const shape = tb.paths.nth((await tb.pathCount()) - 1);
+      const start = await shape.boundingBox();
+
+      // Move: select it, then drag it by its edge.
+      await tb.selectTool('gtSelect');
+      await page.mouse.click(start.x + start.width / 2, start.y + 2);
+      await expect(tb.pathMenuDeleteBtn, 'set-up: the shape is selected').toBeVisible({ timeout: 5000 });
+      await page.mouse.move(start.x + start.width / 2, start.y + 2);
+      await page.mouse.down();
+      await page.mouse.move(start.x + start.width / 2 + 160, start.y + 2 + 100, { steps: 15 });
+      await page.mouse.up();
+      await page.waitForTimeout(800);
+      const moved = await shape.boundingBox();
+      expect(moved.x - start.x, 'the shape moved right').toBeGreaterThan(100);
+      expect(moved.y - start.y, 'and down').toBeGreaterThan(60);
+      expect(Math.abs(moved.width - start.width), 'moving did not resize it').toBeLessThan(6);
+
+      // Resize: the selection shows handles; drag the one at the bottom-right corner outwards.
+      const handle = await page.evaluate(
+        ({ cx, cy }) => {
+          const svg = document.querySelector('[data-qa-id="wb-drawing-container"] svg');
+          let best = null;
+          for (const el of svg.querySelectorAll('*')) {
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.width > 40 || r.height > 40) continue;
+            const d = Math.hypot(r.x + r.width / 2 - cx, r.y + r.height / 2 - cy);
+            if (d < 30 && (!best || d < best.d)) best = { d, x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          }
+          return best;
+        },
+        { cx: moved.x + moved.width, cy: moved.y + moved.height }
+      );
+      expect(handle, 'a resize handle at the corner of the selected shape').not.toBeNull();
+      await page.mouse.move(handle.x, handle.y);
+      await page.mouse.down();
+      await page.mouse.move(handle.x + 120, handle.y + 80, { steps: 15 });
+      await page.mouse.up();
+      await page.waitForTimeout(800);
+      const resized = await shape.boundingBox();
+      expect(resized.width - moved.width, 'the shape is wider').toBeGreaterThan(60);
+      expect(resized.height - moved.height, 'and taller').toBeGreaterThan(40);
     }
   );
 });

@@ -11,14 +11,14 @@ test.describe('PL-02 Open & navigate Ebook', () => {
     await user.player.ebookTriggerBtn.click({ force: true });
     await expect(user.player.ebookLaunchBtn.first()).toBeVisible({ timeout: 10000 });
     await user.player.ebookLaunchBtn.first().click({ force: true });
-    // CONFIRMED LIVE: the chapters only appear 1-2s after the launch click; reading or clicking them sooner finds none.
+    // The chapters only appear 1-2s after the launch click; reading or clicking them sooner finds none.
     await expect(user.player.ebookChapterItems.first(), 'the ebook lists its chapters').toBeAttached({
       timeout: 20000,
     });
     await user.page.waitForTimeout(1000);
   };
 
-  // CONFIRMED LIVE: the contents panel starts collapsed -- every chapter is in the DOM but none is visible; one click
+  // The contents panel starts collapsed -- every chapter is in the DOM but none is visible; one click
   // on its toggle shows them all. So "open" means chapters are visible and "closed" means none are.
   const visibleChapters = (user) => user.player.ebookChapterItems.filter({ visible: true });
   const ensureContentsOpen = async (user) => {
@@ -30,11 +30,6 @@ test.describe('PL-02 Open & navigate Ebook', () => {
     'PL-02-01: opening an ebook from Playlist loads it correctly',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
-      // NOTE: on 2026-09-23 this reproducibly failed to open (no close icon, no chapters) on two separate QA
-      // servers/accounts across several attempts -- tracked at the time as a confirmed product bug. Re-tested later
-      // the same day: the ebook now opens and works reliably, repeatedly, including in isolation. Reverted the
-      // test.fail() marking since it currently works; if this recurs, it is likely QA-environment flakiness
-      // (a degraded backend/CDN at the time) rather than a stable regression -- re-confirm before re-marking.
       await openEbook(user);
       expect(await user.player.isPlayerOpen(), 'the ebook player opened').toBe(true);
       await expect(user.player.ebookChapterItems.first(), 'the ebook lists its chapters').toBeAttached({
@@ -53,7 +48,7 @@ test.describe('PL-02 Open & navigate Ebook', () => {
 
       await ensureContentsOpen(user);
       await user.player.domClick(chapters.nth(1));
-      // CONFIRMED LIVE: the chapter is only marked selected once its content has loaded, which can take several seconds.
+      // The chapter is only marked selected once its content has loaded, which can take several seconds.
       await expect(chapters.nth(1), 'the chosen chapter becomes the selected one').toHaveClass(/selected/, {
         timeout: 20000,
       });
@@ -61,7 +56,7 @@ test.describe('PL-02 Open & navigate Ebook', () => {
     }
   );
 
-  // The contents panel (PL-02-03) and the linked-resources panel (PL-02-05): one test each (split 2026-09-28).
+  // The contents panel (PL-02-03) and the linked-resources panel (PL-02-05): one test each.
   test(
     'PL-02-03: the ebook’s contents panel opens and closes correctly',
     { tag: ['@functional'] },
@@ -90,7 +85,7 @@ test.describe('PL-02 Open & navigate Ebook', () => {
     }
   );
 
-  // Chapter jumps (PL-02-04) and scrolling (PL-02-06): one test each (split 2026-09-28).
+  // Chapter jumps (PL-02-04) and scrolling (PL-02-06): one test each.
   test(
     'PL-02-04: jumping between ebook chapters (forward, to the end, back to the start) always lands on the chapter chosen',
     { tag: ['@regression'] },
@@ -139,6 +134,24 @@ test.describe('PL-02 Open & navigate Ebook', () => {
         errors.filter((e) => !/worker was terminated/i.test(e)),
         'no uncaught page errors'
       ).toEqual([]);
+    }
+  );
+
+  test(
+    'PL-02-07: closing the ebook leaves no blank panel and returns to the board',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      await openEbook(user);
+      expect(await user.player.isPlayerOpen(), 'set-up: the ebook is open').toBe(true);
+      await user.player.closePlayer();
+      const left = await user.player.leftoversAfterClose();
+      expect(left.closeIcons, 'no close icon left behind').toBe(0);
+      expect(left.panels, 'no empty player panel left behind').toBe(0);
+      expect(left.boardOnTop, 'the board is back on screen').toBe(true);
+      await user.content.startOnFreshSpace(); // write below what is on this board, never over it
+      const before = await user.toolbar.pathCount();
+      await user.toolbar.penStroke({ x: 400, y: 400 }, { x: 560, y: 450 });
+      expect(await user.toolbar.pathCount(), 'and it can be written on').toBeGreaterThan(before);
     }
   );
 });

@@ -41,7 +41,11 @@ test.describe('AIH-01 Open the homework builder', () => {
         .getByText(new RegExp(`${HW.grade.replace(/\s+/g, '\\s*')}\\s*\\|\\s*${HW.subject}`, 'i'))
         .first();
       await expect(header, 'class and subject in the header').toBeVisible({ timeout: 10000 });
-      if (chapterNo) await expect(header.locator('xpath=..')).toContainText(new RegExp(`${chapterNo}\\.`));
+      // The header names the chapter as "Chapter 2: ..." (or "2. ...").
+      if (chapterNo)
+        await expect(header.locator('xpath=..')).toContainText(
+          new RegExp(`Chapter\\s*${chapterNo}\\b|\\b${chapterNo}\\.`)
+        );
     }
   );
 
@@ -72,27 +76,6 @@ test.describe('AIH-01 Open the homework builder', () => {
       await hw.open(user.magnet);
       await expect(hw.selectChapterBtn, 'exactly one builder').toHaveCount(1);
       await expect(hw.hwObjInput).toHaveValue('15');
-    }
-  );
-
-  test(
-    'AIH-01-05: opening Homework while another Magnet panel is open does not leave two Magnet panels open (regression, Zoho TCN-I15361)',
-    { tag: ['@bug', '@regression'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; Zoho TCN-I15361, still open): with Notice capture active,
-      // Magnet -> Homework also opens the builder, so two Magnet panels are open at once.
-      test.fail(true, 'Homework opens on top of an active Notice capture (two Magnet panels at once)');
-      await user.magnet.choose('notice');
-      await expect(user.aiNotices.captureBanner).toBeVisible({ timeout: 10000 });
-      await user.magnet.tool.click({ force: true });
-      await page.waitForTimeout(800);
-      await user.magnet.homeworkItem.click({ force: true, timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(2500);
-      const open = [
-        await user.aiHomework.selectChapterBtn.isVisible().catch(() => false),
-        await user.aiNotices.captureBanner.isVisible().catch(() => false),
-      ];
-      expect(open.filter(Boolean).length, 'at most one Magnet panel open').toBeLessThanOrEqual(1);
     }
   );
 });

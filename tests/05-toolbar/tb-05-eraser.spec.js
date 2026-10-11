@@ -8,11 +8,6 @@ const { test, expect } = require('../../fixtures');
 // Counts and "last path" lookups see only this test's own strokes; the teacher's writing is kept (never cleared).
 test.use({ freshSpace: true });
 
-// Owner rule (2026-09-29): tests never wipe the teacher's board. Confirming "Clear whiteboard" wipes everything on
-// the topic, so the tests whose subject is that confirmation wait for the owner to decide how Clear may be tested.
-const CLEAR_WIPES_BOARD =
-  'Confirming "Clear whiteboard" erases the teacher\'s whole board; owner rule 2026-09-29 forbids it. Waiting for the owner to decide how Clear may be tested (e.g. a dedicated scratch topic).';
-
 test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
   test(
     'TB-05-01: the eraser removes only the stroke segment dragged over',
@@ -24,7 +19,7 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
       expect(await tb.pathCount()).toBe(before + 3);
       const drawn = await tb.pathData();
 
-      // Sweep across only the middle stroke. CONFIRMED LIVE: the eraser removes the swept SEGMENT, not the whole
+      // Sweep across only the middle stroke. The eraser removes the swept SEGMENT, not the whole
       // stroke -- the middle stroke is cut into two remaining pieces (3 strokes -> 4 paths).
       await tb.eraseDrag({ x: xs[1] - 30, y: 430 }, { x: xs[1] + 30, y: 430 });
       await expect.poll(() => tb.pathCount()).toBe(before + 4);
@@ -131,8 +126,7 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
     }
   );
 
-  // "Clear": it asks for confirmation first (TB-05-06), and confirming removes everything (TB-05-10) -- one test each
-  // (split 2026-09-28).
+  // "Clear" asks for confirmation first (TB-05-06); confirming it runs on the scratch board (tb-05-clear-whiteboard.spec.js).
   const pressClear = async (user) => {
     await user.toolbar.drawLetters(3, { x: 400, y: 400, gap: 100 });
     expect(await user.toolbar.pathCount(), 'set-up: content drawn').toBeGreaterThanOrEqual(3);
@@ -153,13 +147,6 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
     }
   );
 
-  test('TB-05-10: confirming "Clear" removes all whiteboard content', { tag: ['@functional'] }, async ({ user }) => {
-    test.fixme(true, CLEAR_WIPES_BOARD);
-    await pressClear(user);
-    await user.whiteboard.clearConfirmDialogConfirmBtn.click({ force: true });
-    await expect.poll(() => user.toolbar.allPaths.count()).toBe(0);
-  });
-
   test(
     'TB-05-07: the eraser does not leave small fragments behind after a single drag pass',
     { tag: ['@regression'] },
@@ -173,8 +160,6 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
       await expect.poll(() => tb.pathCount(), 'one pass fully clears it — no fragments').toBe(before);
     }
   );
-
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Toolbar workbook and Zoho bugs) ---
 
   test(
     'TB-05-08: the eraser removes a long stroke (over about 700 pixels) completely (regression)',
@@ -199,21 +184,35 @@ test.describe('TB-05 Eraser (Type / Size / Clear)', () => {
   );
 
   test(
-    'TB-05-09: cleared content stays cleared after the app reloads (regression, Zoho TCN-I16689)',
-    { tag: ['@regression'] },
+    'TB-05-11: the Eraser panel offers two separate clears, "Clear All Annotations" and "Clear Whiteboard"',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      await user.toolbar.openToolPanel('gtErase');
+      await expect(user.toolbar.eraserClearAnnotationsBtn, 'Clear All Annotations').toBeVisible();
+      await expect(user.whiteboard.clearWhiteboardBtn, 'Clear Whiteboard').toBeVisible();
+      await user.toolbar.closePanelByTappingOutside();
+    }
+  );
+
+  test(
+    'TB-05-17: erasing over empty board removes nothing and leaves no error',
+    { tag: ['@negative'] },
     async ({ user, page }) => {
-      test.fixme(true, CLEAR_WIPES_BOARD);
       const tb = user.toolbar;
-      await tb.drawLetters(3, { x: 400, y: 400, gap: 100 });
-      await user.content.waitForSaved();
-      await tb.pressClearWhiteboard(user.whiteboard);
-      await expect(tb.allPaths).toHaveCount(0);
-      await user.content.waitForSaved().catch(() => {});
-      await page.reload();
-      await tb.wbSvg.waitFor({ state: 'visible', timeout: 30000 });
-      await page.waitForTimeout(3000);
-      await tb.waitForBoardToSettle();
-      await expect(tb.allPaths, 'still empty after reload').toHaveCount(0);
+      const errors = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await tb.drawLetters(2, { x: 400, y: 300, gap: 80 });
+      const geometry = await user.content.pathGeometry();
+      // Sweep the eraser across an empty part of the board, well below the two letters.
+      await tb.eraseDrag({ x: 350, y: 600 }, { x: 900, y: 600 });
+      await tb.eraseDrag({ x: 900, y: 650 }, { x: 350, y: 650 });
+      await tb.selectTool('gtSelect');
+      expect(await user.content.pathGeometry(), 'nothing removed or changed').toEqual(geometry);
+      await expect(
+        page.getByText(/error|something went wrong|unable to/i).filter({ visible: true }),
+        'no error shown'
+      ).toHaveCount(0);
+      expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
 });

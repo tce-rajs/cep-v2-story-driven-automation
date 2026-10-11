@@ -29,7 +29,7 @@ test.describe('PLR-10 Use the Code Editor', () => {
 
   test('PLR-10-01: a Code Editor resource opens the editor', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
     await openEditor(user);
-    // tce-code-main itself is an inline, zero-size wrapper (confirmed live 2026-09-26): check the editor inside it.
+    // tce-code-main itself is an inline, zero-size wrapper: check the editor inside it.
     await expect(user.player.monacoEditor).toBeVisible();
     await expect(user.player.codeRunBtn).toBeVisible();
   });
@@ -79,13 +79,10 @@ test.describe('PLR-10 Use the Code Editor', () => {
 
   test(
     'PLR-10-06: after expanding, the button reads "Collapse All", not the misspelt "Collpase All" (regression)',
-    { tag: ['@bug', '@regression'] },
+    { tag: ['@regression'] },
     async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's PLR-CODE-13): after Expand All the
-      // settings panel's button reads "Collpase All".
-      test.fail(true, 'The Code Editor settings button is misspelt "Collpase All" after expanding');
       await openEditor(user);
-      // "Expand All" lives in the editor's settings panel (the gear), confirmed live 2026-09-26.
+      // "Expand All" lives in the editor's settings panel (the gear).
       await user.player.codeSettingsGear.click();
       const expand = page.getByText(/^\s*expand all\s*$/i).first();
       await expect(expand).toBeVisible({ timeout: 10000 });

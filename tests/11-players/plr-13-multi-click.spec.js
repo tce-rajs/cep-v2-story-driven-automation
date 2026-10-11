@@ -31,7 +31,7 @@ const clickCard = async (user, card, clickCount) => {
 
 // The code editor opens as its own component (tce-code-main) without the usual close icon; the other players show one
 // close icon per open player.
-// The quiz shows two buttons in the close-icon style (close and split screen), so it is counted by its renderer.
+// The quiz shows two buttons in the close-icon style, so it is counted by its renderer.
 const playerSignal = (user, k) =>
   k.kind === 'code editor'
     ? user.player.codeEditorComponent.filter({ visible: true })
@@ -56,7 +56,7 @@ for (const k of KINDS) {
       await app.page.keyboard.press('Escape').catch(() => {});
     });
 
-    // CONFIRMED LIVE (same class as PlayerPage.openCodeEditorCard's own note): a click on the code editor's card can
+    // A click on the code editor's card can
     // silently not open it on the first attempt (it is the heaviest player to mount) -- retry the same click count
     // once before treating "no player" as the real result being tested.
     const clickAndConfirm = async (user, card, clickCount) => {

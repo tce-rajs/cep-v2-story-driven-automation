@@ -53,17 +53,17 @@ test.describe('WB-03 Pan', () => {
     }
   );
 
-  // --- Added 2026-09-26 (Zoho TCN-I16253, TCN-I15241). Data: 'playersDefault' holds a Worksheet to open. ---
+  // Data: 'playersDefault' holds a Worksheet to open. ---
 
   test(
-    "WB-03-03: opening an asset from the Playlist doesn't pan the whiteboard by itself (regression, Zoho TCN-I16253)",
+    "WB-03-03: opening an asset from the Playlist doesn't pan the whiteboard by itself",
     { tag: ['@regression'] },
     async ({ user }) => {
       await user.nav.applyClassMap('playersDefault');
       await user.playlist.ensureDrawerVisible();
       const tb = user.toolbar;
       await tb.penStroke({ x: 500, y: 420 }, { x: 650, y: 440 });
-      // Measure only once the board has stopped moving after the class switch (live 2026-09-26: one run of eight saw a
+      // Measure only once the board has stopped moving after the class switch (live: one run of eight saw a
       // 15px shift that did not reproduce in 7 reruns -- the board was still settling when the "before" box was taken).
       await tb.waitForBoardToSettle();
       const key = (b) => `${Math.round(b.x)},${Math.round(b.y)}`;
@@ -89,7 +89,7 @@ test.describe('WB-03 Pan', () => {
   );
 
   test(
-    'WB-03-04: an asset opened from the Playlist appears where the teacher is working, not at the top of the board (regression, Zoho TCN-I15241)',
+    'WB-03-04: an asset opened from the Playlist appears where the teacher is working, not at the top of the board',
     { tag: ['@regression'] },
     async ({ user }) => {
       await user.nav.applyClassMap('playersDefault');
@@ -109,4 +109,31 @@ test.describe('WB-03 Pan', () => {
       await user.player.closePlayer();
     }
   );
+
+  test('WB-03-05: panning to the far edge and back never loses content', { tag: ['@negative'] }, async ({ user }) => {
+    const tb = user.toolbar;
+    await tb.penStroke({ x: 400, y: 400 }, { x: 520, y: 440 });
+    await user.whiteboard.insertTextAndType(650, 420, 'Far edge');
+    await tb.selectTool('gtSelect');
+    const snapshot = await user.content.snapshot();
+    const geometry = await user.content.pathGeometry();
+    const centres = await tb.boardCentres();
+    const startBox = await tb.lastPathBox();
+
+    // Far to the right, then the same distance back (each move drags the board 600 px).
+    await tb.selectTool('gtPan');
+    const moves = 8;
+    for (let i = 0; i < moves; i++) await tb.drawStroke({ x: 1000, y: 500 }, { x: 400, y: 500 }, 10);
+    for (let i = 0; i < moves; i++) await tb.drawStroke({ x: 400, y: 500 }, { x: 1000, y: 500 }, 10);
+    await tb.selectTool('gtSelect');
+
+    expect(await user.content.snapshot(), 'nothing lost or added').toEqual(snapshot);
+    expect(await user.content.pathGeometry(), 'no stroke changed').toEqual(geometry);
+    expect(await tb.boardCentres(), 'nothing moved on the board').toEqual(centres);
+    const backBox = await tb.lastPathBox();
+    expect(
+      Math.abs(backBox.x - startBox.x) + Math.abs(backBox.y - startBox.y),
+      'the writing is back in view where it was'
+    ).toBeLessThan(40);
+  });
 });

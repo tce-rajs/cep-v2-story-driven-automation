@@ -18,9 +18,9 @@ code: `RES`. Each `### <ID> — <Title>` is a **story**; each numbered line unde
 1. RES-01-01 — To check creating a new custom resource and saving it makes it available to add to a lesson
 2. RES-01-02 — To check attempting to save with required fields empty is blocked with a message
 3. RES-01-03 — To check a created custom resource is only available for the grades/subjects it was assigned to
-4. RES-01-04 — Negative: a zero-byte file upload is rejected server-side, not just client-side
-5. RES-01-05 — Negative: a file over the 10MB limit is rejected server-side, not just client-side
-6. RES-01-06 — Performance: uploading to an account with 200+ accumulated resources shows the new card promptly (within 30 seconds)
+4. RES-01-04 — Negative: to check a zero-byte file upload is rejected server-side, not just client-side _(improvement: an empty file is refused)_
+5. RES-01-05 — Negative: to check a file over the 10MB limit is rejected server-side, not just client-side
+6. RES-01-06 — Performance: to check uploading to an account with 200+ accumulated resources shows the new card promptly (within 30 seconds)
 7. RES-01-07 — To check a resource added via Add Resource appears correctly in the Playlist
 8. RES-01-08 — To check opening that added asset from the Playlist loads it correctly — if it doesn't load, that's an issue
 9. RES-01-09 — Negative: to check a title shorter than 3 characters shows an error while typing
@@ -28,13 +28,13 @@ code: `RES`. Each `### <ID> — <Title>` is a **story**; each numbered line unde
 11. RES-01-11 — To check Share is on by default
 12. RES-01-12 — To check Cancel closes the form without creating anything
 13. RES-01-13 — Negative: to check a file of an unsupported type is rejected with a message
-14. RES-01-14 — Regression: double-clicking Submit creates the resource only once
-15. RES-01-15 — Edge: to check a file whose name has emoji and 150 characters doesn't break the form
+14. RES-01-14 — Regression: to check double-clicking Submit creates the resource only once
+15. RES-01-15 — Edge: to check a file whose name has emoji and 150 characters doesn't break the form _(improvement: a long file name with emoji is accepted or refused with a message)_
 16. RES-01-16 — Edge: to check a file of exactly 10MB is accepted
-17. RES-01-17 — Performance: uploading to an account with 200+ accumulated resources adds exactly one card and loses none _(split from RES-01-06, 2026-09-28)_
-18. RES-01-18 — To check typing a title of 3 or more characters clears the error _(split from RES-01-09, 2026-09-28)_
-19. RES-01-19 — To check Grade & Subject and Chapter & Topic can't be changed _(split from RES-01-10, 2026-09-28)_
-20. RES-01-20 — To check a resource created with Share turned off is saved with Share off _(split from RES-01-11, 2026-09-28)_
+17. RES-01-17 — Performance: to check uploading to an account with 200+ accumulated resources adds exactly one card and loses none
+18. RES-01-18 — To check typing a title of 3 or more characters clears the error
+19. RES-01-19 — To check Grade & Subject and Chapter & Topic can't be changed
+20. RES-01-20 — To check a resource created with Share turned off is saved with Share off
 
 ### RES-02 — Library
 
@@ -62,17 +62,17 @@ inside that preview.
 6. RES-02-06 — To check "Open to Whiteboard" inserts/opens the asset onto the whiteboard
 7. RES-02-07 — To check "Save to Playlist" adds the asset to the Playlist
 8. RES-02-08 — To check the preview supports the asset's own actions — e.g. play/pause for video, page navigation for PDF/ebook — without leaving the preview
-9. RES-02-09 — Regression: rapid forward-clicking through a 200+ page PDF preview to a distant page doesn't crash the browser
-10. RES-02-10 — Regression: "content not loading" doesn't recur
-11. RES-02-11 — Regression: "content/images not visible" doesn't recur
-12. RES-02-12 — Regression: a topic name containing an apostrophe (e.g. "Coulomb's Law") is searched as typed, not shown as an HTML entity (`&#39;`)
-13. RES-02-13 — To check Search is disabled while the search box is empty or has fewer than 3 characters
+9. RES-02-09 — Regression: to check rapid forward-clicking through a 200+ page PDF preview to a distant page doesn't crash the browser
+10. RES-02-10 — Regression: to check "content not loading" doesn't recur
+11. RES-02-11 — Regression: to check "content/images not visible" doesn't recur
+12. RES-02-12 — Regression: to check a topic name containing an apostrophe (e.g. "Coulomb's Law") is searched as typed, not shown as an HTML entity (`&#39;`) _(improvement: the Library search shows an apostrophe correctly)_
+13. RES-02-13 — Negative: to check Search is disabled while the search box is empty or has fewer than 3 characters
 14. RES-02-14 — To check Clear empties the search box
 15. RES-02-15 — To check closing a preview changes nothing
-16. RES-02-16 — Regression: double-clicking "Save to Playlist" adds the resource only once
+16. RES-02-16 — Regression: to check double-clicking "Save to Playlist" adds the resource only once
 17. RES-02-17 — Edge: to check typing a search quickly, letter by letter, searches for the full text typed
-18. RES-02-18 — Regression: an Exercise resource's preview shows its answers, not blanks (Zoho TCN-I6380)
-19. RES-02-19 — Interruption: to check Save to Playlist while the network is down shows a message and adds nothing _(added 2026-09-30, gap analysis)_
+18. RES-02-18 — Regression: to check an Exercise resource's preview shows its answers, not blanks
+19. RES-02-19 — Interruption: to check Save to Playlist while the network is down shows a message and adds nothing
 
 ### RES-03 — Gallery
 
@@ -89,15 +89,16 @@ inside that preview.
 2. RES-03-02 — To check searching within the gallery filters the results correctly
 3. RES-03-03 — To check selecting an image inserts it onto the whiteboard
 4. RES-03-04 — To check the inserted image is selectable via the toolbar
-5. RES-03-05 — Regression: repeat opening the gallery picker 5-10x in a row and record the actual failure rate — don't accept a single clean pass as proof it's fixed
-6. RES-03-06 — To check a selected inserted image moves with the arrow keys _(selecting it is RES-03-04; clarified 2026-09-28)_
+5. RES-03-05 — Regression: to check repeat opening the gallery picker 5-10x in a row and record the actual failure rate — don't accept a single clean pass as proof it's fixed
+6. RES-03-06 — To check a selected inserted image moves with the arrow keys _(selecting it is RES-03-04)_
 7. RES-03-07 — To check changing the category filters changes the images shown
 8. RES-03-08 — To check the scroll buttons move through more images in the category
-9. RES-03-09 — Negative: to check a search with no matches shows a message, not an empty grid
-10. RES-03-10 — Regression: double-clicking an image adds it to the whiteboard only once
-11. RES-03-11 — Regression: every image thumbnail in the gallery loads, with no broken-image placeholders
+9. RES-03-09 — Negative: to check a search with no matches shows a message, not an empty grid _(improvement: empty search results show a message)_
+10. RES-03-10 — Regression: to check double-clicking an image adds it to the whiteboard only once _(improvement: a double click inserts a Gallery image once)_
+11. RES-03-11 — Regression: to check every image thumbnail in the gallery loads, with no broken-image placeholders
 12. RES-03-12 — To check the gallery's close button closes it
-13. RES-03-13 — Interruption: to check gallery images that fail to load on a slow network show a message or retry, not an empty grid _(added 2026-09-30, gap analysis)_
+13. RES-03-13 — Interruption: to check gallery images that fail to load on a slow network show a message or retry, not an empty grid
+14. RES-03-14 — Negative: to check closing the Gallery without choosing an image adds nothing to the board
 
 ### RES-04 — DropIt
 
@@ -119,15 +120,15 @@ then open correctly when accessed.
 3. RES-04-03 — To check scanning the QR code successfully pairs the device
 4. RES-04-04 — To check a link shared from a paired device opens correctly from the Playlist
 5. RES-04-05 — To check a file shared from a paired device opens correctly
-6. RES-04-06 — Regression: DropIt's "success shown but resource missing" failure mode doesn't recur — sharing a link genuinely creates a Playlist resource, not just a success message
+6. RES-04-06 — Regression: to check dropIt's "success shown but resource missing" failure mode doesn't recur — sharing a link genuinely creates a Playlist resource, not just a success message
 7. RES-04-07 — To check Close exits DropIt cleanly
 8. RES-04-08 — Edge: to check that opening and closing DropIt 8 times, every Close really closes it (no stuck panel)
-9. RES-04-09 — Regression: switching class straight after opening DropIt leaves no DropIt panel behind
-10. RES-04-10 — Regression: DropIt's Close button doesn't cover the Add Resource button
-11. RES-04-11 — Regression: sharing text from the paired device works (Zoho TCN-I16701)
+9. RES-04-09 — Regression: to check switching class straight after opening DropIt leaves no DropIt panel behind _(improvement: panels close when the class is switched)_
+10. RES-04-10 — Regression: to check dropIt's Close button doesn't cover the Add Resource button _(improvement: DropIt Close does not cover Add Resource)_
+11. RES-04-11 — Regression: to check sharing text from the paired device works _(improvement: text shared through DropIt arrives as a card)_
 12. RES-04-12 — Negative: to check a file type DropIt doesn't support is rejected with a clear message
-13. RES-04-13 — Regression: DropIt's "success shown but resource missing" failure mode doesn't recur — sharing a file genuinely creates a Playlist resource _(split from RES-04-06, 2026-09-28)_
-14. RES-04-14 — Edge: to check that after opening and closing DropIt 8 times, opening it again shows exactly one panel _(split from RES-04-08, 2026-09-28)_
+13. RES-04-13 — Regression: to check dropIt's "success shown but resource missing" failure mode doesn't recur — sharing a file genuinely creates a Playlist resource
+14. RES-04-14 — Edge: to check that after opening and closing DropIt 8 times, opening it again shows exactly one panel
 
 ### RES-05 — AI Assist
 
@@ -150,18 +151,18 @@ the Playlist.
 4. RES-05-04 — To check opening the "My Exercise" asset shows the added question marked as selected
 5. RES-05-05 — To check adding another question via AI Assist, when a "My Exercise" asset already exists, increases the question count within that same asset rather than creating a separate new one
 6. RES-05-06 — Negative: to check "Add to Playlist" is disabled or blocked when no question is selected
-7. RES-05-07 — Regression: each "Add to Playlist" creates its own "<topic> FlashCard" asset containing the chosen question (observed behaviour, pinned)
-8. RES-05-08 — Regression: one click on a tab switches to that tab's content
+7. RES-05-07 — Regression: to check each "Add to Playlist" creates its own "<topic> FlashCard" asset containing the chosen question (observed behaviour, pinned)
+8. RES-05-08 — Regression: to check one click on a tab switches to that tab's content
 9. RES-05-09 — To check the Videos tab shows videos for the current topic
 10. RES-05-10 — To check Teaching Tips shows Activities, Explanation and Real Life Example
 11. RES-05-11 — To check Minimize slides AI Assist down out of the way
 12. RES-05-12 — To check Close exits AI Assist cleanly
-13. RES-05-13 — Regression: double-clicking "Add to Playlist" adds the exercise only once
+13. RES-05-13 — Regression: to check double-clicking "Add to Playlist" adds the exercise only once
 14. RES-05-14 — Edge: to check opening and closing AI Assist 5 times leaves exactly one AI Assist window
 15. RES-05-15 — Edge: to check switching class while AI Assist is open closes it cleanly
-16. RES-05-16 — To check switching to the Teaching Tips tab shows teaching tips in place of the videos _(split from RES-05-02, 2026-09-28)_
-17. RES-05-17 — To check switching back to the Exercise tab shows the questions again _(split from RES-05-02, 2026-09-28)_
-18. RES-05-18 — To check Maximize brings a minimized AI Assist back up _(split from RES-05-11, 2026-09-28)_
+16. RES-05-16 — To check switching to the Teaching Tips tab shows teaching tips in place of the videos
+17. RES-05-17 — To check switching back to the Exercise tab shows the questions again
+18. RES-05-18 — To check Maximize brings a minimized AI Assist back up
 
 ### RES-06 — Add Resource menu
 
@@ -173,16 +174,14 @@ the Playlist.
 - AC2: Closing returns to the board
 - AC3: Pressing "+" again never stacks menus
 
-Added 2026-09-26 from the reference suite (Add Resource workbook, ADD-CORE-01..04, AR-BREAK-04, ADD-EXP-07).
-
 1. RES-06-01 — To check the "+" button opens the Add Resource menu with all 6 options
 2. RES-06-02 — To check each of the 6 options opens its own screen
 3. RES-06-03 — To check closing an option's screen returns cleanly to the whiteboard (one test per option: Create, Library, Gallery)
-4. RES-06-04 — Regression: pressing "+" while an option's screen is open doesn't open a second Add Resource menu on top
+4. RES-06-04 — Regression: to check pressing "+" while an option's screen is open doesn't open a second Add Resource menu on top _(improvement: pressing + again does not stack a second menu)_
 5. RES-06-05 — Edge: to check clicking an option the moment the menu opens opens that option, not a different one
+6. RES-06-06 — Negative: to check pressing Escape or clicking away closes the Add Resource menu and adds nothing
 
-### RES-08 — Uploading real teacher files, good and bad (added 2026-09-27)
-
+### RES-08 — Uploading real teacher files, good and bad
 **User story:** As a teacher, I want real teacher files to upload correctly and bad files to be refused clearly, so that my resources always open.
 
 **Acceptance criteria:**
@@ -204,62 +203,60 @@ What each group of files is expected to do:
 - Negative: an empty, corrupt or mislabelled file (0 bytes, random bytes, cut-off, header only, not-a-zip, image named .mp4, video named .png, program named .pdf, RTF named .doc) is refused with a message -- not accepted as "Successfully added resource!" and discovered broken only when opened in class
 - Edge: a file name of about 250 characters is either accepted or refused with a message, never silently lost
 
-One case per file (listed 2026-09-28 so the workbook has one row per test; the expected result is the one the
-test asserts -- a known product bug is recorded on the test, not changed here):
+One case per file; the expected result is the one the test asserts:
 
-1. RES-08-01 — Positive: `diagram-1920x1080.png` (Full-HD diagram, PNG) is accepted and opens properly
-2. RES-08-02 — Positive: `classroom-photo-4000x3000.jpg` (Phone-camera sized JPEG (12 MP)) is accepted and opens properly
-3. RES-08-03 — Positive: `board-photo.jpeg` (.jpeg extension) is accepted and opens properly
-4. RES-08-04 — Positive: `PHOTO-UPPERCASE.JPG` (Upper-case extension, as Windows cameras save it) is accepted and opens properly
-5. RES-08-05 — Positive: `tiny-icon-16x16.png` (Very small image) is accepted and opens properly
-6. RES-08-06 — Positive: `tall-infographic-800x8000.png` (Very tall image (1:10)) is accepted and opens properly
-7. RES-08-07 — Positive: `transparent-logo.png` (PNG with transparency) is accepted and opens properly
-8. RES-08-08 — Negative: `photo.webp` (WebP is not in the accepted list) is refused with a reason
-9. RES-08-09 — Positive: `lesson-clip-720p-10s.mp4` (1280x720, 10 s, with sound) is accepted and opens properly
-10. RES-08-10 — Positive: `very-short-1s.mp4` (1-second clip) is accepted and opens properly
-11. RES-08-11 — Positive: `portrait-720x1280.mp4` (Portrait phone video) is accepted and opens properly
-12. RES-08-12 — Positive: `silent-no-audio.mp4` (Video with no audio track) is accepted and opens properly
-13. RES-08-13 — Positive: `near-limit-9.6MB.mp4` (Just under the 10 MB limit) is accepted and opens properly
-14. RES-08-14 — Negative: `over-limit-11MB.mp4` (Over the 10 MB limit) is refused with a reason
-15. RES-08-15 — Negative: `lesson-clip.webm` (WebM is not in the accepted list (only .mp4)) is refused with a reason
-16. RES-08-16 — Negative: `voice-note.weba` (Audio file: not an accepted type) is refused with a reason
-17. RES-08-17 — Positive: `worksheet-3-pages.pdf` (3-page worksheet) is accepted and opens properly
-18. RES-08-18 — Positive: `textbook-chapter-80-pages.pdf` (80 pages) is accepted and opens properly
-19. RES-08-19 — Positive: `worksheet.PDF` (Upper-case .PDF extension) is accepted and opens properly
-20. RES-08-20 — Positive: `Lesson #1` (final) & notes.pdf (Spaces and # ( ) & in the file name) is accepted and opens properly
-21. RES-08-21 — Positive: `पाठ योजना - विद्युत आवेश.pdf` (Hindi file name) is accepted and opens properly
-22. RES-08-22 — Negative: `over-limit-scanned-book.pdf` (Scanned-style PDF over 10 MB (checked below)) is refused with a reason
-23. RES-08-23 — Positive: `lesson-plan.docx` (Word) is accepted and opens properly
-24. RES-08-24 — Positive: `class-slides.pptx` (PowerPoint, 3 slides) is accepted and opens properly
-25. RES-08-25 — Positive: `lesson-plan.odt` (OpenDocument text) is accepted and opens properly
-26. RES-08-26 — Positive: `class-slides.odp` (OpenDocument slides) is accepted and opens properly
-27. RES-08-27 — Positive: `marks-sheet.xlsx` (Excel) is accepted and opens properly
-28. RES-08-28 — Positive: `marks-sheet-legacy.xls` (Excel 97-2003 (.xls)) is accepted and opens properly
-29. RES-08-29 — Positive: `marks-sheet.ods` (OpenDocument spreadsheet) is accepted and opens properly
-30. RES-08-30 — Positive: `notes-plain.txt` (Plain text) is accepted and opens properly
-31. RES-08-31 — Positive: `notes-unicode-hindi-emoji.txt` (UTF-8 with Hindi, symbols and emoji) is accepted and opens properly
-32. RES-08-32 — Negative: `empty-0-bytes.pdf` (Zero-byte PDF) is refused with a reason
-33. RES-08-33 — Negative: `empty-0-bytes.png` (Zero-byte image) is refused with a reason
-34. RES-08-34 — Negative: `empty-0-bytes.mp4` (Zero-byte video) is refused with a reason
-35. RES-08-35 — Negative: `corrupt-random-bytes.png` (Random bytes with a .png name) is refused with a reason
-36. RES-08-36 — Negative: `corrupt-truncated.mp4` (Real MP4 cut off at 20% (interrupted copy)) is accepted and opens properly
-37. RES-08-37 — Negative: `corrupt-header-only.pdf` (PDF with only its first 400 bytes) is refused with a reason
-38. RES-08-38 — Negative: `corrupt-not-a-zip.docx` (.docx that is not a zip) is refused with a reason
-39. RES-08-39 — Negative: `image-renamed.mp4` (A PNG renamed to .mp4 (content does not match the extension)) is refused with a reason
-40. RES-08-40 — Negative: `video-renamed.png` (An MP4 renamed to .png) is refused with a reason
-41. RES-08-41 — Negative: `program-renamed.pdf` (A Windows program (MZ header) renamed to .pdf) is refused with a reason
-42. RES-08-42 — Negative: `worksheet.pdf.exe` (Double extension ending in .exe) is refused with a reason
-43. RES-08-43 — Negative: `worksheet-no-extension` (A real PDF with no extension) is refused with a reason
-44. RES-08-44 — Negative: `setup.exe` (Program file) is refused with a reason
-45. RES-08-45 — Negative: `bundle.zip` (Zip archive) is refused with a reason
-46. RES-08-46 — Negative: `drawing.svg` (SVG image: not in the accepted list) is refused with a reason
-47. RES-08-47 — Negative: `bitmap.bmp` (BMP image: not in the accepted list) is refused with a reason
-48. RES-08-48 — Negative: `tone.wav` (WAV audio: not an accepted type) is refused with a reason
-49. RES-08-49 — Negative: `rtf-renamed.doc` (RTF content with a .doc name (common in schools)) is refused with a reason
-50. RES-08-50 — Negative: `Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name.pdf` (File name of about 250 characters) is refused with a reason
+1. RES-08-01 — To check positive: `diagram-1920x1080.png` (Full-HD diagram, PNG) is accepted and opens properly
+2. RES-08-02 — To check positive: `classroom-photo-4000x3000.jpg` (Phone-camera sized JPEG (12 MP)) is accepted and opens properly
+3. RES-08-03 — To check positive: `board-photo.jpeg` (.jpeg extension) is accepted and opens properly
+4. RES-08-04 — To check positive: `PHOTO-UPPERCASE.JPG` (Upper-case extension, as Windows cameras save it) is accepted and opens properly
+5. RES-08-05 — To check positive: `tiny-icon-16x16.png` (Very small image) is accepted and opens properly
+6. RES-08-06 — To check positive: `tall-infographic-800x8000.png` (Very tall image (1:10)) is accepted and opens properly
+7. RES-08-07 — To check positive: `transparent-logo.png` (PNG with transparency) is accepted and opens properly
+8. RES-08-08 — Negative: to check `photo.webp` (WebP is not in the accepted list) is refused with a reason
+9. RES-08-09 — To check positive: `lesson-clip-720p-10s.mp4` (1280x720, 10 s, with sound) is accepted and opens properly
+10. RES-08-10 — To check positive: `very-short-1s.mp4` (1-second clip) is accepted and opens properly
+11. RES-08-11 — To check positive: `portrait-720x1280.mp4` (Portrait phone video) is accepted and opens properly
+12. RES-08-12 — To check positive: `silent-no-audio.mp4` (Video with no audio track) is accepted and opens properly
+13. RES-08-13 — To check positive: `near-limit-9.6MB.mp4` (Just under the 10 MB limit) is accepted and opens properly
+14. RES-08-14 — Negative: to check `over-limit-11MB.mp4` (Over the 10 MB limit) is refused with a reason
+15. RES-08-15 — Negative: to check `lesson-clip.webm` (WebM is not in the accepted list (only .mp4)) is refused with a reason
+16. RES-08-16 — Negative: to check `voice-note.weba` (Audio file: not an accepted type) is refused with a reason
+17. RES-08-17 — To check positive: `worksheet-3-pages.pdf` (3-page worksheet) is accepted and opens properly
+18. RES-08-18 — To check positive: `textbook-chapter-80-pages.pdf` (80 pages) is accepted and opens properly
+19. RES-08-19 — To check positive: `worksheet.PDF` (Upper-case .PDF extension) is accepted and opens properly
+20. RES-08-20 — To check positive: `Lesson #1` (final) & notes.pdf (Spaces and # ( ) & in the file name) is accepted and opens properly
+21. RES-08-21 — To check positive: `पाठ योजना - विद्युत आवेश.pdf` (Hindi file name) is accepted and opens properly
+22. RES-08-22 — Negative: to check `over-limit-scanned-book.pdf` (Scanned-style PDF over 10 MB (checked below)) is refused with a reason
+23. RES-08-23 — To check positive: `lesson-plan.docx` (Word) is accepted and opens properly _(improvement: Office and text files open after upload)_
+24. RES-08-24 — To check positive: `class-slides.pptx` (PowerPoint, 3 slides) is accepted and opens properly _(improvement: Office and text files open after upload)_
+25. RES-08-25 — To check positive: `lesson-plan.odt` (OpenDocument text) is accepted and opens properly _(improvement: Office and text files open after upload)_
+26. RES-08-26 — To check positive: `class-slides.odp` (OpenDocument slides) is accepted and opens properly _(improvement: Office and text files open after upload)_
+27. RES-08-27 — To check positive: `marks-sheet.xlsx` (Excel) is accepted and opens properly _(improvement: Office and text files open after upload)_
+28. RES-08-28 — To check positive: `marks-sheet-legacy.xls` (Excel 97-2003 (.xls)) is accepted and opens properly _(improvement: Office and text files open after upload)_
+29. RES-08-29 — To check positive: `marks-sheet.ods` (OpenDocument spreadsheet) is accepted and opens properly _(improvement: Office and text files open after upload)_
+30. RES-08-30 — To check positive: `notes-plain.txt` (Plain text) is accepted and opens properly _(improvement: Office and text files open after upload)_
+31. RES-08-31 — To check positive: `notes-unicode-hindi-emoji.txt` (UTF-8 with Hindi, symbols and emoji) is accepted and opens properly _(improvement: Office and text files open after upload)_
+32. RES-08-32 — Negative: to check `empty-0-bytes.pdf` (Zero-byte PDF) is refused with a reason _(improvement: an empty file is refused)_
+33. RES-08-33 — Negative: to check `empty-0-bytes.png` (Zero-byte image) is refused with a reason _(improvement: an empty file is refused)_
+34. RES-08-34 — Negative: to check `empty-0-bytes.mp4` (Zero-byte video) is refused with a reason _(improvement: an empty file is refused)_
+35. RES-08-35 — Negative: to check `corrupt-random-bytes.png` (Random bytes with a .png name) is refused with a reason
+36. RES-08-36 — Negative: to check `corrupt-truncated.mp4` (Real MP4 cut off at 20% (interrupted copy)) is accepted and opens properly
+37. RES-08-37 — Negative: to check `corrupt-header-only.pdf` (PDF with only its first 400 bytes) is refused with a reason _(improvement: broken or renamed files are refused on upload)_
+38. RES-08-38 — Negative: to check `corrupt-not-a-zip.docx` (.docx that is not a zip) is refused with a reason
+39. RES-08-39 — Negative: to check `image-renamed.mp4` (A PNG renamed to .mp4 (content does not match the extension)) is refused with a reason _(improvement: broken or renamed files are refused on upload)_
+40. RES-08-40 — Negative: to check `video-renamed.png` (An MP4 renamed to .png) is refused with a reason _(improvement: broken or renamed files are refused on upload)_
+41. RES-08-41 — Negative: to check `program-renamed.pdf` (A Windows program (MZ header) renamed to .pdf) is refused with a reason _(improvement: broken or renamed files are refused on upload)_
+42. RES-08-42 — Negative: to check `worksheet.pdf.exe` (Double extension ending in .exe) is refused with a reason
+43. RES-08-43 — Negative: to check `worksheet-no-extension` (A real PDF with no extension) is refused with a reason
+44. RES-08-44 — Negative: to check `setup.exe` (Program file) is refused with a reason
+45. RES-08-45 — Negative: to check `bundle.zip` (Zip archive) is refused with a reason
+46. RES-08-46 — Negative: to check `drawing.svg` (SVG image: not in the accepted list) is refused with a reason
+47. RES-08-47 — Negative: to check `bitmap.bmp` (BMP image: not in the accepted list) is refused with a reason
+48. RES-08-48 — Negative: to check `tone.wav` (WAV audio: not an accepted type) is refused with a reason
+49. RES-08-49 — Negative: to check `rtf-renamed.doc` (RTF content with a .doc name (common in schools)) is refused with a reason _(improvement: broken or renamed files are refused on upload)_
+50. RES-08-50 — Negative: to check `Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name.pdf` (File name of about 250 characters) is refused with a reason
 
-### RES-09 — Sending real teacher files through DropIt (added 2026-09-27)
-
+### RES-09 — Sending real teacher files through DropIt
 **User story:** As a teacher, I want DropIt to handle my files the same way as Create, so that sending from my phone is just as safe.
 
 **Acceptance criteria:**
@@ -271,12 +268,12 @@ test asserts -- a known product bug is recorded on the test, not changed here):
 The same upload test-data kit as RES-08, tried through DropIt instead of Create (a full 50-file run was done once by
 hand; this keeps one representative case per outcome it found, since DropIt is far slower per file than Create):
 
-1. RES-09-01 — Positive: an accepted image type opens properly
-2. RES-09-02 — Positive: an accepted PDF opens properly
-3. RES-09-03 — Positive: an accepted Word file opens properly
-4. RES-09-04 — Negative: a video is refused (DropIt has no video support at all, unlike Create)
-5. RES-09-05 — Negative: a broken (header-only) PDF is refused, not accepted as if it were a real file
-6. RES-09-06 — Negative: a Windows program renamed .pdf is refused
-7. RES-09-07 — Negative: an MP4 renamed .png is refused
-8. RES-09-08 — Negative: a PDF over the 10 MB limit is refused
-9. RES-09-09 — Negative: a Hindi file name is accepted, or the teacher is told it failed (not silently lost)
+1. RES-09-01 — To check positive: an accepted image type opens properly
+2. RES-09-02 — To check positive: an accepted PDF opens properly
+3. RES-09-03 — To check positive: an accepted Word file opens properly
+4. RES-09-04 — Negative: to check a video is refused (DropIt has no video support at all, unlike Create)
+5. RES-09-05 — Negative: to check a broken (header-only) PDF is refused, not accepted as if it were a real file _(improvement: broken or renamed files are refused on upload)_
+6. RES-09-06 — Negative: to check a Windows program renamed .pdf is refused
+7. RES-09-07 — Negative: to check an MP4 renamed .png is refused
+8. RES-09-08 — Negative: to check a PDF over the 10 MB limit is refused _(improvement: DropIt enforces a file-size limit)_
+9. RES-09-09 — Negative: to check a Hindi file name is accepted, or the teacher is told it failed (not silently lost)

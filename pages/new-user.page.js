@@ -1,15 +1,14 @@
 // Page Object for the first-time-user journey (Module 02): forced password reset on first login, PIN setup, and the
 // welcome / "Choose Class" screen.
 //
-// UNVERIFIED LOCATORS — this journey needs a brand-new account still on its default password, which the previous suite
-// never had, so nothing here has been seen live. The Sign In form and the "Choose Class" prompt (button.choose-a-class /
-// .first-time-user-message) are known from earlier work; the set-new-password and PIN-setup screens are located by
-// their visible wording and field types. If verification shows different wording or markup, fix it HERE, once.
+// This journey needs a brand-new account still on its default password. The "Choose Class" prompt is
+// button.choose-a-class inside .first-time-user-message; the set-new-password and PIN-setup screens (a two-step,
+// five-box PIN entry) are located by their visible wording and field types.
 //
 // The account comes from .env (see .env.example):
-//   NEW_USER_USERNAME      a fresh user still on the default first-login password
-//   NEW_USER_NEW_PASSWORD  the password to set during the forced reset
-//   NEW_USER_PIN           a valid 5-digit PIN to set
+//   NEW_USER_USERNAME a fresh user still on the default first-login password
+//   NEW_USER_NEW_PASSWORD the password to set during the forced reset
+//   NEW_USER_PIN a valid 5-digit PIN to set
 // The default first-login password is always `classedge`.
 
 const { LoginPage } = require('./login.page');
@@ -32,7 +31,7 @@ class NewUserPage {
 
     // --- PIN setup step ---
     this.pinSetupHeading = page.getByText(/(set|create|setup)( up)?( a| your)?( new)? pin/i).first();
-    // CONFIRMED LIVE (v 0.0.223): a two-step, five-box flow. "Set PIN" (login-change-pin-new-input-0..4, Next, Auto-Generate,
+    // A two-step, five-box flow. "Set PIN" (login-change-pin-new-input-0..4, Next, Auto-Generate,
     // skip link) moves on by itself once the fifth box is filled to "Verify PIN" (login-change-pin-verify-input-0..4, Set Pin,
     // skip link); typing the PIN again there completes the setup.
     this.pinInputs = page.locator('input[data-qa-id^="login-change-pin-new-input-"]').filter({ visible: true });
@@ -86,7 +85,19 @@ class NewUserPage {
   async typeIntoBoxes(boxes, characters) {
     await boxes.first().waitFor({ state: 'visible', timeout: 15000 });
     const chars = String(characters).split('');
-    for (let i = 0; i < chars.length; i++) await boxes.nth(i).pressSequentially(chars[i]);
+    // Tap each box and press the key, as a teacher does, then check it landed: typing straight into the boxes
+    // dropped digits (9 Oct), so a wrong PIN was set while the tests still passed. Digits are checked; a letter is
+    // pressed without a check, because the negative tests type letters to see them refused.
+    for (let i = 0; i < chars.length; i++) {
+      await boxes.nth(i).click();
+      await this.page.keyboard.press(chars[i]);
+      await this.page.waitForTimeout(300);
+      // The last digit can move the page on (the boxes go away), so only earlier boxes are checked.
+      if (/\d/.test(chars[i]) && i < chars.length - 1) {
+        const got = await boxes.nth(i).inputValue();
+        if (got !== chars[i]) throw new Error(`PIN box ${i + 1} holds "${got}" instead of "${chars[i]}"`);
+      }
+    }
   }
 
   /** Step 1 ("Set PIN"): type the PIN. The page moves on to "Verify PIN" by itself after the fifth digit. */

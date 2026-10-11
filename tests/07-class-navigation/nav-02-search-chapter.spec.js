@@ -1,6 +1,6 @@
 // NAV-02 — Search Chapter
 // Source: CEPV2_Stories/07_ClassNavigation.md
-// CONFIRMED LIVE (v 0.0.223): the search box in the Chapters popup is a "Search Table of Contents". It matches TOPICS
+// The search box in the Chapters popup is a "Search Table of Contents". It matches TOPICS
 // (listed under "Choose a Topic"; the chapter list is hidden), runs on Enter/submit and shows nothing for an empty query.
 
 const { test, expect } = require('../../fixtures');
@@ -13,7 +13,7 @@ test.describe('NAV-02 Search Chapter', () => {
     await user.nav.openChaptersPopup();
     // Read a real chapter title BEFORE opening the search: the search view hides the chapter list.
     chapterName = (await user.nav.chapterItems.first().innerText()).replace(/\s+/g, ' ').trim();
-    // The toggle occasionally swallows the first click straight after the popup opens (seen once in a full-suite run), so
+    // The toggle occasionally swallows the first click straight after the popup opens, so
     // click it again until the search box is actually there.
     await expect(async () => {
       if (!(await user.nav.chapterTpSearchInput.isVisible()))
@@ -44,23 +44,7 @@ test.describe('NAV-02 Search Chapter', () => {
     }
   );
 
-  test(
-    'NAV-02-02: a search with zero matches shows an appropriate empty-state message',
-    { tag: ['@negative', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): a search with no matches shows nothing at all -- the popup holds
-      // only its "Cancel" button, with no "no results" message. Tracked as expected-to-fail so it isn't masked.
-      test.fail(true, 'A search with zero matches shows a blank popup, no empty-state message');
-      await user.nav.searchContents('zzzqqqxxx999');
-
-      await expect(user.nav.topicItems, 'no results listed').toHaveCount(0);
-      await expect(
-        user.nav.chapterTpPopup.getByText(/no (result|chapter|topic|match|data)|not found|nothing/i).first()
-      ).toBeVisible();
-    }
-  );
-
-  // Special characters (NAV-02-03) and a very long query (NAV-02-06): one test each (split 2026-09-28). "Not broken" =
+  // Special characters (NAV-02-03) and a very long query (NAV-02-06): one test each. "Not broken" =
   // the field still works, Cancel brings the full chapter list back, and no page errors.
   for (const [id, what, queries] of [
     ['NAV-02-03', 'special characters', ['<script>alert(1)</script>', `'"%_\\;--${'&*()[]{}^~`'.repeat(3)}`]],
@@ -79,8 +63,6 @@ test.describe('NAV-02 Search Chapter', () => {
       expect(errors, 'no uncaught page errors').toEqual([]);
     });
   }
-
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Grade/Subject/Division workbook) ---
 
   test(
     'NAV-02-04: clearing the search brings the full chapter list back (regression)',

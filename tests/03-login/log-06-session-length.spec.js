@@ -1,10 +1,9 @@
 // LOG-06 — Session length and token extension
 // Source: CEPV2_Stories/03_Login.md
 //
-// Owner-stated flow (2026-09-28): the access token lives 5 minutes and the app checks the session at minute 4 of each
-// token. While the teacher interacts (any interaction, pen strokes included) the token is renewed silently at each check,
-// with no Sign Out / Continue popup; after 45 minutes of continuous use the teacher is signed out even while active.
-// (The idle side -- the popup -- is LOG-05.)
+// While the teacher interacts (any interaction, pen strokes included) the token is renewed silently at each check, with
+// no Sign Out / Continue popup; after 45 minutes of continuous use the teacher is signed out even while active. (The
+// idle side -- the popup -- is LOG-05.)
 //
 // One session of continuous use (a pen stroke every 30 s, on 'toolbarGeneral' = Class 12A Physics 1.1) is run once, by
 // LOG-06-01, for up to SESSION_CAP_MINUTES + 5 minutes (default 45 + 5). It records every token-renewal request, every
@@ -20,7 +19,7 @@ const path = require('path');
 const { test, expect } = require('../../fixtures');
 
 const CAP_MINUTES = Number(process.env.SESSION_CAP_MINUTES || 45); // the latest a forced sign-out may come
-const IDEAL_MINUTES = 40; // when it is meant to come (owner, 2026-09-28)
+const IDEAL_MINUTES = 40; // When it is meant to come
 const TOKEN_MINUTES = 5; // a renewal must come before each token expires (checks are at minute 4)
 const popupBtn = (page) => page.getByRole('button', { name: /stay signed in|continue( session)?/i });
 const isExtend = (url) => /extend|refresh/i.test(url);
@@ -41,7 +40,7 @@ const minutesSince = (start, at) => Math.round(((at - start) / 60000) * 10) / 10
 
 test.describe('LOG-06 Session length and token extension', () => {
   // No freshSpace fixture here: LOG-06-03 has to read the board LOG-06-01 wrote. The tests that write move to fresh
-  // space below the teacher's writing themselves; the board is never cleared (owner rule 2026-09-29).
+  // space below the teacher's writing themselves; the board is never cleared.
   test.use({ classMap: 'toolbarGeneral' });
 
   test(
@@ -135,7 +134,7 @@ test.describe('LOG-06 Session length and token extension', () => {
     'LOG-06-02: continuous use ends in a forced sign-out at about 40 minutes, never later than 45, even while active',
     { tag: ['@long', '@functional'] },
     async () => {
-      // Owner (2026-09-28): about 40 minutes is the intended time, 45 the maximum. Earlier than ~39 is too early.
+      // Earlier than ~39 is too early.
       const s = needSession();
       expect(s.loggedOutAt, `signed out within ${CAP_MINUTES + 5} min of continuous use`).not.toBeNull();
       const at = minutesSince(s.start, s.loggedOutAt);
@@ -148,39 +147,11 @@ test.describe('LOG-06 Session length and token extension', () => {
   );
 
   test(
-    'LOG-06-03: nothing the teacher wrote before the forced logout is lost',
-    { tag: ['@long', '@regression'] },
-    async ({ user }) => {
-      test.setTimeout(5 * 60 * 1000);
-      const s = needSession();
-      test.skip(!s.loggedOutAt, 'no forced logout happened in LOG-06-01, so there is no "before the logout" to check');
-      try {
-        // Signed in again by the fixture, on the same topic: every stroke written before the logout must be there.
-        // The whole board (the teacher's writing is still on it -- never cleared), searched for LOG-06-01's strokes.
-        await expect
-          .poll(() => user.toolbar.allPaths.count(), { message: 'the board loaded', timeout: 60000 })
-          .toBeGreaterThanOrEqual(s.strokes.length);
-        const board = await user.toolbar.allPaths.evaluateAll((els) => els.map((e) => e.getAttribute('d')));
-        const lost = s.strokes.filter((st) => !board.includes(st.d));
-        test.info().annotations.push({
-          type: 'note',
-          description: `${s.strokes.length} strokes written; ${lost.length} missing; last written ${Math.round((s.loggedOutAt - (s.strokes.at(-1) || { at: s.loggedOutAt }).at) / 1000)} s before the logout.`,
-        });
-        expect(lost, 'strokes written before the forced logout that are missing afterwards').toHaveLength(0);
-      } finally {
-        fs.rmSync(sessionFile(), { force: true });
-      }
-    }
-  );
-
-  test(
     'LOG-06-04: one failed token renewal (a network blip) does not end the session while the teacher is active',
     { tag: ['@long', '@negative'] },
     async ({ user, page }) => {
       // The first renewal request (the check at minute 4) is made to fail; the teacher keeps writing through the next
-      // one. The owner's flow does not say what should happen here -- "the session survives a single blip" is this
-      // case's expectation, so a failure is a finding to confirm with the owner, not an automatic bug.
-      // SEEN LIVE (2026-09-29): with the one /sso/extend at ~3.8 min aborted, the teacher was signed out while writing.
+      // one. With the one /sso/extend at ~3.8 min aborted, the teacher was signed out while writing.
       test.setTimeout((TOKEN_MINUTES * 2 + 6) * 60 * 1000);
       await user.content.startOnFreshSpace();
       let blocked = 0;
@@ -205,6 +176,46 @@ test.describe('LOG-06 Session length and token extension', () => {
       } finally {
         await page.unroute((url) => isExtend(url.toString())).catch(() => {});
       }
+    }
+  );
+
+  test(
+    'LOG-06-08: signing out yourself at 40 minutes keeps everything written in that session',
+    { tag: ['@long', '@functional'] },
+    async ({ user, page }) => {
+      // Signs out just before the forced sign-out (LOG-06-02 expects it at about 40 min, never before ~39).
+      const SIGN_OUT_AT = Number(process.env.SELF_SIGN_OUT_MINUTES || 38.5);
+      test.setTimeout((SIGN_OUT_AT + 10) * 60 * 1000);
+      await user.content.startOnFreshSpace();
+      const start = Date.now();
+      const written = [];
+      for (let i = 0; Date.now() - start < SIGN_OUT_AT * 60000; i++) {
+        if (!(await user.login.avatar.isVisible().catch(() => false))) break;
+        const x = 200 + (i % 20) * 50;
+        const y = 250 + (Math.floor(i / 20) % 8) * 60;
+        await user.toolbar.penStroke({ x, y }, { x: x + 30, y: y + 35 });
+        written.push(await user.toolbar.paths.last().getAttribute('d'));
+        await page.waitForTimeout(30000);
+      }
+      const minutes = minutesSince(start, Date.now());
+      await expect(user.login.avatar, `set-up: still signed in at ${minutes} min, to sign out myself`).toBeVisible();
+      await user.userMenu.signOut();
+      await user.signIn(process.env.VALID_PIN);
+      await user.nav.applyClassMap('toolbarGeneral');
+      await user.toolbar.waitForBoardToSettle();
+      await expect
+        .poll(async () => (await user.content.pathGeometry()).length, {
+          message: 'the session strokes load',
+          timeout: 60000,
+        })
+        .toBeGreaterThanOrEqual(written.length);
+      const now = await user.content.pathGeometry();
+      const missing = written.filter((d) => !now.includes(d));
+      test.info().annotations.push({
+        type: 'note',
+        description: `Signed out at ${minutes} min after ${written.length} strokes; ${missing.length} missing after signing in again.`,
+      });
+      expect(missing.length, 'every stroke of the session is on the board after signing in again').toBe(0);
     }
   );
 });

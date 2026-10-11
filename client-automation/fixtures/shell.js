@@ -4,7 +4,7 @@
 // Electron processes per test (most of what it checks is COLD-LAUNCH behaviour, which only shows on a fresh
 // process) and reads/writes C:\Users\Public\tce_settings.json directly, the client's own external config file.
 //
-// CONFIRMED LIVE (2026-09-23): the shell's admin menu is a checkbox-hack toggle (#adminToggle, bottom-right,
+// The shell's admin menu is a checkbox-hack toggle (#adminToggle, bottom-right,
 // three dots) that reveals Record Screen / Desktop / Settings / Keyboard / Volume / Exit. Settings is reached
 // differently depending on how many profiles are saved:
 //   - Exactly 1 profile: the client connects straight to it, no picker -- Settings is behind #adminToggle.
@@ -90,7 +90,7 @@ async function openSettings(shell) {
 
 /** Selects a profile tab within the (already open) Settings screen by its title. */
 function profileTab(shell, title) {
-  // CONFIRMED LIVE: there can be more than one ".profile-tab" element carrying this exact text -- a hidden one
+  // There can be more than one ".profile-tab" element carrying this exact text -- a hidden one
   // (an Angular artifact, never proven to be anything more specific) ahead of the real, visible, clickable tab
   // in DOM order. The :visible pseudo-class filters to the one that's actually on screen, rather than assuming
   // a fixed position.

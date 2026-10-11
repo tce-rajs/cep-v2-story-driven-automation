@@ -9,7 +9,7 @@ test.describe('PRE-03 Toolbar is available, except Magnet', () => {
     await new WithoutLoginPage(page).open();
   });
 
-  // The story's PRE-03-01 listed the whole toolbar plus the User menu in one case. Split (2026-09-28) into one case per
+  // The story's PRE-03-01 listed the whole toolbar plus the User menu in one case. Split into one case per
   // tool: every tool is visible (PRE-03-04), each works on its own (PRE-03-05..13), and the User menu (PRE-03-01).
   test(
     'PRE-03-04: every toolbar tool (Select, Pan, Background, Pen, Text, Eraser, Shapes, Undo, Redo) is visible without logging in',
@@ -85,9 +85,8 @@ test.describe('PRE-03 Toolbar is available, except Magnet', () => {
     'PRE-03-01: the User menu is not visible without logging in',
     { tag: ['@functional', '@negative'] },
     async ({ page }) => {
-      // Owner decision (2026-09-29): the User menu must NOT be visible signed-out -- the app is right and the story was
-      // wrong (it listed "User menu" among the tools visible before login). Signed-out there is no avatar, and the
-      // profile trigger (toolbar-profile-trigger) is in the DOM but hidden; both appear only after signing in.
+      // Signed-out there is no avatar, and the profile trigger (toolbar-profile-trigger) is in the DOM but hidden; both
+      // appear only after signing in.
       const app = new WithoutLoginPage(page);
       await expect(app.userAvatar).toBeHidden({ timeout: 3000 });
       await expect(app.userMenuTrigger).toBeHidden();
@@ -109,11 +108,9 @@ test.describe('PRE-03 Toolbar is available, except Magnet', () => {
     'PRE-03-03: the Widgets entry only shows the basic widget set, not the full logged-in set',
     { tag: ['@functional'] },
     async ({ page }) => {
-      // NOTE: the story words this as showing only "Open Widgets". CONFIRMED LIVE: there is no
-      // "Open Widgets" entry in the panel itself; what it shows signed-out is a fixed set of
-      // eight basic tools. Signed in, the same panel adds 20+ subject widgets after these
-      // eight (Blood Vessel, DNA, Microscope, ...). The intent -- "not the full logged-in
-      // set" -- holds, so that is what is asserted.
+      // There is no "Open Widgets" entry in the panel itself; what it shows signed-out is a fixed set of eight basic
+      // tools. Signed in, the same panel adds 20+ subject widgets after these eight (Blood Vessel, DNA, Microscope,
+      // ...). The intent -- "not the full logged-in set" -- holds, so that is what is asserted.
       test.info().annotations.push({
         type: 'note',
         description: 'Story says "Open Widgets"; live panel lists 8 basic widgets and no such entry.',

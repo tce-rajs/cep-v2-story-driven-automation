@@ -13,6 +13,7 @@ const { test, expect } = require('../../fixtures');
 const { BASE_URL } = require('../../config/env');
 
 const { App } = require('../../pages/app');
+const { getClassMap } = require('../../config/moduleClassMap');
 
 // The desktop client cannot open a second tab (CDP: "Target.createTarget: Not supported"), so the "second tab" of the
 // concurrency scenarios is a separate browser session (own storage) signed in to the same account.
@@ -22,8 +23,10 @@ const openSecondSession = async () => {
   return { browser, tab: await context.newPage() };
 };
 
-const TOPIC_A = { chapter: 0, topic: 0 };
-const TOPIC_B = { chapter: 1, topic: 0 };
+// Topic A is the whiteboard class-map board; topic B the first topic of the next chapter.
+const { chapterIndex: BOARD_CHAPTER, topicIndex: BOARD_TOPIC } = getClassMap('toolbarGeneral');
+const TOPIC_A = { chapter: BOARD_CHAPTER, topic: BOARD_TOPIC };
+const TOPIC_B = { chapter: BOARD_CHAPTER + 1, topic: 0 };
 
 const goTo = async (user, { chapter, topic }) => {
   await user.nav.goToChapterTopic(chapter, topic);
@@ -55,7 +58,7 @@ test.describe('WB-06 Annotation', () => {
   test.beforeEach(async ({ user }) => {
     await user.nav.applyClassMap('toolbarGeneral');
     await goTo(user, TOPIC_A);
-    // Write below what is already on topic A, never on top of it (owner, 2026-09-29: data must not overlap).
+    // Write below what is already on topic A, never on top of it.
     await user.content.startOnFreshSpace();
   });
 
@@ -181,7 +184,7 @@ test.describe('WB-06 Annotation', () => {
     const beforeImages = await user.content.imageFingerprint();
 
     await user.nav.resetToClass('Class 9', 'A', 'Hindi Language');
-    await user.nav.applyClassMap('toolbarGeneral'); // back to Class 12A Physics, chapter 0 topic 0
+    await user.nav.applyClassMap('toolbarGeneral'); // back to the whiteboard class-map board
     await user.toolbar.waitForBoardToSettle();
 
     expect(await user.content.snapshot()).toEqual(before);
@@ -412,8 +415,6 @@ test.describe('WB-06 Annotation', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Whiteboard workbook: WB-BREAK-01/03) ---
-
   test(
     'WB-06-14: a stroke drawn just before switching class and back is still there (regression)',
     { tag: ['@regression'] },
@@ -447,6 +448,27 @@ test.describe('WB-06 Annotation', () => {
       const { after } = await reloadMidStroke(user, page);
       await user.toolbar.penStroke({ x: 400, y: 700 }, { x: 600, y: 710 });
       expect((await user.content.pathGeometry()).length, 'a new stroke lands').toBeGreaterThan(after.length);
+    }
+  );
+
+  test(
+    'WB-06-18: content written on one topic never appears on another topic of the same class',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const tag = `only-A${Date.now()}`;
+      await user.content.addLines(tag);
+      await user.content.waitForSaved();
+      const written = await user.content.pathGeometry();
+      expect(written.length, 'set-up: written on topic A').toBeGreaterThan(0);
+
+      await goTo(user, TOPIC_B);
+      const onB = await user.toolbar.allPaths.evaluateAll((els) => els.map((e) => e.getAttribute('d')));
+      const textsOnB = await user.toolbar.wbContainer.locator('foreignObject.text-element').allTextContents();
+      expect(textsOnB.join('|'), 'the text written on topic A is not on topic B').not.toContain(tag);
+      expect(
+        written.filter((d) => onB.includes(d)),
+        'no stroke written on topic A is on topic B'
+      ).toHaveLength(0);
     }
   );
 });

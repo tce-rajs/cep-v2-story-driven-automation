@@ -14,7 +14,7 @@ class TouchInput {
     return this.cdp;
   }
 
-  /** Switch touch support off again and detach. CONFIRMED LIVE (2026-09-27): touch emulation stays on for the window
+  /** Switch touch support off again and detach. Touch emulation stays on for the window
    * after the test, and the next test's PIN sign-in then never completes -- always call this in afterEach. */
   async dispose() {
     if (!this.cdp) return;
@@ -54,7 +54,7 @@ class TouchInput {
   async fingerStroke(points, stepDelay = 8) {
     await this.touch('touchStart', [points[0]]);
     // One move at a time: sending a whole stroke as one burst makes Chrome merge the moves, and the app then draws a
-    // jagged, simplified line (CONFIRMED LIVE 2026-09-27: 800 words came out as zig-zags and 223 of 1,480 strokes).
+    // jagged, simplified line.
     for (const p of points.slice(1)) {
       await this.touch('touchMove', [p]);
       if (stepDelay) await this.page.waitForTimeout(stepDelay);

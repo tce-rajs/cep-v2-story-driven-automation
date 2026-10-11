@@ -2,8 +2,7 @@
 // see CEPV2_Stories/01_WithoutLogin.md). Everything here is the state of the
 // app BEFORE anyone signs in: it opens straight onto the whiteboard.
 //
-// Every locator/behaviour below was confirmed live against the QA client
-// (v 0.0.223) on 2026-09-19. Drawing-surface and tool helpers are reused from
+// Drawing-surface and tool helpers are reused from
 // ToolbarPage / WhiteboardPage rather than duplicated.
 
 const { ToolbarPage } = require('./toolbar.page');
@@ -66,12 +65,61 @@ class WithoutLoginPage {
     this.clockShowTimeBtn = page.locator('lib-clock #currentTime');
     this.clockHourInput = page.locator('lib-clock #myHour input');
     this.clockCloseBtn = page.locator('lib-clock .mycloseClock');
+
+    // --- Teacher data that must not be on screen before sign-in ---
+    this.classButton = page.locator('[data-qa-id="playlist-current-grade-subject-btn"]');
+    this.chapterTopicButton = page.locator('[data-qa-id="playlist-chapter-topic-btn"]');
+    this.playlistElements = page.locator('[data-qa-id^="playlist-"]');
+
+    // --- The options each toolbar panel shows when it opens ---
+    this.panelOptions = {
+      gtPen: page.locator('.penColorOption'),
+      gtErase: page.locator('[data-qa-id^="toolbar-eraser-"]'),
+      gtShapes: page.locator('[data-qa-id^="toolbar-shape-"]'),
+      gtBackground: page.locator('[data-qa-id^="toolbar-background-"]'),
+      gtWidgets: page.locator('[data-qa-id^="toolbar-widget-tool-"]'),
+    };
+
+    // --- Error messages a teacher could see on the board ---
+    this.errorMessages = page.getByText(/error|unable to|offline|no (internet|network|connection)|try again/i);
   }
 
   /** Open the app the way a teacher would: the base URL, nothing else. */
   async open() {
     await this.page.goto('./');
     await this.toolbar.wbSvg.waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /** Cut the network for this window: every request fails as if the connection were down. context.setOffline() has
+   * no effect in the desktop client, so requests are aborted instead. Undo with restoreNetwork(). */
+  async cutNetwork() {
+    await this.page.route('**/*', (route) => route.abort('internetdisconnected'));
+  }
+
+  async restoreNetwork() {
+    await this.page.unroute('**/*');
+  }
+
+  /** Pick the n-th colour (0-based) in the Pen panel and close the panel. Returns the colour's data-qa-id. */
+  async pickPenColour(index) {
+    await this.toolbar.openToolPanel('gtPen');
+    const option = this.toolbar.penColorOptions.nth(index);
+    const id = await option.getAttribute('data-qa-id');
+    await option.click({ force: true });
+    await this.page.keyboard.press('Escape');
+    return id;
+  }
+
+  /** The stroke colour of the most recently drawn path, as written on the SVG element (e.g. "#BB86FC"). */
+  async lastStrokeColour() {
+    return this.toolbar.paths.last().evaluate((p) => p.getAttribute('stroke') || getComputedStyle(p).stroke);
+  }
+
+  /** The board's zoom factor (1 = 100%), read from the pan/zoom group's transform matrix. */
+  async zoomFactor() {
+    const t = await this.whiteboard.panGroup.first().getAttribute('transform');
+    const m = /matrix\(\s*([-\d.e]+)/.exec(t || '');
+    return m ? Number(m[1]) : 1;
   }
 
   /** Watch for the sign-in panel ever being activated (or the URL leaving the
@@ -128,7 +176,7 @@ class WithoutLoginPage {
   }
 
   /** Pick the fixed Rectangle from the Shapes panel, then click the canvas to
-   * place it. CONFIRMED LIVE: choosing it from the panel places nothing by
+   * place it. Choosing it from the panel places nothing by
    * itself -- the next click on the canvas (which also dismisses the panel)
    * is what inserts it. */
   async addRectangleAt(x = 600, y = 400) {

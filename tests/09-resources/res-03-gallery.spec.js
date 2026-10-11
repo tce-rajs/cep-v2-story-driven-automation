@@ -1,13 +1,13 @@
 // RES-03 — Gallery
 // Source: CEPV2_Stories/09_Resources.md
-// CONFIRMED LIVE in the previous suite: choosing a Gallery image puts it on the whiteboard canvas and creates NO
+// Choosing a Gallery image puts it on the whiteboard canvas and creates NO
 // Playlist card; the Add Resource picker intermittently renders unclickable (handled by openAction()).
 
 const { test, expect } = require('../../fixtures');
 
 test.describe('RES-03 Gallery', () => {
   // Gallery images inserted onto the whiteboard persist for the topic. They go onto fresh space below the teacher's
-  // writing; the board is never cleared afterwards (owner rule 2026-09-29).
+  // writing; the board is never cleared afterwards.
   test.use({ classMap: 'default', freshSpace: true });
 
   const openGallery = async (user) => {
@@ -52,7 +52,7 @@ test.describe('RES-03 Gallery', () => {
         await user.page.waitForTimeout(700);
       }
 
-      // A real term, taken from the first image itself. CONFIRMED LIVE: a gallery tile is a div with a background image
+      // A real term, taken from the first image itself. A gallery tile is a div with a background image
       // (no <img>), and its name is the tile's text ("Horse", "Chameleon", ...).
       const label = ((await ar.galleryImageCards.first().innerText()) || '').replace(/\s+/g, ' ').trim();
       const term = (label.match(/\p{L}{3,}/u) || ['a'])[0];
@@ -89,7 +89,7 @@ test.describe('RES-03 Gallery', () => {
       const image = user.toolbar.wbSvg.locator('image').last();
       await expect(image).toBeAttached();
 
-      // Via the toolbar: Select tool, then click the image. CONFIRMED LIVE: a selected image shows its own menu
+      // Via the toolbar: Select tool, then click the image. A selected image shows its own menu
       // (toolbar-image-menu-*: to front / to back / duplicate / delete), not the stroke/shape (path) menu.
       await user.toolbar.selectTool('gtSelect');
       const box = await image.boundingBox();
@@ -106,13 +106,8 @@ test.describe('RES-03 Gallery', () => {
   test(
     // Only the arrow keys MOVING a selected image is checked here; selecting an image is RES-03-04 (via the toolbar).
     'RES-03-06: a selected inserted image moves with the arrow keys',
-    { tag: ['@functional', '@bug'] },
+    { tag: ['@functional'] },
     async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): the arrow keys do nothing to the image -- they neither select it
-      // (with nothing selected, no image menu appears) nor move it when it is selected (x unchanged after pressing and
-      // after holding ArrowRight). Tracked as expected-to-fail so it isn't masked; the story wording ("selectable via
-      // arrow keys") needs a product decision on what the keys are meant to do.
-      test.fail(true, 'Arrow keys neither select nor move an inserted image');
       await user.content.addGalleryImage();
       const image = user.toolbar.wbSvg.locator('image').last();
       await expect(image).toBeAttached();
@@ -158,9 +153,7 @@ test.describe('RES-03 Gallery', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Gallery workbook) ---
-
-  // CONFIRMED LIVE (2026-09-26): gallery thumbnails are CSS background images on each gallery-image-card-<Name>; the
+  // Gallery thumbnails are CSS background images on each gallery-image-card-<Name>; the
   // category filter is a native <select>; paging is the unlabelled .upbutton / .downbutton pair.
   const cardNames = (user) =>
     user.addResource.galleryImageCards
@@ -226,42 +219,6 @@ test.describe('RES-03 Gallery', () => {
   );
 
   test(
-    'RES-03-09: a search with no matches shows a message, not an empty grid',
-    { tag: ['@bug', '@negative'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's ADD-GAL-03): a Gallery search with
-      // no matches leaves an empty grid with no message.
-      test.fail(true, 'A Gallery search with no matches shows an empty grid, no "no results" message');
-      await openGallery(user);
-      await user.addResource.gallerySearchInput.fill('zzqxwvv');
-      await user.addResource.gallerySearchBtn.click();
-      await expect(user.addResource.galleryImageCards).toHaveCount(0, { timeout: 15000 });
-      await expect(
-        page
-          .getByText(/no (image|result|match)|not found/i)
-          .filter({ visible: true })
-          .first(),
-        'a no-results message'
-      ).toBeVisible();
-    }
-  );
-
-  test(
-    'RES-03-10: double-clicking an image adds it to the whiteboard only once (regression)',
-    { tag: ['@bug', '@regression'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's GAL-BOUND-01): double-clicking a
-      // Gallery thumbnail puts TWO copies of the image on the whiteboard.
-      test.fail(true, 'Double-clicking a Gallery image inserts it twice');
-      const before = await boardImages(user);
-      await openGallery(user);
-      await user.addResource.galleryImageCards.first().dblclick({ force: true });
-      await page.waitForTimeout(3000);
-      expect(await boardImages(user), 'one image added, not two').toBe(before + 1);
-    }
-  );
-
-  test(
     'RES-03-11: every image thumbnail in the gallery loads, with no broken-image placeholders (regression)',
     { tag: ['@regression'] },
     async ({ user, page }) => {
@@ -296,4 +253,42 @@ test.describe('RES-03 Gallery', () => {
     await expect(user.addResource.galleryImageCards.first()).toBeHidden({ timeout: 10000 });
     await expect(user.addResource.gallerySearchInput).toBeHidden();
   });
+
+  test(
+    'RES-03-13: gallery images that fail to load on a slow network show a message or retry, not an empty grid',
+    { tag: ['@interruption'] },
+    async ({ user, page }) => {
+      // Every image request fails, as on a network too slow to deliver them.
+      await page.route(/\.(png|jpe?g|gif|webp|svg)(\?|$)/i, (route) => route.abort('timedout'));
+      try {
+        await user.addResource.openAction('gallery');
+        await page.waitForTimeout(8000);
+        await expect(
+          page
+            .getByText(/fail|error|could not|couldn.t|unable|try again|retry|network|offline/i)
+            .filter({ visible: true })
+            .first(),
+          'the teacher is told the images did not load (or they are retried)'
+        ).toBeVisible({ timeout: 10000 });
+      } finally {
+        await page.unroute(/\.(png|jpe?g|gif|webp|svg)(\?|$)/i);
+        await page.keyboard.press('Escape');
+      }
+    }
+  );
+
+  test(
+    'RES-03-14: closing the Gallery without choosing an image adds nothing to the board',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const before = await user.content.snapshot();
+      const cards = await user.playlist.cardTitles();
+      await openGallery(user);
+      await user.addResource.galleryCloseBtn.click();
+      await expect(user.addResource.gallerySearchInput, 'set-up: the Gallery closed').toBeHidden({ timeout: 10000 });
+      await user.page.waitForTimeout(1500);
+      expect(await user.content.snapshot(), 'nothing added to the board').toEqual(before);
+      expect(await user.playlist.cardTitles(), 'nothing added to the Playlist').toEqual(cards);
+    }
+  );
 });

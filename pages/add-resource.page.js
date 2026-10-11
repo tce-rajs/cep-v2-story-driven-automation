@@ -3,7 +3,7 @@
 // Library, Gallery, Dropit, AI-Assist, Whiteboard.
 //
 // Locator strategy: prefer data-qa-id. Create's own form has NONE at all
-// (confirmed live) -- it's addressed via Angular's formcontrolname
+//  -- it's addressed via Angular's formcontrolname
 // attributes instead, scoped to its unique <app-add-custom-asset> element.
 
 const TEXT_FILE = { name: 'autotest.txt', mimeType: 'text/plain', buffer: Buffer.from('automated test file') };
@@ -34,7 +34,7 @@ class AddResourcePage {
 
     // --- Create form (no data-qa-ids at all -- uses formcontrolname) ---
     // <app-add-custom-asset> itself is a zero-size wrapper element
-    // (confirmed live: 0x0 bounding box) -- its child .add-custom-asset div
+    //  -- its child .add-custom-asset div
     // is the actual visible, positioned container.
     this.createForm = page.locator('app-add-custom-asset .add-custom-asset');
     this.createSubtitle = this.createForm.locator('.sub-title');
@@ -57,11 +57,10 @@ class AddResourcePage {
     this.libraryResults = page.locator('[data-qa-id="tce-library-resource-card"]');
     this.libraryResultByIndex = (i) => page.locator(`[data-qa-id="tce-library-resource-${i}"]`);
     this.libraryLoadMoreBtn = page.locator('[data-qa-id="tce-library-load-more"]');
-    // Clicking a result opens a preview first; attaching happens from there
-    // (cross-checked against a Cypress reference project's own page object).
+    // Clicking a result opens a preview first; attaching happens from there.
     this.libraryPdfAddToPlaylistBtn = page.locator('[data-qa-id="tce-library-pdf-add-playlist-btn"]');
     this.libraryPdfCloseBtn = page.locator('[data-qa-id="tce-library-pdf-close-btn"]');
-    // CONFIRMED LIVE (v 0.0.223): the X that closes ANY result's preview (back to the result list) is this one -- the
+    // The X that closes ANY result's preview (back to the result list) is this one -- the
     // "pdf" id above is not shown for the previews seen. Without closing it, later clicks land on the open overlay.
     this.libraryPreviewCloseBtn = page.locator('[data-qa-id="tce-library-tce-close-btn"]');
 
@@ -77,10 +76,10 @@ class AddResourcePage {
 
     // --- Dropit ---
     this.dropitCloseBtn = page.locator('[data-qa-id="drop-it-close-btn"]');
-    // The actual pairing QR is a <canvas> inside .qrcode (confirmed live) --
+    // The actual pairing QR is a <canvas> inside .qrcode --
     // NOT the .dropit FAB action-card's own <img src="qr-code.png"> icon,
     // which is a different, decorative element that a naive `img[src*=qr]`
-    // selector can accidentally match instead (see LIVE_FINDINGS.md).
+    // selector can accidentally match instead.
     this.dropitQrCanvas = page.locator('.qrcode canvas');
     this.dropitConnectionStatus = page.locator('.status.connection-state');
     this.dropitTransferStatus = page.locator('.status.transfer-status');
@@ -90,14 +89,14 @@ class AddResourcePage {
     this.aiAssistCloseBtn = page.locator('[data-qa-id="ai-assist-close-btn"]');
     this.aiAssistMinimizeBtn = page.locator('[data-qa-id="ai-assist-minimize-btn"]');
     this.aiAssistExerciseCheckboxes = page.locator('[data-qa-id^="ai-assist-exercise-checkbox-"]');
-    // Videos tab (cross-checked against a Cypress reference project).
+    // Videos tab.
     this.aiAssistVideoThumbs = page.locator('[data-qa-id^="ai-assist-video-thumb-"]');
     this.aiAssistAddToPlaylistBtn = page.locator('[data-qa-id="ai-assist-add-playlist-btn"]');
     this.aiAssistVideoCloseBtn = page.locator('[data-qa-id="ai-assist-video-close-btn"]');
     // Left-side tab list (no confirmed data-qa-id -- text-based, matching
     // the existing convention already used successfully for entry-state
     // checks in dropit-ai-assist.spec.js).
-    // CONFIRMED LIVE: "Exercise" also matches a second element (an <h5>
+    // "Exercise" also matches a second element (an <h5>
     // heading, likely inside the Exercise tab's own content area) once
     // content has rendered -- a plain getByText throws a strict-mode
     // violation. `.first()` resolves it (the tab-list label renders before
@@ -106,9 +105,7 @@ class AddResourcePage {
     this.aiAssistTabVideos = page.getByText('Videos', { exact: true }).first();
     this.aiAssistTabTeachingTips = page.getByText('Teaching Tips', { exact: true }).first();
     this.aiAssistExerciseHeaderText = page.locator('.exercise-header, .instruction-text').first();
-    // A confirmed intermittent failure mode: AI-Assist sometimes returns an
-    // error screen instead of content (cross-checked against the same
-    // reference project).
+    // AI Assist can return an error screen instead of content.
     this.aiAssistErrorScreen = page.locator('.aierrorscreen');
     this.aiAssistErrorMessage = page.locator('.aierrorscreen-message');
 
@@ -118,7 +115,7 @@ class AddResourcePage {
     this.whiteboardDownloadPdfBtn = page.locator('[data-qa-id="add-resource-whiteboard-download-pdf-btn"]');
   }
 
-  /** Tick the n-th AI Assist exercise question. CONFIRMED LIVE: each option is a <mat-checkbox> wrapping a native
+  /** Tick the n-th AI Assist exercise question. Each option is a <mat-checkbox> wrapping a native
    * input[type=checkbox]; Playwright's check() on the wrapper element never settles, so the inner input is used. */
   async selectExercise(index = 0) {
     await this.aiAssistExerciseCheckboxes.nth(index).waitFor({ state: 'visible', timeout: 20000 });
@@ -130,20 +127,10 @@ class AddResourcePage {
     await this.addResourcesTrigger.click();
   }
 
-  /** CONFIRMED LIVE BUG (see LIVE_FINDINGS.md): the Add Resources picker's
-   * entire floating-ui popup subtree (from the FAB's own action buttons up
-   * to the outer float-ui-container) can render with `pointer-events: none`
-   * computed on EVERY ancestor -- visually present (opacity 1, visible,
-   * correct bounding box) but completely unclickable, since a real mouse
-   * click at those coordinates passes straight through to the whiteboard
-   * canvas underneath. Reproduced non-deterministically on ~30-50% of fresh
-   * logins in this session's own live testing, independent of chapter/topic
-   * navigation history. A same-page close+reopen retry does NOT self-heal
-   * it (confirmed: 5 retries with increasing waits, still stuck) -- only a
-   * full page reload reliably recovers it. This helper exists so tests can
-   * open the picker reliably without each one re-deriving this workaround;
-   * it does NOT paper over the bug -- callers can still inspect whether a
-   * reload was needed via the returned value if they want to flag it. */
+  /** Opens the Add Resources picker so that `actionLocator` is clickable. The picker's popup can render with
+   * `pointer-events: none` on every ancestor: visible, but a click passes straight through to the whiteboard. Closing
+   * and reopening does not recover it; a page reload does, so this reloads (up to `maxReloadAttempts` times) when needed.
+   * Returns `{ stillStuck }`. */
   async openPickerReliably(actionLocator, maxReloadAttempts = 3) {
     for (let attempt = 0; attempt < maxReloadAttempts; attempt++) {
       if (attempt > 0) {
@@ -151,7 +138,7 @@ class AddResourcePage {
         await this.page.locator('[data-qa-id="toolbar-user-avatar"]').waitFor({ state: 'visible', timeout: 15000 });
         await this.page.waitForTimeout(1000);
       }
-      // CONFIRMED LIVE: "not pointer-events:none" is not enough -- the picker can also end up toggled CLOSED (options in
+      // "not pointer-events:none" is not enough -- the picker can also end up toggled CLOSED (options in
       // the DOM but hidden), which that check still calls clickable. Require the option to be actually on screen too.
       const usable = () =>
         actionLocator
@@ -175,16 +162,16 @@ class AddResourcePage {
   }
 
   /** Open the picker and choose one of its options ('create' | 'library' | 'gallery' | 'dropit' | 'aiAssist' |
-   * 'whiteboard'), working around the known intermittent unclickable-picker bug via openPickerReliably(). */
+   * 'whiteboard'), using openPickerReliably() so the picker is clickable. */
   async openAction(name) {
     const { stillStuck } = await this.openPickerReliably(this.actions[name]);
-    if (stillStuck) throw new Error('Add Resource picker never became clickable (known intermittent bug)');
+    if (stillStuck) throw new Error('Add Resource picker did not become clickable');
     await this.actions[name].click({ force: true });
   }
 
   /** Create an asset through Add Resource -> Create and submit it. Used wherever a test needs a Playlist asset
-   * it owns and may safely remove again. (The Whiteboard entry's "Save to Playlist" is NOT used for this: it was
-   * confirmed non-functional in the previous suite.) The new card is identifiable by `title`.
+   * it owns and may safely remove again. (The Whiteboard entry's "Save to Playlist" does not create an asset, so it is
+   * not used for this.) The new card is identifiable by `title`.
    * `file` is a Playwright file payload; the default is a tiny text file. */
   async createAsset(title, file = TEXT_FILE) {
     await this.openAction('create');
@@ -195,7 +182,7 @@ class AddResourcePage {
   }
 
   /** Reads the DropIt pairing QR (dropitQrCanvas) and decodes it to the real pairing URL it encodes, using jsQR
-   * (a dependency-free browser QR decoder, injected directly into the page). CONFIRMED LIVE (2026-09-23): the QR
+   * (a dependency-free browser QR decoder, injected directly into the page). The QR
    * decodes to https://tce-drop-it.web.app/cepweb-dropit/<token> -- a real, public web page a second browser
    * context can open directly (see pages/dropit-companion.page.js), not something requiring an actual phone.
    * Returns null if the canvas can't be read or decoded. */

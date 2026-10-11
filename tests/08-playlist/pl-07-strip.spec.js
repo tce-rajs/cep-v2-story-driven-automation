@@ -4,14 +4,9 @@
 const { test, expect } = require('../../fixtures');
 
 test.describe('PL-07 Playlist strip', () => {
-  // Class 12A Physics 1.1 has an ebook, so its strip shows the E-Books tile (12A Computer Science ch 14 has none).
   test.use({ classMap: 'playlistGeneral' });
 
-  // The E-Books tile (PL-07-01), the Contents tile (PL-07-05) and the cards' type icons (PL-07-06): one test each
-  // (split 2026-09-28).
-  test('PL-07-01: the strip shows the E-Books tile', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
-    await expect(user.playlist.eBooksTile).toBeVisible();
-  });
+  // The Contents tile (PL-07-05) and the cards' type icons (PL-07-06): one test each. The E-Books tile is PL-07-01 below.
 
   test('PL-07-05: the strip shows the Contents tile', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
     await expect(user.playlist.contentsTile).toBeVisible();
@@ -47,7 +42,7 @@ test.describe('PL-07 Playlist strip', () => {
     { tag: ['@functional'] },
     async ({ user }) => {
       const pl = user.playlist;
-      // CONFIRMED LIVE (2026-09-26): the cards sit in a scrolling .resource-playlist-box; each arrow click scrolls it ~40px.
+      // The cards sit in a scrolling .resource-playlist-box; each arrow click scrolls it ~40px.
       const box = user.page.locator('.resource-playlist-box').first();
       const overflowing = await box.evaluate((el) => el.scrollWidth > el.clientWidth);
       test.skip(!overflowing, 'All cards already fit in this topic, so there is nothing to scroll.');
@@ -72,5 +67,42 @@ test.describe('PL-07 Playlist strip', () => {
     await user.player.openResourceCard(pl.resourceCards.last());
     expect(await user.player.isPlayerOpen(20000)).toBe(true);
     await user.player.closePlayer();
+  });
+
+  test(
+    'PL-07-07: no card shows a missing (broken) type icon or an empty title',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const pl = user.playlist;
+      await expect(pl.resourceCards.first(), 'set-up: cards shown').toBeVisible({ timeout: 15000 });
+      // Make every card's icon load (cards further along the strip load as they scroll in).
+      await pl.resourceCards.evaluateAll((els) => els.forEach((e) => e.scrollIntoView({ inline: 'center' })));
+      await pl.resourceCards.first().evaluate((e) => e.scrollIntoView({ inline: 'center' }));
+      await user.page.waitForTimeout(2000);
+      const cards = await pl.resourceCards.evaluateAll((els) =>
+        els.map((el, i) => {
+          const icon = el.querySelector('img.type-icon');
+          return {
+            i,
+            text: (el.innerText || '').replace(/\s+/g, ' ').trim(),
+            icon: icon ? icon.getAttribute('src') : null,
+            iconLoaded: !!icon && icon.complete && icon.naturalWidth > 0,
+          };
+        })
+      );
+      const broken = cards.filter((c) => !c.iconLoaded).map((c) => `card ${c.i + 1} "${c.text}" icon ${c.icon}`);
+      const untitled = cards.filter((c) => !c.text || /undefined|null/i.test(c.text)).map((c) => `card ${c.i + 1}`);
+      expect(broken, 'every type icon loads').toEqual([]);
+      expect(untitled, 'every card has a title').toEqual([]);
+    }
+  );
+});
+
+test.describe('PL-07 Playlist strip: E-Books tile', () => {
+  // The E-Books tile shows where the class and subject have an e-book: the 'ebook' entry (Class 11A Mathematics).
+  test.use({ classMap: 'ebook' });
+
+  test('PL-07-01: the strip shows the E-Books tile', { tag: ['@smoke', '@functional'] }, async ({ user }) => {
+    await expect(user.playlist.eBooksTile).toBeVisible();
   });
 });

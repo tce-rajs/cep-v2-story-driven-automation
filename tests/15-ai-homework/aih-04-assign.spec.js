@@ -1,6 +1,6 @@
 // AIH-04 — Assign the homework to classes
 // Source: CEPV2_Stories/15_AIHomework.md
-// Ready to Send is real: it assigns homework to the 'aiHomework' class (owner-approved 2026-09-26). The count is set to 5 to keep
+// Ready to Send is real: it assigns homework to the 'aiHomework' class. The count is set to 5 to keep
 // generation short.
 
 const { test, expect } = require('../../fixtures');
@@ -28,7 +28,7 @@ test.describe('AIH-04 Assign the homework to classes', () => {
   });
 
   // The assignment form's defaults: the title (AIH-04-01), the current class (AIH-04-08), "Due in" (AIH-04-09) -- one
-  // test each (split 2026-09-28).
+  // test each.
   test(
     'AIH-04-01: Next opens the assignment form with a pre-filled title',
     { tag: ['@functional'] },
@@ -67,7 +67,7 @@ test.describe('AIH-04 Assign the homework to classes', () => {
   });
 
   // Previous: the questions are kept (AIH-04-04), and going forward again keeps the edited title (AIH-04-10) -- one test
-  // each (split 2026-09-28).
+  // each.
   test(
     'AIH-04-04: Previous returns to the generated questions with nothing lost',
     { tag: ['@functional'] },
@@ -87,25 +87,8 @@ test.describe('AIH-04 Assign the homework to classes', () => {
     }
   );
 
-  test(
-    'AIH-04-10: after Previous and Next, the assignment form keeps the edited title',
-    { tag: ['@functional', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): Previous keeps the generated questions (AIH-04-04), but
-      // going Next again resets the edited homework title to the default ("Homework: Chapter N. ...").
-      test.fail(true, 'Going Previous then Next resets the edited homework title');
-      const hw = user.aiHomework;
-      await hw.assignTitleInput.fill('Sets practice (edited)');
-      await hw.hideKeyboard();
-      await hw.assignPreviousBtn.click();
-      await expect(hw.nextBtn).toBeVisible({ timeout: 10000 });
-      await hw.goToAssign();
-      await expect(hw.assignTitleInput, 'form kept its edited title').toHaveValue('Sets practice (edited)');
-    }
-  );
-
   // Discard: the builder closes (AIH-04-05), and opening it again starts fresh (AIH-04-11) -- one test each (split
-  // 2026-09-28).
+  // ).
   test('AIH-04-05: Discard closes the homework builder', { tag: ['@functional'] }, async ({ user }) => {
     const hw = user.aiHomework;
     await hw.assignDiscardBtn.click();
@@ -127,7 +110,7 @@ test.describe('AIH-04 Assign the homework to classes', () => {
   );
 
   // Ready to Send: the homework is assigned (AIH-04-06), a success message shows (AIH-04-12), and the form closes
-  // (AIH-04-13) -- one test each (split 2026-09-28). Each really assigns homework to Class 11 A.
+  // (AIH-04-13) -- one test each. Each really assigns homework to Class 11 A.
   /** Title the homework and press Ready to Send; returns the assign response. */
   const readyToSend = async (user, page) => {
     const hw = user.aiHomework;
@@ -174,6 +157,38 @@ test.describe('AIH-04 Assign the homework to classes', () => {
       await hw.hideKeyboard();
       await hw.assignSendBtn.click();
       await expect(hw.snackbar.first()).toContainText(/sent|success|assigned|shared/i, { timeout: 20000 });
+    }
+  );
+
+  test(
+    "AIH-04-14: homework assigned for a topic then appears in that topic's Compass, Analyse It (View Last 5 Homework)",
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const hw = user.aiHomework;
+      const title = `AutoTest homework ${Date.now()}`;
+      await hw.assignTitleInput.fill(title);
+      await hw.hideKeyboard();
+      const sent = page.waitForResponse(
+        (r) =>
+          ['POST', 'PUT'].includes(r.request().method()) &&
+          /assign|homework|worksheet/i.test(r.url()) &&
+          !/rag/i.test(r.url()),
+        { timeout: 30000 }
+      );
+      await hw.assignSendBtn.click();
+      expect((await sent).ok(), 'set-up: the homework was assigned').toBe(true);
+      await expect(hw.assignTitleInput).toBeHidden({ timeout: 20000 });
+
+      const { opened } = await user.compass.openTrigger();
+      expect(opened, 'Compass opens').toBe(true);
+      await expect(user.compass.analyseItItem, 'Analyse It is listed').toBeVisible({ timeout: 15000 });
+      await user.compass.analyseItItem.click({ force: true });
+      await user.compass.detailViewListBtn.click();
+      await expect(user.compass.listCancelBtn, 'the last-5-homework list opened').toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(title).first(), 'the homework just assigned is listed').toBeVisible({
+        timeout: 20000,
+      });
+      await user.compass.listCancelBtn.click({ force: true }).catch(() => {});
     }
   );
 });

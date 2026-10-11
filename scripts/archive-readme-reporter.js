@@ -19,10 +19,10 @@ class ArchiveReadmeReporter {
   // this file/config still resolve every test with no import errors?) still
   // runs every reporter, including this one and the html reporter, even
   // though ZERO tests actually execute -- every test comes through with
-  // outcome "skipped" and an empty results array. Confirmed live: this was
-  // silently filling the archive with reports that have no real pass/fail
+  // outcome "skipped" and an empty results array. That would
+  // silently fill the archive with reports that have no real pass/fail
   // data at all, and at high enough volume (many --list calls between real
-  // runs) even pushed genuine completed-run reports out past the retention
+  // runs) even push genuine completed-run reports out past the retention
   // cap above. A real test always reports a nonzero duration; --list never
   // does, for any test -- that's the actual signal, more robust than
   // sniffing `--list` off argv (which would miss e.g. a --grep matching

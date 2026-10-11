@@ -29,3 +29,9 @@ test-evidence.zip
 # Local reports, screenshots and run results (large, internal; owner 2026-10-02). The timing note is kept.
 report/*
 !report/CLIENT_VS_BROWSER_TIMING.md
+test-results-plan/
+test-results-plan-shots/
+evidence/
+
+# Run output of every kind (current runs in test-results/core, older runs in test-results/archive)
+test-results*/

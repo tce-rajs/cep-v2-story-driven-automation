@@ -11,11 +11,9 @@ test.describe('MM-04 Minimap alongside other panels', () => {
     await app.player.closePlayer().catch(() => {});
   });
 
-  // The Players toggle, with a worksheet open: the story says it "hides and shows an open player". CONFIRMED LIVE
-  // (2026-09-26): it does not hide the player window itself; it switches whether open players are drawn in the Minimap's
-  // overview. Split 2026-09-28: off (MM-04-01), back on (MM-04-03), and the window itself stays open (MM-04-04).
+  // It does not hide the player window itself; it switches whether open players are drawn in the Minimap's overview.
+  // Split: off (MM-04-01), back on (MM-04-03), and the window itself stays open (MM-04-04).
   const openWorksheetAndMinimap = async (user) => {
-    await user.nav.applyClassMap('playersDefault');
     await user.playlist.ensureDrawerVisible();
     await expect(user.player.worksheetCards.first()).toBeAttached({ timeout: 15000 });
     await user.player.openResourceCard(user.player.worksheetCards);
@@ -30,46 +28,51 @@ test.describe('MM-04 Minimap alongside other panels', () => {
       description: 'Story says the toggle hides/shows the player; live, it switches the player in the overview only.',
     });
 
-  test(
-    'MM-04-01: the Players toggle takes the open player out of the Minimap overview',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      storyNote();
-      const overview = await openWorksheetAndMinimap(user);
-      const before = await overview();
-      await user.minimap.playersToggleBtn.click({ force: true });
-      await expect.poll(overview, { message: 'the overview changed' }).not.toBe(before);
-    }
-  );
+  // Signed in with the account that holds the playersDefault Worksheet, on its topic.
+  test.describe(() => {
+    test.use({ classMap: 'playersDefault' });
 
-  test(
-    'MM-04-03: pressing the Players toggle again puts the open player back in the Minimap overview',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      storyNote();
-      const overview = await openWorksheetAndMinimap(user);
-      const before = await overview();
-      await user.minimap.playersToggleBtn.click({ force: true });
-      await expect.poll(overview, { message: 'set-up: the overview changed' }).not.toBe(before);
-      await user.minimap.playersToggleBtn.click({ force: true });
-      await expect.poll(overview, { message: 'and changed back' }).toBe(before);
-    }
-  );
+    test(
+      'MM-04-01: the Players toggle takes the open player out of the Minimap overview',
+      { tag: ['@functional'] },
+      async ({ user }) => {
+        storyNote();
+        const overview = await openWorksheetAndMinimap(user);
+        const before = await overview();
+        await user.minimap.playersToggleBtn.click({ force: true });
+        await expect.poll(overview, { message: 'the overview changed' }).not.toBe(before);
+      }
+    );
 
-  test(
-    'MM-04-04: the Players toggle leaves the player window itself open',
-    { tag: ['@functional'] },
-    async ({ user }) => {
-      storyNote();
-      await openWorksheetAndMinimap(user);
-      await user.minimap.playersToggleBtn.click({ force: true });
-      await user.page.waitForTimeout(1000);
-      await expect(user.player.closeIcon.first(), 'the player itself stays open').toBeVisible();
-    }
-  );
+    test(
+      'MM-04-03: pressing the Players toggle again puts the open player back in the Minimap overview',
+      { tag: ['@functional'] },
+      async ({ user }) => {
+        storyNote();
+        const overview = await openWorksheetAndMinimap(user);
+        const before = await overview();
+        await user.minimap.playersToggleBtn.click({ force: true });
+        await expect.poll(overview, { message: 'set-up: the overview changed' }).not.toBe(before);
+        await user.minimap.playersToggleBtn.click({ force: true });
+        await expect.poll(overview, { message: 'and changed back' }).toBe(before);
+      }
+    );
+
+    test(
+      'MM-04-04: the Players toggle leaves the player window itself open',
+      { tag: ['@functional'] },
+      async ({ user }) => {
+        storyNote();
+        await openWorksheetAndMinimap(user);
+        await user.minimap.playersToggleBtn.click({ force: true });
+        await user.page.waitForTimeout(1000);
+        await expect(user.player.closeIcon.first(), 'the player itself stays open').toBeVisible();
+      }
+    );
+  });
 
   // The open Minimap covers neither the Add Resource button (MM-04-02) nor the Playlist strip (MM-04-05) -- one test
-  // each (split 2026-09-28).
+  // each.
   const overlaps = (a, b) =>
     a && b && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
@@ -95,4 +98,43 @@ test.describe('MM-04 Minimap alongside other panels', () => {
     const contents = await user.playlist.contentsTile.boundingBox();
     expect(overlaps(mm, contents), 'Minimap does not cover the Playlist strip (Contents tile)').toBeFalsy();
   });
+
+  test(
+    'MM-04-06: opening another panel never leaves the Minimap covering it',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      /** Names of the given panel controls that the Minimap is on top of (at their centre). */
+      const coveredBy = (controls) =>
+        Promise.all(
+          controls.map(async ([name, el]) => {
+            const box = await el.boundingBox();
+            if (!box) return `${name} (not shown)`;
+            const onTop = await page.evaluate(
+              ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-qa-id="minimap-container"]'),
+              { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+            );
+            return onTop ? name : null;
+          })
+        ).then((r) => r.filter(Boolean));
+      const covered = [];
+
+      await user.minimap.open(user.toolbar);
+      const { stillStuck } = await user.addResource.openPickerReliably(user.addResource.actions.create);
+      expect(stillStuck, 'set-up: Add Resource open').toBeFalsy();
+      covered.push(...(await coveredBy(Object.entries(user.addResource.actions))));
+      await user.addResource.addResourcesTrigger.click({ force: true }).catch(() => {});
+
+      await user.minimap.open(user.toolbar);
+      await user.magnet.open();
+      covered.push(...(await coveredBy([['Magnet: Notice', user.magnet.noticeItem]])));
+      await user.toolbar.closePanelByTappingOutside();
+
+      await user.minimap.open(user.toolbar);
+      await user.userMenu.openProfileMenu();
+      covered.push(...(await coveredBy([['User menu: Sign Out', user.userMenu.signOutBtn]])));
+      await page.keyboard.press('Escape');
+
+      expect(covered, 'the Minimap covers none of the opened panels').toEqual([]);
+    }
+  );
 });

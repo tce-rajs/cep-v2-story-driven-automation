@@ -47,4 +47,22 @@ test.describe('NAV-05 Last-accessed topic is restored', () => {
       expect(await where(user), `landed on the same class and topic after ${waitMinutes} min`).toEqual(before);
     }
   );
+
+  test(
+    "NAV-05-05: signing in as another teacher on the same panel never opens the previous teacher's last topic",
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      test.skip(!process.env.VALID_PIN_2, 'needs a second teacher account: set VALID_PIN_2 in .env');
+      const teacherA = await where(user);
+      await user.userMenu.signOut();
+      await user.signIn(process.env.VALID_PIN_2);
+      await expect(user.nav.currentClassBtn).toBeVisible({ timeout: 20000 });
+      const teacherB = await where(user);
+      test.info().annotations.push({
+        type: 'note',
+        description: `Teacher A left ${teacherA.cls} / ${teacherA.topic}; teacher B opened ${teacherB.cls} / ${teacherB.topic}`,
+      });
+      expect(teacherB, "the second teacher does not land on the first teacher's last topic").not.toEqual(teacherA);
+    }
+  );
 });

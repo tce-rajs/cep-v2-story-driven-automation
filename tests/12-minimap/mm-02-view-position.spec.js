@@ -26,20 +26,22 @@ test.describe('MM-02 See where the current view is on the board', () => {
     'MM-02-01: the Minimap shows a marker for content already on the whiteboard',
     { tag: ['@functional'] },
     async ({ user }) => {
+      // The board already holds earlier writing, and the Minimap scales the whole board to fit, so a new stroke does not
+      // simply add pixels: compare the overview drawn before and after the stroke instead.
+      const overview = () => user.minimap.canvas.evaluate((c) => c.toDataURL());
       await user.minimap.open(user.toolbar);
-      const empty = await user.minimap.readCanvas();
+      const before = await overview();
       await user.minimap.close();
 
       await user.toolbar.penStroke({ x: 400, y: 400 }, { x: 700, y: 480 });
       await user.minimap.open(user.toolbar);
-      await expect
-        .poll(async () => (await user.minimap.readCanvas()).content, { message: 'a content marker appears' })
-        .toBeGreaterThan(empty.content + 20);
+      await expect.poll(overview, { message: 'the overview now shows the new stroke' }).not.toBe(before);
+      expect((await user.minimap.readCanvas()).content, 'content markers are drawn').toBeGreaterThan(20);
     }
   );
 
   // Zooming the main canvas: the Minimap's percentage follows it (MM-02-02), and the viewport rectangle shrinks
-  // (MM-02-07) -- one test each (split 2026-09-28).
+  // (MM-02-07) -- one test each.
   test(
     'MM-02-02: zooming the main canvas updates the Minimap’s zoom percentage to match',
     { tag: ['@functional'] },
@@ -73,11 +75,8 @@ test.describe('MM-02 See where the current view is on the board', () => {
 
   test(
     'MM-02-03: panning the main canvas moves the Minimap viewport rectangle',
-    { tag: ['@bug', '@functional'] },
+    { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): panning the main canvas with the Pan tool (content moved
-      // 400px) leaves the Minimap's viewport rectangle where it was; it only updates on zoom or on a click inside the Minimap.
-      test.fail(true, 'The Minimap viewport rectangle does not follow a pan made with the Pan tool');
       await setZoom(user, 2); // zoomed in, so the view has room to move
       await user.minimap.open(user.toolbar);
       const before = (await user.minimap.readCanvas()).rect;
@@ -132,7 +131,7 @@ test.describe('MM-02 See where the current view is on the board', () => {
     }
   );
 
-  // At the maximum (MM-02-06) and the minimum (MM-02-08) zoom: one test each (split 2026-09-28).
+  // At the maximum (MM-02-06) and the minimum (MM-02-08) zoom: one test each.
   for (const [id, label, clicksIn, clicksOut] of [
     ['MM-02-06', 'maximum', 12, 0],
     ['MM-02-08', 'minimum', 0, 12],
@@ -152,4 +151,37 @@ test.describe('MM-02 See where the current view is on the board', () => {
       }
     );
   }
+
+  test(
+    'MM-02-09: moving around the board never makes the Minimap viewport box disappear',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      await tb.penStroke({ x: 400, y: 400 }, { x: 700, y: 480 });
+      await user.minimap.open(user.toolbar);
+      const lost = [];
+      const check = async (step) => {
+        await user.page.waitForTimeout(600);
+        if (!(await user.minimap.readCanvas()).rect) lost.push(step);
+      };
+      await check('opened');
+      await tb.selectTool('gtPan');
+      for (const [step, from, to] of [
+        ['pan left', { x: 900, y: 450 }, { x: 400, y: 450 }],
+        ['pan up', { x: 650, y: 650 }, { x: 650, y: 250 }],
+        ['pan right', { x: 400, y: 450 }, { x: 900, y: 450 }],
+        ['pan down', { x: 650, y: 250 }, { x: 650, y: 650 }],
+      ]) {
+        await tb.drawStroke(from, to, 10);
+        await check(step);
+      }
+      await setZoom(user, 3);
+      await check('zoomed in');
+      await setZoom(user, 0, 6);
+      await check('zoomed out');
+      await user.minimap.clickAt(0.9, 0.9);
+      await check('moved from the Minimap');
+      expect(lost, 'the viewport box is drawn after every move').toEqual([]);
+    }
+  );
 });

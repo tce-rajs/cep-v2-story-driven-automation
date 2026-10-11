@@ -1,10 +1,10 @@
 // NEW-01 — First login: default password forces a password reset
 // Source: CEPV2_Stories/02_NewUserFlow.md
 //
-// ONE-SHOT PER FRESH ACCOUNT. The steps really change the account (default password -> new password), so this whole
+// The steps really change the account (default password -> new password), so this whole
 // module can only run against a user that has never logged in — see NEW_USER_* in .env.example. The tests run in
 // order and each leaves the account at the start of the next one's step:
-//   default password entered  ->  "set new password" screen (left unfinished)  ->  new password set  ->  ...
+//   default password entered -> "set new password" screen (left unfinished) -> new password set -> ...
 // Because of that the order in this file is deliberate (NEW-01-05 sits before NEW-01-04) and it is not safe to run
 // a single test from here on its own after the account has moved on.
 
@@ -21,7 +21,7 @@ test.describe('NEW-01 First login: default password forces a password reset', ()
 
   const { username, newPassword, schoolSearchTerm } = NewUserPage.credentials;
 
-  // The two school paths, one test each (split 2026-09-28; neither changes the account, so the order is unaffected):
+  // The two school paths, one test each:
   // the pre-selected school (NEW-01-01) and choosing the school by hand (NEW-01-06).
   const openPasswordView = async (login) => {
     await login.open();

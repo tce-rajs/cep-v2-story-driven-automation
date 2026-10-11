@@ -13,7 +13,7 @@ test.describe('PLR-04 Navigate an ebook', () => {
     await expect(user.player.ebookLaunchBtn.first()).toBeVisible({ timeout: 10000 });
     await user.player.ebookLaunchBtn.first().click({ force: true });
     expect(await user.player.isPlayerOpen(), 'the ebook player opened').toBe(true);
-    // CONFIRMED LIVE (see PL-02): the chapters only appear 1-2s after launch.
+    // The chapters only appear 1-2s after launch.
     await expect(user.player.ebookChapterItems.first(), 'the ebook lists its chapters').toBeAttached({
       timeout: 20000,
     });
@@ -37,8 +37,6 @@ test.describe('PLR-04 Navigate an ebook', () => {
     'PLR-04-01: opening a chapter-specific ebook resource and navigating to a new chapter works',
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
-      // NOTE: on 2026-09-23 this reproducibly failed to open on two separate QA servers/accounts (see PL-02-01's
-      // note for the full history). Re-tested later the same day: opens and works reliably. Reverted test.fail().
       await openEbook(user);
       const chapters = user.player.ebookChapterItems;
       expect(await chapters.count(), 'the ebook has more than one chapter').toBeGreaterThan(1);
@@ -85,7 +83,7 @@ test.describe('PLR-04 Navigate an ebook', () => {
       await expect(linked.first().or(user.player.ebookNoResourcesMsg)).toBeVisible({ timeout: 10000 });
       test.skip(
         (await linked.count()) === 0,
-        'CONFIRMED LIVE: this ebook ("(CE Crystal) NCERT Physics Class 12") has no linked resources ("No resources found!"), so there is nothing to open and close'
+        'This ebook has no linked resources ("No resources found!"), so there is nothing to open and close'
       );
 
       await user.player.openResourceCard(linked);
@@ -100,7 +98,7 @@ test.describe('PLR-04 Navigate an ebook', () => {
     }
   );
 
-  // Chapter jumps (PLR-04-04) and scrolling (PLR-04-05): one test each (split 2026-09-28).
+  // Chapter jumps (PLR-04-04) and scrolling (PLR-04-05): one test each.
   test(
     'PLR-04-04: jumping between ebook chapters, back and forth, always lands on the chapter chosen (CEP v1’s weak spot)',
     { tag: ['@regression'] },
@@ -137,6 +135,34 @@ test.describe('PLR-04 Navigate an ebook', () => {
         errors.filter((e) => !/worker was terminated/i.test(e)),
         'no uncaught page errors'
       ).toEqual([]);
+    }
+  );
+
+  test(
+    'PLR-04-06: a missing or unavailable ebook page shows a message, not a blank player',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      await openEbook(user);
+      expect(await user.player.ebookChapterItems.count(), 'set-up: more than one chapter').toBeGreaterThan(1);
+      // From now on the ebook's pages cannot be fetched (as for a page missing on the server); the app page stays.
+      const unavailable = (route) =>
+        route.request().frame() === page.mainFrame() && route.request().resourceType() === 'document'
+          ? route.continue()
+          : route.fulfill({ status: 404, body: 'Not Found' });
+      await page.route('**/*', unavailable);
+      try {
+        await ensureContentsOpen(user);
+        await user.player.domClick(user.player.ebookChapterItems.nth(1));
+        await expect(
+          page
+            .getByText(/not (available|found)|unavailable|could not|couldn't|unable to|failed|error|try again/i)
+            .filter({ visible: true })
+            .first(),
+          'a message says the page cannot be shown'
+        ).toBeVisible({ timeout: 30000 });
+      } finally {
+        await page.unroute('**/*', unavailable);
+      }
     }
   );
 });

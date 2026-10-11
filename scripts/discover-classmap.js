@@ -2,16 +2,12 @@
 // npm run set-env), by signing in and walking the app's own class picker -- then cross-checks every entry in
 // config/moduleClassMap.js against it, flagging any whose grade/division/subject no longer exist.
 //
-// This does NOT verify chapter/topic-level data (which resource types a topic holds, known issues, etc.) --
-// that needs a much longer scan (the project's own docs put a full one at ~3 hours) and depends on judgment
-// this script can't make (e.g. "is this a good fixture for a Library-suggestions test?"). It also does NOT
-// auto-edit moduleClassMap.js: that file carries hand-written `notes`/`knownIssues` from real findings (e.g.
-// "the Attendance panel hangs indefinitely") that a scan has no way to know about -- this is a reference tool
-// for deciding what to fix by hand, not a replacement for doing so.
+// It does not check chapter/topic-level data (which resource types a topic holds) and does not edit
+// moduleClassMap.js: use the output to decide what to update by hand.
 //
 // Usage:
-//   npm run discover-classmap                 (uses .env's current VALID_PIN account)
-//   npm run discover-classmap -- --account=2  (uses VALID_PIN_2 instead)
+//   npm run discover-classmap (uses .env's current VALID_PIN account)
+//   npm run discover-classmap -- --account=2 (uses VALID_PIN_2 instead)
 
 require('dotenv').config();
 const { _electron: electron } = require('@playwright/test');

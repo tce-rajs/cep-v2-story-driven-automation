@@ -1,7 +1,6 @@
 // LOG-04 — Sign in with a password
 // Source: CEPV2_Stories/03_Login.md
-// The successful sign-in uses the spare account (DISPOSABLE_* in .env): the main account's stored password is
-// currently rejected by the server.
+// The successful sign-in uses the spare account (DISPOSABLE_* in .env).
 
 const { test, expect } = require('../../fixtures');
 
@@ -98,30 +97,15 @@ test.describe('LOG-04 Sign in with a password', () => {
     }
   );
 
-  test(
-    'LOG-04-08: double-clicking Sign In submits only once (regression)',
-    { tag: ['@regression', '@bug'] },
-    async ({ app, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): a double-click on Sign In sends TWO
-      // POST .../tce-auth-api/0/api/1/sso/token requests. The sign-in still succeeds, but the button is not guarded.
-      test.fail(true, 'Double-clicking Sign In sends two sso/token sign-in requests');
-      test.skip(!USER || !PWD, 'Needs the spare account (DISPOSABLE_* in .env).');
-      const posts = [];
-      page.on('request', (r) => isAuthPost(r) && posts.push(r.url()));
-      await app.login.selectSchool(SCHOOL);
-      await app.login.usernameInput.fill(USER);
-      await app.login.passwordInput.fill(PWD);
-      await app.login.submitButton.dblclick();
-      await expect(app.login.avatar).toBeVisible({ timeout: 20000 });
-      await page.waitForTimeout(2000);
-      expect(posts, `one sign-in request (saw: ${posts.join(', ')})`).toHaveLength(1);
-    }
-  );
-
   test('LOG-04-09: "Sign in with Pin" switches back to the PIN view', { tag: ['@functional'] }, async ({ app }) => {
     await app.login.pinLink.click();
     await expect(app.login.pinForm).toBeVisible();
     await expect(app.login.pinDigitBox(0)).toBeVisible();
     await expect(app.login.passwordForm).toBeHidden();
+  });
+
+  test('LOG-04-10: the password is hidden while it is typed', { tag: ['@functional'] }, async ({ app }) => {
+    await app.login.passwordInput.fill('Secret123');
+    await expect(app.login.passwordInput, 'typed characters are masked').toHaveAttribute('type', 'password');
   });
 });

@@ -66,4 +66,21 @@ test.describe('PRE-05 Open Sign In from Guest Mode', () => {
       expect(await app.content.pathGeometry(), 'drawing unchanged').toEqual(before);
     }
   );
+
+  test(
+    'PRE-05-06: closing Sign In without entering a PIN leaves the app in Guest Mode with no one signed in',
+    { tag: ['@negative'] },
+    async ({ app }) => {
+      await app.login.openSignIn();
+      await expect(app.login.modal, 'set-up: Sign In open').toHaveClass(/login-modal-outer--active/, {
+        timeout: 10000,
+      });
+      await app.login.closeSignIn();
+      await expect(app.login.modal, 'Sign In closed').not.toHaveClass(/login-modal-outer--active/, { timeout: 10000 });
+      await expect(app.login.guestModeText, 'still in Guest Mode').toBeVisible();
+      await expect(app.login.avatar, 'no one is signed in').toBeHidden();
+      await expect(app.guest.magnetTool, 'no signed-in tools (Magnet)').toBeHidden();
+      await expect(app.guest.classButton, 'no teacher class shown').toBeHidden();
+    }
+  );
 });

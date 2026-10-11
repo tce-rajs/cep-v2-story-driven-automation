@@ -16,8 +16,6 @@ test(
     test.skip(!!process.env.RUN_IN_BROWSER, 'relaunching the desktop client has no browser-mode equivalent');
     test.setTimeout(120000);
 
-    // Zoho TCN-I16282: sign in, close the client, reopen it -- the previous session should NOT be restored;
-    // the client should come back up in Guest Mode, requiring a fresh sign-in.
     const first = await launchWithRetry();
     try {
       const app1 = new App(first.teachWindow);

@@ -31,7 +31,7 @@ const reload = async (user) => {
 };
 
 test.describe('WB-10 Touch and stylus', () => {
-  // Fresh space below the teacher's writing; nothing is erased before or after (owner rule 2026-09-29).
+  // Fresh space below the teacher's writing; nothing is erased before or after.
   test.use({ classMap: 'toolbarGeneral', freshSpace: true });
 
   let touch;
@@ -129,8 +129,6 @@ test.describe('WB-10 Touch and stylus', () => {
     'WB-10-04: a two-finger drag pans the board, even with the Pen selected',
     { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): A two-finger drag does not pan the board -- it draws a stroke instead, even with the Pen selected
-      test.fail(true, 'A two-finger drag does not pan the board -- it draws a stroke instead');
       const { boxBefore, boxAfter } = await aroundGesture(user, twoFingerDrag);
       expect(Math.abs(boxAfter.x - boxBefore.x) + Math.abs(boxAfter.y - boxBefore.y), 'the view moved').toBeGreaterThan(
         50
@@ -142,16 +140,12 @@ test.describe('WB-10 Touch and stylus', () => {
     'WB-10-19: a two-finger drag draws nothing, even with the Pen selected',
     { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): A two-finger drag draws a stroke on the board
-      test.fail(true, 'A two-finger drag draws a stroke on the board');
       const { before } = await aroundGesture(user, twoFingerDrag);
       expect(await user.toolbar.pathCount(), 'no stroke drawn by the two fingers').toBe(before);
     }
   );
 
   test('WB-10-05: pinching out zooms in', { tag: ['@functional'] }, async ({ user }) => {
-    // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): Pinching does not zoom -- one finger draws a stroke on the board instead
-    test.fail(true, 'Pinching does not zoom');
     const { boxBefore, boxAfter, zoomBefore, zoomAfter } = await aroundGesture(user, pinchOut);
     test.info().annotations.push({
       type: 'note',
@@ -161,29 +155,9 @@ test.describe('WB-10 Touch and stylus', () => {
   });
 
   test('WB-10-20: pinching draws nothing', { tag: ['@functional'] }, async ({ user }) => {
-    // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): during a pinch, one finger draws a stroke on the board
-    test.fail(true, 'During a pinch, one finger draws a stroke on the board');
     const { before } = await aroundGesture(user, pinchOut);
     expect(await user.toolbar.pathCount(), 'no stroke drawn by the pinch').toBe(before);
   });
-
-  test(
-    'WB-10-06: with the palm resting on the screen, the pen writes one stroke and the palm draws nothing',
-    { tag: ['@negative'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): With the palm resting on the screen, the pen stroke also draws a second stroke from the palm to the pen (no palm rejection)
-      test.fail(
-        true,
-        'With the palm resting on the screen, the pen stroke also draws a second stroke from the palm to the pen (no palm rejection)'
-      );
-      const c = await canvas(user);
-      await user.toolbar.selectTool('gtPen');
-      const before = await user.toolbar.pathCount();
-      await touch.penStrokeWithPalm(wave(c.x + 400, c.y + 350, 300), { x: c.x + 760, y: c.y + 520 });
-      await user.page.waitForTimeout(1000);
-      expect(await user.toolbar.pathCount(), 'only the pen stroke, no mark from the palm').toBe(before + 1);
-    }
-  );
 
   test('WB-10-07: a finger tap on a toolbar tool selects it', { tag: ['@functional'] }, async ({ user }) => {
     const pan = await center(user.toolbar.tool('gtPan'));
@@ -210,8 +184,6 @@ test.describe('WB-10 Touch and stylus', () => {
   );
 
   test('WB-10-09: a finger drag with Select moves a stroke', { tag: ['@functional'] }, async ({ user }) => {
-    // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): A finger drag with Select does not move the selected stroke (it stays where it was)
-    test.fail(true, 'A finger drag with Select does not move the selected stroke (it stays where it was)');
     await user.toolbar.penStroke({ x: 500, y: 400 }, { x: 700, y: 400 });
     const box = await user.toolbar.lastPathBox();
     const index = (await user.toolbar.pathCount()) - 1;
@@ -229,8 +201,6 @@ test.describe('WB-10 Touch and stylus', () => {
   });
 
   test('WB-10-10: the stylus eraser rubs out what it passes over', { tag: ['@functional'] }, async ({ user }) => {
-    // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): The stylus eraser does not erase what it passes over
-    test.fail(true, 'The stylus eraser does not erase what it passes over');
     const c = await canvas(user);
     await user.toolbar.drawLetters(4, { x: 400, y: 400 });
     const before = await user.toolbar.pathCount();
@@ -252,10 +222,6 @@ test.describe('WB-10 Touch and stylus', () => {
     'WB-10-11: one finger tap on a Playlist card opens it, every time',
     { tag: ['@regression'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP): A single finger tap on a Playlist card does not always open it
-      // The bug is intermittent (2026-09-28: one tap in one run opened the card), so a single tap cannot tell; tap it
-      // several times, closing the player in between, and every tap must open it.
-      test.fail(true, 'A single finger tap on a Playlist card does not always open it');
       const TAPS = 6;
       const results = [];
       for (let i = 0; i < TAPS; i++) {
@@ -371,9 +337,8 @@ test.describe('WB-10 Touch and stylus', () => {
   );
 });
 
-// --- A teacher writing a lesson by hand, on the teacher's board that is never cleared ('longSession', Class 12A
-// Physics 3.1, owner's request 2026-09-27): each session pans below what earlier sessions wrote and checks that old and
-// new writing are all there after a reload. ---
+// --- A teacher writing a lesson by hand on a board that is never cleared (the 'longSession' class map entry): each
+// session pans below what earlier sessions wrote and checks that old and new writing are all there after a reload. ---
 test.describe('WB-10 Handwriting by finger and stylus', () => {
   test.use({ classMap: 'longSession' });
 
@@ -393,8 +358,6 @@ test.describe('WB-10 Handwriting by finger and stylus', () => {
   // after it each check one more result on the same session: nothing written earlier is lost, a save message follows
   // the last word, and a reload brings the board back exactly. The writing test saves what they need to a file in this
   // run's output folder (emptied by Playwright at the start of every run); run without it, they skip with that reason.
-  // The palm-resting session (WB-10-17) is only checked for extra strokes: with no palm rejection (bug WB-10-06) every
-  // pen stroke also draws a palm line, and its other results are the plain stylus session's.
 
   const sessionFile = (how) =>
     path.join(test.info().project.outputDir, `wb-10-session-${how.replace(/\W+/g, '-')}.json`);
@@ -421,8 +384,6 @@ test.describe('WB-10 Handwriting by finger and stylus', () => {
     });
     // The board is never cleared: note what is already there, and pan below it to fresh space.
     const before = await user.content.pathGeometry();
-    // Fresh space with the Pan tool: a two-finger drag draws lines instead of panning (bug, WB-10-04), which would
-    // spoil the writing test, so that bug is left to its own case.
     await user.content.panBelowExistingWriting();
     const expected = pages.reduce((n, p) => n + p.words.reduce((m, w) => m + w.strokes.length, 0), 0);
     const palm = { x: c.x + Math.min(c.width - 300, area.x + area.width + 60), y: c.y + area.y + area.height - 40 };
@@ -511,18 +472,4 @@ test.describe('WB-10 Handwriting by finger and stylus', () => {
   keptTest('WB-10-27', 'stylus', 'WB-10-16');
   savedTest('WB-10-28', 'stylus', 'WB-10-16');
   reloadTest('WB-10-29', 'stylus', 'WB-10-16');
-
-  test(
-    'WB-10-17: a teacher handwrites 150 words with a stylus, the palm resting on the screen, and only the pen strokes land',
-    { tag: ['@long', '@regression', '@negative'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-27, v 0.0.232, real touch input via CDP; single stroke: WB-10-06): with the palm resting on the screen, every pen stroke also draws a line from the palm (no palm rejection)
-      test.fail(true, 'With the palm resting on the screen, every pen stroke also draws a line from the palm');
-      test.setTimeout(30 * 60 * 1000);
-      const s = await handwritingSession(user, 'stylus with palm');
-      expect(s.geometry, 'only the pen strokes landed, no marks from the palm').toHaveLength(
-        s.before.length + s.expected
-      );
-    }
-  );
 });

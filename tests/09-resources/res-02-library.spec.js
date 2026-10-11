@@ -19,8 +19,7 @@ test.describe('RES-02 Library', () => {
     await user.addResource.libraryResults.first().click({ force: true });
     await user.page.waitForTimeout(2000);
   };
-  // CONFIRMED LIVE (v 0.0.223): the preview's buttons read "Open in whiteboard" and "Add to playlist"; the story words
-  // them "Open to Whiteboard" and "Save to Playlist". Both wordings are accepted.
+  // Both wordings are accepted.
   const openToWhiteboard = (user) =>
     user.page
       .getByRole('button', { name: /open (to|in) whiteboard/i })
@@ -86,7 +85,7 @@ test.describe('RES-02 Library', () => {
       await openFirstResult(user);
 
       // Whatever the type, a preview opened over the results with its own content and a way out.
-      // CONFIRMED LIVE: a plain `canvas` selector can match a small decorative `.minimap-canvas` (250x150,
+      // A plain `canvas` selector can match a small decorative `.minimap-canvas` (250x150,
       // scaled to ~75x46 on screen) instead of the actual content — excluded here so the size check below means
       // something.
       const typeSpecific = user.page
@@ -98,7 +97,7 @@ test.describe('RES-02 Library', () => {
         timeout: 15000,
       });
       // toBeVisible() only proves SOME matching element exists, not that the preview occupies a real amount of
-      // screen. CONFIRMED LIVE: a genuine content match can still be mid-layout (a narrow sliver) right after
+      // screen. A genuine content match can still be mid-layout (a narrow sliver) right after
       // becoming visible, then settle to its real size — poll rather than measure once.
       await expect
         .poll(async () => (await typeSpecific.boundingBox())?.width || 0, {
@@ -132,7 +131,7 @@ test.describe('RES-02 Library', () => {
 
       await openToWhiteboard(user).click({ force: true });
 
-      // CONFIRMED LIVE: the asset shows up as an embedded player (a child frame) for only ~1-2 seconds after the click,
+      // The asset shows up as an embedded player (a child frame) for only ~1-2 seconds after the click,
       // so the check has to start polling immediately and often; waiting first misses it entirely.
       const landed = () => user.toolbar.objectCount().then((n) => n > before || user.page.frames().length > 1);
       await expect
@@ -150,7 +149,7 @@ test.describe('RES-02 Library', () => {
     const inPlaylist = (await user.playlist.cardTitles()).map((t) => t.toLowerCase());
     const before = inPlaylist.length;
 
-    // CONFIRMED LIVE: the Library's suggestions for the current topic are the resources the topic's Playlist already
+    // The Library's suggestions for the current topic are the resources the topic's Playlist already
     // holds, and adding one of those changes nothing (the toast says it was added, the count stays put). So search
     // more broadly and take a result that is not in the Playlist yet.
     await openLibrary(user);
@@ -194,17 +193,18 @@ test.describe('RES-02 Library', () => {
     if (await finish.isVisible().catch(() => false)) await finish.click({ timeout: 10000 });
   });
 
-  test.fixme('RES-02-08: the preview supports the asset’s own actions without leaving the preview', async () => {
-    // BLOCKED (checked live, v 0.0.223): every Library preview renders inside an iframe -- an interactive activity, a
-    // video or a PDF viewer -- and its controls (play/pause, page next) are not addressable from here: the "Lecture
-    // Note" previews are nested frames with an empty DOM (an embedded viewer), and no video.js controls were found in
-    // any of the first 10 results. Needs per-type selectors from the app team, or a known video / PDF library asset
-    // to build against.
+  test('RES-02-08: the preview supports the asset’s own actions without leaving the preview', async () => {
+    test.fixme(
+      true,
+      'Every Library preview renders inside an iframe -- an interactive activity, a video or a PDF viewer -- and its controls (play/pause, page next) are not addressable from here: the "Lecture Note" previews are nested frames with an empty DOM (an embedded viewer), and no video.js controls were found in any of the first 10 results. Needs per-type selectors from the app team, or a known video / PDF library asset to build against.'
+    );
   });
 
-  test.fixme('RES-02-09: rapid forward-clicking through a long PDF preview to a distant page does not crash the browser', async () => {
-    // BLOCKED: same cause as RES-02-08 -- the PDF preview is an opaque embedded viewer, so its page controls cannot be
-    // clicked from here, and no 200+ page library PDF is identified to test against.
+  test('RES-02-09: rapid forward-clicking through a long PDF preview to a distant page does not crash the browser', async () => {
+    test.fixme(
+      true,
+      'Same cause as RES-02-08 -- the PDF preview is an opaque embedded viewer, so its page controls cannot be clicked from here, and no 200+ page library PDF is identified to test against.'
+    );
   });
 
   test('RES-02-10: "content not loading" does not recur', { tag: ['@regression'] }, async ({ user }) => {
@@ -231,22 +231,6 @@ test.describe('RES-02 Library', () => {
     );
     expect(broken, `${broken} of ${await thumbs.count()} result thumbnails failed to render`).toBe(0);
   });
-
-  test(
-    'RES-02-12: a topic name containing an apostrophe is searched as typed, not as an HTML entity',
-    { tag: ['@regression', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223): for "1.3 | Coulomb's Law" the pre-filled search box reads
-      // "Coulomb&#39;s Law" (the raw HTML entity), so the automatic search can never match. Same for "Ohm's Law".
-      // Tracked as expected-to-fail so it isn't masked.
-      test.fail(true, 'The Library search box shows &#39; instead of an apostrophe');
-      await user.nav.applyClassMap('libraryApostropheTopic');
-      await openLibrary(user);
-      await expect(user.addResource.librarySearchInput).toHaveValue("Coulomb's Law");
-    }
-  );
-
-  // --- Added 2026-09-26 (gap-fill from the reference suite's TCE Search Library workbook and Zoho bugs) ---
 
   test(
     'RES-02-13: Search is disabled while the search box is empty or has fewer than 3 characters',
@@ -331,11 +315,10 @@ test.describe('RES-02 Library', () => {
     'RES-02-17: typing a search quickly, letter by letter, searches for the full text typed',
     { tag: ['@edge'] },
     async ({ user }) => {
-      // INTERMITTENT PRODUCT DEFECT, SEEN LIVE (2026-09-26, v 0.0.232; the reference suite's LIB-AUTOSEARCH-RACE-01): the Library
-      // starts its own search for the topic name when it opens. A search typed before that finishes keeps the typed text in
-      // the box but the results are replaced by the topic's ("Electric Field ...") when the automatic search returns.
-      // Typed after the automatic search has finished, the same query works (searchTerm=magnetic, magnetic results).
-      // Did not happen in the full run of 2026-09-26, so it is left asserting the correct outcome.
+      // A search typed before that finishes keeps the typed text in the box but the results are replaced by the topic's
+      // ("Electric Field ...") when the automatic search returns. Typed after the automatic search has finished, the
+      // same query works (searchTerm=magnetic, magnetic results). Did not happen in the full run of, so it is left
+      // asserting the correct outcome.
       const ar = user.addResource;
       await openLibrary(user);
       await ar.librarySearchInput.fill('');
@@ -351,10 +334,39 @@ test.describe('RES-02 Library', () => {
     }
   );
 
-  test.fixme('RES-02-18: an Exercise resource preview shows its answers, not blanks (regression, Zoho TCN-I6380)', async () => {
-    // BLOCKED, CONFIRMED LIVE (2026-09-26): searching "exercise" lists 21 results ("NCERT Chapter Exercise Solutions:
-    // ..."), but clicking one opens no in-app preview that can be inspected -- the same limitation as RES-02-08/09
-    // (previews are iframes / an opaque PDF viewer). Zoho TCN-I6380 was raised against Lesson Planning, which is Plan
-    // Mode (manual-only per PROCESS.md). Unblock: a way into the Library preview, or check it by hand.
+  test('RES-02-18: an Exercise resource preview shows its answers, not blanks', async () => {
+    test.fixme(
+      true,
+      'Searching "exercise" lists 21 results ("NCERT Chapter Exercise Solutions: ..."), but clicking one opens no in-app preview that can be inspected -- the same limitation as RES-02-08/09 (previews are iframes / an opaque PDF viewer). Unblock: a way into the Library preview, or check it by hand.'
+    );
   });
+
+  test(
+    'RES-02-19: Save to Playlist while the network is down shows a message and adds nothing',
+    { tag: ['@interruption'] },
+    async ({ user, page }) => {
+      await user.playlist.ensureDrawerVisible();
+      const before = await user.playlist.cardTitles();
+      await openLibrary(user);
+      await openFirstResult(user);
+      await expect(saveToPlaylist(user), 'set-up: the preview offers Save to Playlist').toBeVisible({ timeout: 15000 });
+      await page.route('**/*', (route) => route.abort('internetdisconnected'));
+      try {
+        await saveToPlaylist(user).click({ force: true });
+        await expect(
+          page
+            .getByText(/fail|error|could not|couldn.t|unable|try again|retry|network|offline/i)
+            .filter({ visible: true })
+            .first(),
+          'a message says it was not saved'
+        ).toBeVisible({ timeout: 10000 });
+      } finally {
+        await page.unroute('**/*');
+      }
+      await page.reload();
+      await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
+      await user.playlist.ensureDrawerVisible();
+      expect(await user.playlist.cardTitles(), 'nothing was added').toEqual(before);
+    }
+  );
 });

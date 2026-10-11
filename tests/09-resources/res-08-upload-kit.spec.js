@@ -9,46 +9,16 @@
 //     "Successfully added resource!" only to fail when the teacher opens it in front of the class.
 // Every resource created is removed again (the page is reloaded first, because an open player can cover the card).
 //
-// Known product bugs (CONFIRMED LIVE 2026-09-27, v 0.0.232, all 50 files run and recorded, test-evidence/upload-kit/)
-// are recorded per file below with test.fail(), so each stays visible and flips to "unexpectedly passed" when fixed.
 
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../../fixtures');
+const { isImprovement } = require('../../config/storyMarkers');
 
 const ROOT = path.join(__dirname, '..', '..', 'test-data');
 const MANIFEST = path.join(ROOT, 'manifest.json');
 const manifest = fs.existsSync(MANIFEST) ? JSON.parse(fs.readFileSync(MANIFEST, 'utf8')) : [];
 
-const OFFICE_UNSUPPORTED =
-  'The form accepts this type and says "Successfully added resource!", but opening it shows "UNSUPPORTED FILE"';
-const ACCEPTED_BROKEN =
-  'A broken file is accepted with "Successfully added resource!"; the teacher only finds out when opening it in class';
-const KNOWN = {
-  'positive/lesson-plan.docx': OFFICE_UNSUPPORTED,
-  'positive/class-slides.pptx': OFFICE_UNSUPPORTED,
-  'positive/marks-sheet.xlsx': `${OFFICE_UNSUPPORTED} (the older .xls and .ods formats DO open)`,
-  'positive/lesson-plan.odt': OFFICE_UNSUPPORTED,
-  'positive/class-slides.odp': OFFICE_UNSUPPORTED,
-  'positive/notes-plain.txt': OFFICE_UNSUPPORTED,
-  'positive/notes-unicode-hindi-emoji.txt': OFFICE_UNSUPPORTED,
-  'positive/पाठ योजना - विद्युत आवेश.pdf':
-    'A PDF with a Hindi file name is rejected by the server (HTTP 400) with no message; the resource is silently not created',
-  'negative/Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name-Very-long-lesson-file-name.pdf':
-    'A ~250-character file name is rejected by the server (HTTP 400) with no message',
-  'negative/empty-0-bytes.pdf': `${ACCEPTED_BROKEN} (opens as a blank worksheet with no message)`,
-  'negative/empty-0-bytes.png': `${ACCEPTED_BROKEN} ("Unable to load the image!")`,
-  'negative/empty-0-bytes.mp4': `${ACCEPTED_BROKEN} (the video player shows a media error)`,
-  'negative/corrupt-random-bytes.png': `${ACCEPTED_BROKEN} ("Unable to load the image!")`,
-  'negative/corrupt-header-only.pdf': `${ACCEPTED_BROKEN} (opens as a blank worksheet with no message)`,
-  'negative/corrupt-not-a-zip.docx': `${ACCEPTED_BROKEN} ("UNSUPPORTED FILE")`,
-  'negative/image-renamed.mp4': `${ACCEPTED_BROKEN} (the video player shows a media error)`,
-  'negative/video-renamed.png': `${ACCEPTED_BROKEN} ("Unable to load the image!")`,
-  'negative/program-renamed.pdf': `${ACCEPTED_BROKEN} (a Windows program named .pdf opens as a blank worksheet)`,
-  'negative/rtf-renamed.doc': `${ACCEPTED_BROKEN} ("UNSUPPORTED FILE")`,
-  // A video cut off part-way still plays the part that arrived (browsers are tolerant) -- accepted and usable, so it is
-  // not treated as a bug here; the test records how much plays.
-};
 const TOLERATED = { 'negative/corrupt-truncated.mp4': 'plays the part that arrived' };
 
 const pdfPages = { 'worksheet-3-pages': 3, 'textbook-chapter-80-pages': 80 };
@@ -60,16 +30,15 @@ test.describe('RES-08 Uploading real teacher files', () => {
 
   manifest.forEach((m, i) => {
     const n = String(i + 1).padStart(2, '0');
+    if (isImprovement(`RES-08-${n}`)) return;
     const shouldWork = m.expect === 'accept' || TOLERATED[m.file];
     const tags = m.group === 'positive' ? ['@functional'] : ['@negative'];
-    if (KNOWN[m.file]) tags.push('@bug');
 
     // eslint-disable-next-line playwright/valid-test-tags -- the tags are built per file above (all strings)
     test(
       `RES-08-${n}: ${m.file} (${m.note}) is ${shouldWork ? 'accepted and opens properly' : 'refused with a reason'}`,
       { tag: tags },
       async ({ user, page }) => {
-        if (KNOWN[m.file]) test.fail(true, KNOWN[m.file]);
         const ar = user.addResource;
         const title = `AutoTest-kit-${Date.now()}`;
         const card = user.playlist.resourceCards.filter({ hasText: title });

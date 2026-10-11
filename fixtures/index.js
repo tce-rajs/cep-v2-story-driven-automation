@@ -1,15 +1,12 @@
 // The test object every spec from Module 03 onward imports.
 //
-// Builds on fixtures/electron-app.js (which supplies `page`) and adds:
-//   app       -- an `App` (pages/app.js): every page object behind one handle, signed OUT.
-//   user      -- the same `App`, already signed in with the primary QA account's PIN.
-//   classMap  -- option (default none). `test.use({ classMap: 'quiz' })` makes `user` also sign in with the account
-//                that key was confirmed on and land on that key's class/chapter/topic from config/moduleClassMap.js,
-//                with the Playlist strip expanded.
-//   freshSpace -- option (default false). `test.use({ freshSpace: true })` makes `user` start every test on empty
-//                board space below the teacher's existing writing, with that writing left in place but ignored by
-//                counts and "last path" lookups (WhiteboardContent.startOnFreshSpace). Nothing is ever erased: owner
-//                rule 2026-09-29 (this replaced the old `cleanBoard`, which pressed Clear whiteboard).
+// Builds on fixtures/electron-app.js (which supplies `page`) and adds: app -- an `App` (pages/app.js): every page
+// object behind one handle, signed OUT. user -- the same `App`, already signed in with the primary QA account's PIN.
+// classMap -- option (default none). `test.use({ classMap: 'quiz' })` makes `user` also sign in with the account that
+// key was confirmed on and land on that key's class/chapter/topic from config/moduleClassMap.js, with the Playlist
+// strip expanded. freshSpace -- option (default false). `test.use({ freshSpace: true })` makes `user` start every test
+// on empty board space below the teacher's existing writing, with that writing left in place but ignored by counts and
+// "last path" lookups (WhiteboardContent.startOnFreshSpace).
 //
 // Signing in is a fixture, not a beforeEach in each spec, so a story that needs a signed-in user just asks for
 // `user` and one that needs Guest Mode asks for `app`.
@@ -18,8 +15,6 @@ const { test: base, expect } = require('./electron-app');
 const { App } = require('../pages/app');
 const { pinForModule, getClassMap } = require('../config/moduleClassMap');
 
-// Cases the owner ruled out of scope are marked in the story files -- "(not supported ...)", "(improvement ...)",
-// "(not applicable ...)" -- and skipped here with that reason, so the stories stay the one place this is decided.
 const fs = require('fs');
 const path = require('path');
 const OUT_OF_SCOPE = new Map();
@@ -55,13 +50,14 @@ const test = base.extend({
       await app.playlist.ensureDrawerVisible();
     } else {
       // A test that names no class would otherwise start wherever the account was left -- possibly one of the
-      // handwriting data boards. Bring it to the default (whiteboard test) class first, unless it is already there
-      // (owner, 2026-10-01: tests must never add to those boards).
-      const { grade, division, subject } = getClassMap('default');
+      // handwriting data boards. Bring it to the default (whiteboard test) class first, unless it is already there.
+      const { grade, division, subject, chapterIndex, topicIndex } = getClassMap('default');
       const label = (await app.nav.currentClassBtn.innerText().catch(() => '')).replace(/\s+/g, ' ');
-      if (!label.includes(`${grade}${division} | ${subject}`)) await app.nav.applyClassMap('default');
+      const topic = (await app.nav.currentChapterTopicBtn.innerText().catch(() => '')).trim();
+      const onTopic = topic.startsWith(`${chapterIndex + 1}.${topicIndex + 1} `);
+      if (!label.includes(`${grade}${division} | ${subject}`) || !onTopic) await app.nav.applyClassMap('default');
     }
-    // Never erases (owner rule 2026-09-29): moves to empty space below the teacher's writing and ignores it in counts.
+    // Never erases: moves to empty space below the teacher's writing and ignores it in counts.
     if (freshSpace) await app.content.startOnFreshSpace();
     await use(app);
   },

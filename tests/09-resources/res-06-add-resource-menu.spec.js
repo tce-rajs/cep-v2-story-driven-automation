@@ -46,7 +46,7 @@ test.describe('RES-06 Add Resource menu', () => {
     );
   }
 
-  // One test per option (split 2026-09-28), so one option failing does not hide the others: the screen closes, no menu
+  // One test per option, so one option failing does not hide the others: the screen closes, no menu
   // is left open, and the whiteboard takes a stroke again.
   for (const name of ['create', 'library', 'gallery']) {
     test(
@@ -68,23 +68,6 @@ test.describe('RES-06 Add Resource menu', () => {
   }
 
   test(
-    'RES-06-04: pressing "+" while an option\'s screen is open does not open a second menu on top (regression)',
-    { tag: ['@bug', '@regression'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's ADD-CORE-03 / GAL-XCUT-01):
-      // pressing "+" while Gallery is open opens a second Add Resource menu on top of it.
-      test.fail(true, 'Pressing "+" while an Add Resource option is open stacks a second menu');
-      await user.addResource.openAction('gallery');
-      await expect(user.addResource.gallerySearchInput).toBeVisible({ timeout: 20000 });
-      await user.addResource.addResourcesTrigger.click({ force: true });
-      await page.waitForTimeout(1500);
-      const menus = user.addResource.actions.create.filter({ visible: true });
-      await expect(menus, 'no Add Resource menu stacked over the open Gallery').toHaveCount(0);
-      await user.addResource.galleryCloseBtn.click({ force: true }).catch(() => {});
-    }
-  );
-
-  test(
     'RES-06-05: clicking an option the moment the menu opens opens that option, not a different one',
     { tag: ['@edge'] },
     async ({ user }) => {
@@ -97,4 +80,54 @@ test.describe('RES-06 Add Resource menu', () => {
       await ar.galleryCloseBtn.click({ force: true });
     }
   );
+
+  // Escape (one way) and a click away on the board (the other): the menu closes and adds nothing.
+  for (const [how, close] of [
+    ['pressing Escape', (user) => user.page.keyboard.press('Escape')],
+    [
+      'clicking away',
+      async (user) => {
+        const box = await user.toolbar.wbSvg.boundingBox();
+        await user.page.mouse.click(box.x + box.width / 2, box.y + 250);
+      },
+    ],
+  ]) {
+    test(
+      `RES-06-06: ${how} closes the Add Resource menu and adds nothing`,
+      { tag: ['@negative'] },
+      async ({ user }) => {
+        const ar = user.addResource;
+        await user.toolbar.selectTool('gtSelect'); // a click on the board then draws nothing
+        const board = await user.toolbar.objectCount();
+        const cards = await user.playlist.cardTitles();
+        const { stillStuck } = await ar.openPickerReliably(ar.actions.create);
+        expect(stillStuck, 'set-up: the menu is open').toBeFalsy();
+        await close(user);
+        const open = () =>
+          ar.actions.create
+            .evaluate((el) => {
+              const r = el.getBoundingClientRect();
+              const cs = getComputedStyle(el);
+              return (
+                cs.pointerEvents !== 'none' &&
+                cs.visibility !== 'hidden' &&
+                r.width > 0 &&
+                r.bottom > 0 &&
+                r.top < innerHeight
+              );
+            })
+            .catch(() => false);
+        await expect.poll(open, { message: 'the menu closed', timeout: 5000 }).toBe(false);
+        await user.page.waitForTimeout(1000);
+        for (const [name, screen] of [
+          ['Create', ar.createForm],
+          ['Library', ar.libraryPopup],
+          ['Gallery', ar.gallerySearchInput],
+        ])
+          await expect(screen, `${name} did not open`).toBeHidden();
+        expect(await user.toolbar.objectCount(), 'nothing added to the board').toBe(board);
+        expect(await user.playlist.cardTitles(), 'nothing added to the Playlist').toEqual(cards);
+      }
+    );
+  }
 });

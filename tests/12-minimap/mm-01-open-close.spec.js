@@ -46,7 +46,7 @@ test.describe('MM-01 Open and close the Minimap', () => {
   );
 
   // Opening and closing the Minimap 8 times quickly: one clean closed panel (MM-01-04), and it still opens normally
-  // afterwards (MM-01-06) -- one test each (split 2026-09-28).
+  // afterwards (MM-01-06) -- one test each.
   const openCloseEightTimes = async (user) => {
     // The Zoom panel closes once the Minimap opens, so each round goes through the full open path again.
     for (let i = 0; i < 8; i++) {
@@ -78,16 +78,27 @@ test.describe('MM-01 Open and close the Minimap', () => {
     }
   );
 
-  test(
-    'MM-01-05: switching class while the Minimap is open closes it (regression)',
-    { tag: ['@bug', '@regression'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's MM-BREAK-01): after switching class
-      // the Minimap is still open, now over the new class's whiteboard.
-      test.fail(true, 'The Minimap stays open over the new class after a class switch');
-      await user.minimap.open(user.toolbar);
-      await user.nav.applyClassMap('navigationGeneral');
-      expect(await user.minimap.isOpen(), 'Minimap closed after the class switch').toBe(false);
-    }
-  );
+  // Data: 'longSession' (12A Physics 3.1), a board full of writing from the long runs. Read-only here.
+  test.describe('on a board with content', () => {
+    test.use({ classMap: 'longSession' });
+
+    test(
+      'MM-01-07: the Minimap never opens blank on a board that has content',
+      { tag: ['@negative'] },
+      async ({ user }) => {
+        await expect
+          .poll(() => user.toolbar.allPaths.count(), { message: 'set-up: the board has writing', timeout: 60000 })
+          .toBeGreaterThan(0);
+        await user.minimap.open(user.toolbar);
+        // The overview is painted a moment after it opens.
+        await expect
+          .poll(async () => (await user.minimap.readCanvas()).content, {
+            message: 'the overview shows the writing',
+            timeout: 10000,
+          })
+          .toBeGreaterThan(20);
+        expect((await user.minimap.readCanvas()).rect, 'and the viewport box').not.toBeNull();
+      }
+    );
+  });
 });

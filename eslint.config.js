@@ -27,6 +27,7 @@ module.exports = [
       'fixtures/**/*.js',
       'config/**/*.js',
       'scripts/**/*.js',
+      'tools/**/*.js',
       'client-automation/**/*.js',
     ],
     languageOptions: {
@@ -43,8 +44,6 @@ module.exports = [
       },
     },
     rules: {
-      // Playwright/Node style choices, not correctness bugs -- turned off
-      // rather than left to warn-spam across 87 existing spec files.
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       // Playwright's own custom-fixture signature is `async ({}, use) => {}`
       // when a fixture needs no other fixtures -- an empty destructuring
@@ -54,7 +53,7 @@ module.exports = [
     },
   },
   {
-    files: ['tests/**/*.spec.js', 'client-automation/tests/**/*.spec.js'],
+    files: ['tests/**/*.spec.js', 'client-automation/tests/**/*.spec.js', 'tools/**/*.spec.js'],
     ...playwright.configs['flat/recommended'],
     rules: {
       ...playwright.configs['flat/recommended'].rules,
@@ -67,9 +66,6 @@ module.exports = [
       // tests probing genuinely uncertain live behavior) -- don't fail the
       // whole suite over the existing backlog of these; tighten later.
       'playwright/prefer-web-first-assertions': 'warn',
-      // Existing suite relies on conditional test.fail() to mark confirmed,
-      // still-open app bugs as expected failures -- this is a deliberate
-      // project convention (see AUTOMATION_REVIEW.md), not a mistake.
       'playwright/no-conditional-expect': 'off',
       'playwright/no-conditional-in-test': 'off',
     },

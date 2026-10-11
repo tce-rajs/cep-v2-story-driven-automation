@@ -3,6 +3,17 @@
 
 const { test, expect } = require('../../fixtures/electron-app');
 const { WithoutLoginPage } = require('../../pages/without-login.page');
+const { App } = require('../../pages/app');
+
+/** "rgb(187, 134, 252)" -> "#BB86FC" */
+const toHex = (rgb) =>
+  '#' +
+  rgb
+    .match(/\d+/g)
+    .slice(0, 3)
+    .map((n) => Number(n).toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
 
 test.describe('PRE-04 Whiteboard is usable for all core actions', () => {
   test.beforeEach(async ({ page }) => {
@@ -43,7 +54,7 @@ test.describe('PRE-04 Whiteboard is usable for all core actions', () => {
     await expect(textBox).toContainText('Hello');
   });
 
-  // Opening, using and closing a widget are one test each (split 2026-09-28): PRE-04-05, PRE-04-07, PRE-04-08.
+  // Opening, using and closing a widget are one test each: PRE-04-05, PRE-04-07, PRE-04-08.
   const openClock = async (app) => {
     await app.openWidgets();
     await app.toolbar.widgetTool('Clock').click({ force: true });
@@ -95,6 +106,72 @@ test.describe('PRE-04 Whiteboard is usable for all core actions', () => {
       expect(report.loginPromptSeen, 'sign-in panel must never activate').toBe(false);
       expect(report.urlLeftWhiteboard, 'URL must stay on /whiteboard').toBe(false);
       await expect(app.loginModal).not.toHaveClass(/login-modal-outer--active/);
+    }
+  );
+
+  test(
+    "PRE-04-09: guest-mode drawing is not added to the teacher's own topic board after signing in",
+    { tag: ['@functional', '@negative'] },
+    async ({ page }) => {
+      test.setTimeout(180000);
+      const app = new WithoutLoginPage(page);
+      // A stroke only Guest Mode drew: its outline is compared with every stroke on the teacher's board.
+      await app.draw({ x: 720, y: 520 }, { x: 980, y: 610 });
+      const guestStroke = await app.toolbar.paths.last().getAttribute('d');
+      const signedIn = new App(page);
+      await signedIn.signIn();
+      try {
+        await page.waitForTimeout(8000); // the teacher's board finishes loading
+        const teacherStrokes = await signedIn.toolbar.allPaths.evaluateAll((ps) => ps.map((p) => p.getAttribute('d')));
+        expect(teacherStrokes, "the guest stroke is not on the teacher's board").not.toContain(guestStroke);
+      } finally {
+        await signedIn.userMenu.signOut().catch(() => {});
+      }
+    }
+  );
+
+  test(
+    'PRE-04-10: a pen colour picked in the Pen panel is used for the next stroke',
+    { tag: ['@functional'] },
+    async ({ page }) => {
+      const app = new WithoutLoginPage(page);
+      await app.toolbar.openToolPanel('gtPen');
+      const purple = app.toolbar.penColorOptions.nth(2);
+      const expected = toHex(await purple.evaluate((e) => getComputedStyle(e).backgroundColor));
+      await page.keyboard.press('Escape');
+      await app.pickPenColour(2);
+      await app.draw();
+      expect((await app.lastStrokeColour()).toUpperCase(), 'the new stroke uses the picked colour').toBe(expected);
+    }
+  );
+
+  test(
+    'PRE-04-11: Zoom In enlarges the board and Reset returns it to 100%',
+    { tag: ['@functional'] },
+    async ({ page }) => {
+      const app = new WithoutLoginPage(page);
+      expect(await app.zoomFactor(), 'set-up: the board starts at 100%').toBeCloseTo(1, 2);
+      await app.toolbar.openToolPanel('gtZoom');
+      await app.toolbar.zoomInBtn.click({ force: true });
+      await expect.poll(() => app.zoomFactor(), { message: 'zoomed in' }).toBeGreaterThan(1.1);
+      await app.toolbar.zoomResetBtn.click({ force: true });
+      await expect.poll(() => app.zoomFactor(), { message: 'back to 100%' }).toBeCloseTo(1, 2);
+      await page.keyboard.press('Escape');
+    }
+  );
+
+  test(
+    'PRE-04-12: drawing done in Guest Mode is not kept after the app reloads (nothing is saved without signing in)',
+    { tag: ['@functional'] },
+    async ({ page }) => {
+      const app = new WithoutLoginPage(page);
+      await app.draw();
+      expect(await app.toolbar.pathCount(), 'set-up: the stroke is drawn').toBeGreaterThan(0);
+      await page.waitForTimeout(12000); // longer than the autosave countdown a signed-in board would use
+      await page.reload();
+      await app.toolbar.wbSvg.waitFor({ state: 'visible', timeout: 30000 });
+      await page.waitForTimeout(3000);
+      expect(await app.toolbar.pathCount(), 'the board starts clean').toBe(0);
     }
   );
 });

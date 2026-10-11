@@ -1,5 +1,5 @@
 // CLIENT-06 -- Record Screen
-// CONFIRMED LIVE (2026-09-23): admin menu -> Record Screen starts recording IMMEDIATELY on click (no confirm
+// Admin menu -> Record Screen starts recording IMMEDIATELY on click (no confirm
 // step, no picker) -- the bottom-right admin toggle is replaced by a red recording indicator. Clicking it
 // again is the only way found to stop it. Not exercised further than this start/stop round-trip: the actual
 // recording FILE is out of scope here (environment-specific, and this suite's job is the client's own UI

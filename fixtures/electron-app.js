@@ -16,11 +16,9 @@
 //      to the prod backend instead of QA.
 //   3. C:\Users\Public\tce_settings.json (external, not part of this project)
 //      is this machine's saved client profile. It must hold exactly ONE profile
-//      whose "path" is the target server, http://172.18.2.85/teach/ (owner,
-//      2026-09-28/30 -- the old QA server ce-qa-school.devstudi.com must not be
-//      used). Set it with `npm run set-server -- <url>`; assertClientProfile()
-//      stops the run otherwise.
-//   4. The CLIENT loads the teach link, never the tests (owner, 2026-09-30):
+//      whose "path" is the target server (BASE_URL in .env).
+//      Set it with `npm run set-server -- <url>`; assertClientProfile() stops the run otherwise.
+//   4. The CLIENT loads the teach link, never the tests:
 //      the client opens its profile's link with its own settings attached, the
 //      fixture only finds that window and checks it, and every reload / return
 //      to the start goes through the client (see clientNavigate below).
@@ -62,7 +60,7 @@ function resolveUrl(url) {
 // The webview window is created at `about:blank` and only client-side
 // navigates to the real teach URL a moment later — the SAME window object,
 // no second 'window' event. So `waitForEvent('window', { predicate })`
-// checked once at creation time can permanently miss it (confirmed live:
+// checked once at creation time can permanently miss it (it
 // intermittently hangs the full 30s timeout). Poll every known window
 // (existing + newly created) until one's current URL matches, instead of
 // relying on a one-shot event/predicate pairing.
@@ -88,11 +86,9 @@ async function findTeachWindow(app, timeout = 30000) {
 // The shell window's own teach `<webview>` has a did-fail-load handler
 // that retries once after 2s; if that retry ALSO fails, it locks a flag
 // that shows a full-screen "E R R O R # 404 -- Unable to connect
-// ClassEdge server" overlay (`.uiverse` in the SHELL's own DOM) permanently
-// (confirmed live: sat unchanged for 90s+, does not self-clear on its own).
+// ClassEdge server" overlay (`.uiverse` in the SHELL's own DOM) permanently.
 //
-// ROOT CAUSE, confirmed live (2026-09-12, after a full machine restart did
-// NOT fix it, ruling out resource exhaustion): this is specifically caused
+// Root cause (a machine restart does not fix it, so it is not resource exhaustion): this is specifically caused
 // by Playwright's OWN required `--inspect`/`--remote-debugging-port` launch
 // flags racing with this app's `<webview>` guest-view creation at startup.
 // Captured directly from the client's main-process log:
@@ -113,11 +109,11 @@ async function findTeachWindow(app, timeout = 30000) {
 // So: on suspicion (overlay visible OR webview body suspiciously empty),
 // retry navigation on the SAME window first (cheap, ~5-10s) before ever
 // falling back to a full app relaunch. Only treat it as a genuine BLOCKER
-// if the content is STILL missing after that -- per explicit user decision,
+// if the content is STILL missing after that --
 // don't silently ignore a real empty/broken page just because the overlay
 // itself is known to be a tooling artifact.
 //
-// UPDATE (screenshot from the owner, 2026-09-24): this same overlay was seen
+// This same overlay was seen
 // mid-session -- real class/topic content visible underneath, well past
 // launch -- not just in the launch-time race described above. That means it
 // isn't safe to assume "launch-only, cosmetic, ignore if content recovers"
@@ -158,7 +154,13 @@ async function launchClient() {
     // The two --use-fake-* switches give the client a stand-in camera/microphone and auto-accept the permission
     // prompt, so camera-gated features (the quiz's "Launch AIR Card", Learning Shorts) can be exercised without
     // hardware. They affect getUserMedia only. Remove them if they ever interfere with a launch.
-    args: ['--env=qa', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+    // CLIENT_USER_DATA_DIR runs a second client alongside the first (each instance needs its own user-data folder).
+    args: [
+      '--env=qa',
+      '--use-fake-ui-for-media-stream',
+      '--use-fake-device-for-media-stream',
+      ...(process.env.CLIENT_USER_DATA_DIR ? [`--user-data-dir=${process.env.CLIENT_USER_DATA_DIR}`] : []),
+    ],
     env,
     // Opt-in (RECORD_VIDEO_DIR): the browser-only `video` config option does nothing for Electron, but the launch
     // option does record the client's windows. One video per launch; see closeAndLogVideo() below.
@@ -189,10 +191,10 @@ async function launchClient() {
 // If a full relaunch is ever still needed (the cheap same-window retry
 // below failed too), don't loop forever -- 2 fresh app instances is plenty
 // given the cheap retry already handles the common case.
-const MAX_LAUNCH_ATTEMPTS = 3; // raised from 2 on 2026-10-06 (start-up race seen often in the overnight run)
+const MAX_LAUNCH_ATTEMPTS = 3;
 
 // Without this check, a missing client just fails with Playwright's own
-// generic "Process failed to launch!" (confirmed live -- no path, no
+// generic "Process failed to launch!" (no path, no
 // reason, nothing actionable), repeated identically on every single test.
 // Fail fast with a message that says what's actually wrong.
 function assertClientInstalled() {
@@ -205,8 +207,8 @@ function assertClientInstalled() {
   }
 }
 
-// The client must have exactly ONE profile, and it must point at the target server (owner, 2026-09-30).
-// CONFIRMED LIVE in client-automation/tests/04-multi-profile.spec.js: with 2+ profiles saved in tce_settings.json,
+// The client must have exactly ONE profile, and it must point at the target server.
+// In client-automation/tests/04-multi-profile.spec.js: with 2+ profiles saved in tce_settings.json,
 // cold launch shows a "SELECT PROFILE" chooser screen instead of connecting directly -- every test would hang until
 // timeout. And a single profile pointing somewhere else would silently test the wrong server. Fail fast with a
 // message that says what's wrong and how to fix it.
@@ -239,8 +241,8 @@ function assertClientProfile() {
   return profiles[0].path;
 }
 
-// --- The client loads the link, not the tests (owner, 2026-09-30) ---
-// CONFIRMED LIVE (2026-09-30): the client opens the teach app with its own settings in the query string
+// --- The client loads the link, not the tests ---
+// The client opens the teach app with its own settings in the query string
 // (`?cmode=2&...&tceclient=1&webdrop=1&erasersize=150&gesturemode=1...`, from tce_settings.json). A test that loads
 // the bare BASE_URL itself drops all of them and is no longer testing the client. F5 and Ctrl+R do nothing in the
 // client (a teacher cannot reload), but the client's own main process can reload its teach <webview>, which keeps
@@ -278,9 +280,8 @@ async function launchWithRetry() {
 
   let app, teachWindow;
   for (let attempt = 1; attempt <= MAX_LAUNCH_ATTEMPTS; attempt++) {
-    // CONFIRMED in the 2026-10-05 overnight run: after a mid-run relaunch the client sometimes never brings its teach
-    // window up within 30 s (the start-up race above), and that one failed launch used to fail the test outright.
-    // A launch that does not produce the window now counts as one failed attempt, like the overlay case below.
+    // After a relaunch the client may not bring its teach window up within 30 s (the start-up race above). A
+    // launch that does not produce the window counts as one failed attempt, like the overlay case below.
     try {
       ({ app, teachWindow } = await launchClient());
     } catch (err) {
@@ -333,8 +334,8 @@ async function launchWithRetry() {
     await clientNavigate(app, teachWindow, 'loadURL', clientUrl, options.timeout);
     return null;
   };
-  // CONFIRMED LIVE (2026-09-20): Playwright's own page.reload() destroys the client's <webview> window. The client's
-  // own reload (main process, 2026-09-30) keeps the window, the client URL and the signed-in session.
+  // Playwright's own page.reload() destroys the client's <webview> window. The client's
+  // own reload keeps the window, the client URL and the signed-in session.
   teachWindow.reload = async (options = {}) => {
     await clientNavigate(app, teachWindow, 'reload', null, options.timeout);
     return null;
@@ -394,7 +395,7 @@ async function resetSession(teachWindow) {
  * the same hasRealContent() signal the initial launch already trusts, plus
  * an explicit isClosed() check (a crashed webview can close its own window
  * without the whole Electron app going down), plus the connection-error
- * overlay check (confirmed live 2026-09-24: it can also latch mid-session,
+ * overlay check (it can also latch mid-session,
  * not just at launch -- see isConnectionErrorShowing's own comment). */
 async function isWindowHealthy(teachWindow, app) {
   if (teachWindow.isClosed()) return false;
@@ -436,18 +437,26 @@ const clientTest = base.test.extend({
 
       await use(workerApp.teachWindow);
 
-      // A failed test's own error (a timed-out locator, an unexpected URL, ...) doesn't say WHY --
-      // if the real cause was this overlay covering the screen mid-test, say so explicitly instead
-      // of leaving the report looking like an ordinary app/locator bug. Checked after use(), not
-      // before: the overlay latching is itself the failure signal here, so this only fires on a
-      // test that already failed.
+      // The `screenshot: 'only-on-failure'` config option only covers pages Playwright creates itself, not the
+      // client's window, so take the failure screenshot here.
+      const failed = testInfo.status !== testInfo.expectedStatus;
+      if (failed && !workerApp.teachWindow.isClosed()) {
+        const file = testInfo.outputPath('test-failed-client.png');
+        const taken = await workerApp.teachWindow
+          .screenshot({ path: file, timeout: 10000 })
+          .then(() => true)
+          .catch(() => false);
+        if (taken) testInfo.attachments.push({ name: 'screenshot', contentType: 'image/png', path: file });
+      }
+
+      // Checked after use(), not before: the overlay latching is itself the failure signal here, so this only fires on
+      // a test that already failed.
       if (testInfo.status !== testInfo.expectedStatus && (await isConnectionErrorShowing(workerApp.app))) {
         testInfo.annotations.push({
           type: 'BLOCKER',
           description:
             'The "ERROR #404 -- Unable to connect ClassEdge server" overlay was covering the app when this ' +
-            "test failed. Treat this run's result as a connectivity blocker, not a real test/product bug, " +
-            'until this is confirmed clear on a rerun.',
+            'test failed. Treat this result as a connectivity problem and rerun the test once the server is reachable.',
         });
         console.error(
           `BLOCKER: "${testInfo.title}" failed with the connection-error overlay showing -- ` +

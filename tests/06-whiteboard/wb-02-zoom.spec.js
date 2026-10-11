@@ -17,7 +17,7 @@ test.describe('WB-02 Zoom', () => {
         const tb = user.toolbar;
         await tb.penStroke({ x: 400, y: 400 }, { x: 600, y: 480 });
         const geometry = await user.content.pathGeometry();
-        // Measure THIS stroke by its own geometry, not "the last path": CONFIRMED LIVE 2026-09-29 the Zoom panel adds a
+        // Measure THIS stroke by its own geometry, not "the last path": the Zoom panel adds a
         // small icon path (M 611 380 L 619 380 ...) to the drawing SVG, which "the last path" can pick up instead.
         const mine = user.page.locator(`[data-qa-id="wb-drawing-container"] svg path[d="${geometry.at(-1)}"]`);
         const sizeBefore = await mine.boundingBox();
@@ -82,4 +82,41 @@ test.describe('WB-02 Zoom', () => {
 
   limitCase('WB-02-02', 'maximum', 'zoomInBtn', 40);
   limitCase('WB-02-04', 'minimum', 'zoomOutBtn', 60);
+
+  test(
+    'WB-02-05: zooming past the maximum or minimum does nothing and leaves the board usable',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      const errors = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await tb.penStroke({ x: 400, y: 400 }, { x: 600, y: 480 });
+      const geometry = await user.content.pathGeometry();
+      const levels = {};
+      await tb.openToolPanel('gtZoom');
+      try {
+        for (const [limit, button, clicks] of [
+          ['maximum', 'zoomInBtn', 40],
+          ['minimum', 'zoomOutBtn', 60],
+        ]) {
+          for (let i = 0; i < clicks; i++) await tb[button].click({ force: true, timeout: 2000 }).catch(() => {});
+          const reached = await user.content.zoomPercent();
+          // Past the limit: more presses change nothing.
+          for (let i = 0; i < 5; i++) await tb[button].click({ force: true, timeout: 2000 }).catch(() => {});
+          levels[limit] = [reached, await user.content.zoomPercent()];
+        }
+      } finally {
+        await tb.zoomResetBtn.click({ force: true });
+        await tb.closePanelByTappingOutside();
+      }
+      test.info().annotations.push({ type: 'note', description: `Zoom limits: ${JSON.stringify(levels)}` });
+      expect(levels.maximum[1], 'past the maximum the zoom stays put').toBe(levels.maximum[0]);
+      expect(levels.minimum[1], 'past the minimum the zoom stays put').toBe(levels.minimum[0]);
+      expect(await user.content.pathGeometry(), 'content unchanged').toEqual(geometry);
+      const before = await tb.pathCount();
+      await tb.penStroke({ x: 500, y: 560 }, { x: 700, y: 600 });
+      expect(await tb.pathCount(), 'the board can still be written on').toBeGreaterThan(before);
+      expect(errors, 'no uncaught page errors').toEqual([]);
+    }
+  );
 });

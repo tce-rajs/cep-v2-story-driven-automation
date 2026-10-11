@@ -14,7 +14,7 @@ test.describe('AIH-02 Choose the homework type and number of questions', () => {
     await app.aiHomework.closeAll();
   });
 
-  // The Homework default (AIH-02-01) and the Revise option (AIH-02-07): one test each (split 2026-09-28).
+  // The Homework default (AIH-02-01) and the Revise option (AIH-02-07): one test each.
   test(
     'AIH-02-01: Homework is selected by default, with 15 objective questions',
     { tag: ['@functional'] },
@@ -37,7 +37,7 @@ test.describe('AIH-02 Choose the homework type and number of questions', () => {
     }
   );
 
-  // + (AIH-02-02) and − (AIH-02-08): one test each (split 2026-09-28).
+  // + (AIH-02-02) and − (AIH-02-08): one test each.
   test('AIH-02-02: the + button raises a question count by one', { tag: ['@functional'] }, async ({ user }) => {
     const hw = user.aiHomework;
     await expect(hw.hwObjInput, 'set-up: the default 15').toHaveValue('15');
@@ -110,6 +110,32 @@ test.describe('AIH-02 Choose the homework type and number of questions', () => {
       ).toBeVisible({
         timeout: 10000,
       });
+    }
+  );
+
+  test(
+    'AIH-02-09: the builder does not offer Generate until a chapter is chosen',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const hw = user.aiHomework;
+      // Open the chapter chooser and untick every chapter, so none is chosen.
+      await hw.selectChapterBtn.click();
+      await expect(hw.topicsChapters.first(), 'set-up: the chapter chooser is open').toBeVisible({ timeout: 15000 });
+      const ticks = page.locator(
+        '[data-qa-id^="ai-homework-topics-chapter-"][data-qa-id*="checkbox"] input, input[data-qa-id^="ai-homework-topics-chapter-"][data-qa-id*="checkbox"]'
+      );
+      for (let i = 0; i < (await ticks.count()); i++)
+        if (await ticks.nth(i).isChecked()) await ticks.nth(i).click({ force: true });
+      expect(await ticks.evaluateAll((els) => els.filter((e) => e.checked).length), 'set-up: no chapter ticked').toBe(
+        0
+      );
+      if (await hw.topicsUpdateBtn.isEnabled()) {
+        await hw.topicsUpdateBtn.click();
+        await expect(hw.generateBtn, 'Generate is not offered with no chapter').toBeDisabled({ timeout: 10000 });
+      } else {
+        // The chooser itself refuses to go on with no chapter, so Generate cannot be reached without one.
+        await expect(hw.topicsUpdateBtn, 'no chapter: cannot go on').toBeDisabled();
+      }
     }
   );
 });

@@ -1,7 +1,7 @@
 // ATT-06 — Submitting attendance when the network fails
 // Source: CEPV2_Stories/16_Attendance.md
 // Only the submit request (POST .../tce-repo-api/1/res/v1/content/file) is made to fail. ATT-06-02 really submits
-// today's attendance for Class 12A Physics once the network is back (owner-approved real submits, 2026-09-26).
+// today's attendance for Class 12A Physics once the network is back.
 
 const { test, expect } = require('../../fixtures');
 
@@ -35,7 +35,7 @@ test.describe('ATT-06 Submitting attendance when the network fails', () => {
   };
 
   // A failed submit: the teacher is told (ATT-06-01), the register stays open (ATT-06-03), and the marks are kept
-  // (ATT-06-04) -- one test each (split 2026-09-28).
+  // (ATT-06-04) -- one test each.
   test(
     'ATT-06-01: a failed submit tells the teacher it was not submitted',
     { tag: ['@negative'] },

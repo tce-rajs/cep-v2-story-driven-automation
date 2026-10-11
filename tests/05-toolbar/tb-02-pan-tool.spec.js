@@ -69,4 +69,28 @@ test.describe('TB-02 Pan Tool', () => {
       expect(errors, 'no uncaught page errors').toEqual([]);
     }
   );
+
+  test(
+    'TB-02-03: panning never moves, deletes or duplicates any content on the board',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const tb = user.toolbar;
+      await tb.penStroke({ x: 400, y: 400 }, { x: 560, y: 470 });
+      await tb.penStroke({ x: 400, y: 520 }, { x: 560, y: 560 });
+      await user.whiteboard.insertTextAndType(700, 420, 'Pan check');
+      await tb.selectTool('gtSelect');
+      const snapshot = await user.content.snapshot();
+      const geometry = await user.content.pathGeometry();
+      const centres = await tb.boardCentres();
+
+      await tb.selectTool('gtPan');
+      await tb.drawStroke({ x: 800, y: 500 }, { x: 500, y: 300 }, 12);
+      await tb.drawStroke({ x: 500, y: 300 }, { x: 900, y: 650 }, 12);
+      await tb.drawStroke({ x: 900, y: 650 }, { x: 800, y: 500 }, 12);
+
+      expect(await user.content.snapshot(), 'nothing deleted or duplicated').toEqual(snapshot);
+      expect(await user.content.pathGeometry(), 'no stroke edited').toEqual(geometry);
+      expect(await tb.boardCentres(), 'nothing moved on the board itself').toEqual(centres);
+    }
+  );
 });

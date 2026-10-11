@@ -1,6 +1,5 @@
 // Page Object for signing in: the Sign In panel (PIN view + Password view) and the
-// post-login landing state. Adapted from the previous suite's login page + auth helper,
-// whose locators were confirmed live.
+// post-login landing state.
 
 class LoginPage {
   constructor(page) {
@@ -36,6 +35,8 @@ class LoginPage {
     // A brand-new account that has signed in with its password but not yet chosen a class lands on the "Choose a class"
     // screen (no avatar, no Sign In button) with only this floating Sign Out button, which starts a short countdown.
     this.floatingSignOut = page.locator('[data-qa-id="floating-signout-trigger-btn"]');
+    // After the quick Sign Out button is pressed, this countdown button shows the seconds left; pressing it cancels.
+    this.floatingSignOutCountdown = page.locator('[data-qa-id="floating-signout-timer-cancel-btn"]');
   }
 
   pinDigitBox(index) {
@@ -50,7 +51,7 @@ class LoginPage {
     await this.toggleButton.click();
   }
 
-  /** CONFIRMED LIVE (2026-09-26, v 0.0.232): the Sign In window never leaves the DOM or stops being "visible" -- closing
+  /** The Sign In window never leaves the DOM or stops being "visible" -- closing
    * it (its X is the same login-auth-toggle-button) slides it down, mostly off-screen, and drops the
    * `login-modal-outer--active` class. That class is the real open/closed signal. */
   async isSignInOpen() {
@@ -62,7 +63,7 @@ class LoginPage {
   }
 
   /**
-   * Call right after loading the app. CONFIRMED LIVE (v 0.0.223): reloading while a first-time account is mid-setup
+   * Call right after loading the app. Reloading while a first-time account is mid-setup
    * (PIN-setup screen showing) drops it into a signed-in "Choose a class" screen that has no Sign In button, so the
    * next sign-in would find nothing to click. Sign that session out through its floating Sign Out button (which runs a
    * ~7s countdown) so the app is back in Guest Mode. A no-op for every normal load.
@@ -88,7 +89,7 @@ class LoginPage {
 
   /**
    * Full PIN sign-in from Guest Mode, ending once the avatar is visible.
-   * CONFIRMED LIVE in the previous suite: a fresh PIN login can transiently time out
+   * A fresh PIN login can transiently time out
    * right after another test signed the same account out (a backend timing race, not
    * a lockout) -- a reload-and-retry clears it, so the whole attempt is retried.
    */

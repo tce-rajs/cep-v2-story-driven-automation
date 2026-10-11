@@ -12,7 +12,7 @@ test.describe('NAV-07 Fast class switching', () => {
   test.use({ classMap: 'playersDefault' });
 
   // Double-clicking a subject: the label shows the chosen class (NAV-07-01), the class window closes and is not reopened
-  // (NAV-07-04), and the new class's Playlist loads (NAV-07-05) -- one test each (split 2026-09-28).
+  // (NAV-07-04), and the new class's Playlist loads (NAV-07-05) -- one test each.
   const doubleClickSubject = async (user, page) => {
     const nav = user.nav;
     await nav.openClassPopup();

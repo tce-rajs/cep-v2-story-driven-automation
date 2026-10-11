@@ -1,7 +1,7 @@
 // RES-05 — AI Assist
 // Source: CEPV2_Stories/09_Resources.md
 // AI Assist loads three tabs (Exercise / Videos / Teaching Tips). "Add to Playlist" adds, or updates, a single
-// "My Exercise" asset. CONFIRMED LIVE in the previous suite: AI Assist can intermittently return an error screen
+// "My Exercise" asset. AI Assist can intermittently return an error screen
 // instead of content — that is treated as a real failure here, not skipped.
 
 const { test, expect } = require('../../fixtures');
@@ -16,9 +16,8 @@ test.describe('RES-05 AI Assist', () => {
     await expect(user.addResource.aiAssistTabExercise).toBeVisible({ timeout: 20000 });
   };
   const myExercise = (user) => user.playlist.resourceCards.filter({ hasText: /my exercise/i });
-  // CONFIRMED LIVE (v 0.0.223): on a clean topic the FIRST add creates two cards -- "My Exercise" and "<topic> FlashCard" --
-  // and every further add creates one more FlashCard while "My Exercise" stays a single asset that gains a page. The
-  // FlashCard side effect is not in the story; the tests remove both kinds.
+  // On a clean topic the FIRST add creates two cards -- "My Exercise" and "<topic> FlashCard" -- and every further add
+  // creates one more FlashCard while "My Exercise" stays a single asset that gains a page.
   const createdByAiAssist = (user) => user.playlist.resourceCards.filter({ hasText: /my exercise|flashcard/i });
 
   // "My Exercise" is created and owned by these tests (AI Assist adds to it, or updates it), so every test starts from
@@ -32,7 +31,7 @@ test.describe('RES-05 AI Assist', () => {
       await user.playlist.ensureDrawerVisible();
     }
   };
-  // Add the n-th question and close the panel. CONFIRMED LIVE: the Playlist strip does not show the new card until the
+  // Add the n-th question and close the panel. The Playlist strip does not show the new card until the
   // AI Assist panel is closed. Returns the question's text.
   const addQuestion = async (user, index) => {
     const ar = user.addResource;
@@ -79,7 +78,7 @@ test.describe('RES-05 AI Assist', () => {
   );
 
   // Switching tabs: to Videos (RES-05-02), to Teaching Tips (RES-05-16), and back to Exercise (RES-05-17) -- one test
-  // each (split 2026-09-28). Each opens on Exercise, which lists selectable questions.
+  // each. Each opens on Exercise, which lists selectable questions.
   const openOnExercise = async (user) => {
     await openAiAssist(user);
     await expect(user.addResource.aiAssistExerciseCheckboxes.first(), 'set-up: Exercise lists questions').toBeVisible({
@@ -108,7 +107,7 @@ test.describe('RES-05 AI Assist', () => {
       await ar.aiAssistTabVideos.click({ force: true });
       await expect(ar.aiAssistVideoThumbs.first(), 'set-up: on Videos').toBeVisible({ timeout: 20000 });
       await ar.aiAssistTabTeachingTips.click({ force: true });
-      // CONFIRMED LIVE: the tab shows labelled teaching content ("Activities: ...", "Explanation: ..."); the words tip /
+      // The tab shows labelled teaching content ("Activities: ...", "Explanation: ..."); the words tip /
       // teaching / suggest only appear in the tab's own label, so they say nothing about the content.
       await expect(user.page.getByText(/^\s*Explanation:/).first(), 'Teaching Tips shows tips').toBeVisible({
         timeout: 20000,
@@ -134,14 +133,8 @@ test.describe('RES-05 AI Assist', () => {
 
   test(
     'RES-05-03: selecting a question and clicking "Add to Playlist" adds a "My Exercise" asset to the Playlist',
-    { tag: ['@smoke', '@functional', '@bug'] },
+    { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223, 3 of 3 attempts on a clean topic, network-verified): "Add to Playlist" makes exactly three calls
-      // (POST custom/qb, POST custom/quiz, PUT tp/sequence) and creates ONE new "<topic> FlashCard" quiz asset per add. It
-      // creates no "My Exercise" and updates nothing existing, so a second add makes a second, separate asset -- the opposite of
-      // this story. (A "My Exercise" was seen once earlier on a clean topic and could not be reproduced.) Tracked as
-      // expected-to-fail so it isn't masked.
-      test.fail(true, 'AI Assist "Add to Playlist" creates a "<topic> FlashCard" asset, not "My Exercise"');
       await user.playlist.ensureDrawerVisible();
       await expect(myExercise(user), 'starts with no "My Exercise"').toHaveCount(0);
 
@@ -153,15 +146,8 @@ test.describe('RES-05 AI Assist', () => {
 
   test(
     'RES-05-04: opening the "My Exercise" asset shows the added question marked as selected',
-    { tag: ['@functional', '@bug'] },
+    { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223, 3 of 3 attempts on a clean topic, network-verified): "Add to Playlist" makes exactly three calls
-      // (POST custom/qb, POST custom/quiz, PUT tp/sequence) and creates ONE new "<topic> FlashCard" quiz asset per add. It
-      // creates no "My Exercise" and updates nothing existing, so a second add makes a second, separate asset -- the opposite of
-      // this story. (A "My Exercise" was seen once earlier on a clean topic and could not be reproduced.) Tracked as
-      // expected-to-fail so it isn't masked.
-      // With no "My Exercise" to open, this cannot pass; the question that WAS added is checked on the FlashCard in RES-05-07.
-      test.fail(true, 'No "My Exercise" asset exists to open after adding a question');
       await user.playlist.ensureDrawerVisible();
       const question = await addQuestion(user, 0);
       await expect(myExercise(user).first()).toBeVisible({ timeout: 10000 });
@@ -179,14 +165,8 @@ test.describe('RES-05 AI Assist', () => {
 
   test(
     'RES-05-05: adding another question when "My Exercise" exists increases the count within the SAME asset',
-    { tag: ['@functional', '@bug'] },
+    { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223, 3 of 3 attempts on a clean topic, network-verified): "Add to Playlist" makes exactly three calls
-      // (POST custom/qb, POST custom/quiz, PUT tp/sequence) and creates ONE new "<topic> FlashCard" quiz asset per add. It
-      // creates no "My Exercise" and updates nothing existing, so a second add makes a second, separate asset -- the opposite of
-      // this story. (A "My Exercise" was seen once earlier on a clean topic and could not be reproduced.) Tracked as
-      // expected-to-fail so it isn't masked.
-      test.fail(true, 'A second add creates a second separate asset instead of growing one "My Exercise"');
       await user.playlist.ensureDrawerVisible();
       await addQuestion(user, 0);
       await addQuestion(user, 1);
@@ -238,8 +218,6 @@ test.describe('RES-05 AI Assist', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's AI Assist workbook) ---
-
   test(
     "RES-05-08: one click on a tab switches to that tab's content (regression)",
     { tag: ['@regression'] },
@@ -280,8 +258,8 @@ test.describe('RES-05 AI Assist', () => {
     }
   );
 
-  // Minimize (RES-05-11) and Maximize (RES-05-18): one test each (split 2026-09-28).
-  // CONFIRMED LIVE (2026-09-26): Minimize slides the panel down to a bar at the bottom of the window (the close button
+  // Minimize (RES-05-11) and Maximize (RES-05-18): one test each.
+  // Minimize slides the panel down to a bar at the bottom of the window (the close button
   // moved from y~795 to y~945); the second click brings it back.
   /** Open AI Assist, then Minimize it; returns the close button's y while it was open. */
   const openThenMinimize = async (user) => {

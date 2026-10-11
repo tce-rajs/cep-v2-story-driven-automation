@@ -1,7 +1,5 @@
-// Rebuilds CEPV2_Stories/CEPV2_TestCases.xlsx -- the ONE master file for stories, test cases, automation status and
-// known bugs -- from the story files and the specs. One row per test case, plus a Summary sheet per module.
-// Review comments already typed into the workbook are kept (matched by test case ID).
-//   node scripts/build-workbook.js
+// One row per test case, plus a Summary sheet per module. Review comments already typed into the workbook are kept
+// (matched by test case ID). node scripts/build-workbook.js
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -21,8 +19,11 @@ const HEADER = [
   'Test case ID',
   'Test case',
   'Test type',
+  'Suite',
+  'Priority',
   'Automation status',
-  'Known bug / skip reason',
+  'Spec file',
+  'Skip reason',
   'Last run result',
   'Last run',
   'Review comments',
@@ -49,6 +50,9 @@ if (fs.existsSync(OUT)) {
 
 // --- Which case IDs are automated: Playwright's own test list (includes tests generated in loops) ---
 const automated = new Set();
+// Where each case is automated and whether it is in the smoke set (for traceability and priority).
+const specOf = new Map();
+const smoke = new Set();
 const addIds = (title) => {
   for (const m of title.matchAll(/\b[A-Z]+-\d\d-\w+/g)) automated.add(m[0]);
 };
@@ -60,7 +64,14 @@ try {
   });
   const walk = (s) => {
     for (const x of s.suites || []) walk(x);
-    for (const sp of s.specs || []) if (!sp.file.includes('_probe')) addIds(sp.title);
+    for (const sp of s.specs || [])
+      if (!sp.file.includes('_probe')) {
+        addIds(sp.title);
+        for (const m of sp.title.matchAll(/\b[A-Z]+-\d\d-\w+/g)) {
+          if (!specOf.has(m[0])) specOf.set(m[0], sp.file.replace(/\\/g, '/'));
+          if ((sp.tags || []).includes('@smoke') || / @smoke\b/.test(sp.title)) smoke.add(m[0]);
+        }
+      }
   };
   // The JSON starts on its own line; log lines before it (dotenv) may contain braces.
   for (const s of JSON.parse(out.slice(out.search(/^\{/m))).suites) walk(s);
@@ -68,8 +79,7 @@ try {
   console.warn(`playwright --list failed (${String(e.message).split('\n')[0]}); using spec titles only`);
 }
 
-// --- Known bugs (test.fail) and skips (test.fixme / test.skip) read from the specs ---
-const notes = new Map(); // id -> { kind: 'bug' | 'skip', reason }
+const notes = new Map();
 const specFiles = [];
 const findSpecs = (d) => {
   for (const f of fs.readdirSync(d)) {
@@ -92,18 +102,15 @@ for (const file of specFiles) {
     addIds(m[3]); // literal titles count even if the Playwright list is unavailable
     const body = src.slice(m.index, i + 1 < starts.length ? starts[i + 1].index : src.length);
     let note = null;
-    const fail = body.match(/test\.fail\(\s*[^,]+,\s*(?:(['"`])([\s\S]*?)\1|(\w+))/);
     if (m[1]) note = { kind: 'skip', reason: `${m[1]} (see spec)` };
     const skip = body.match(/test\.(?:fixme|skip)\(\s*(?:true|[^,()]+),\s*(['"`])([\s\S]*?)\1/);
     if (skip) note = { kind: 'skip', reason: resolve(skip[2]) };
-    if (fail) note = { kind: 'bug', reason: resolve(fail[2] || consts[fail[3]] || fail[3]) };
     if (note) for (const id of m[3].matchAll(/\b[A-Z]+-\d\d-\w+/g)) notes.set(id[0], note);
   });
 }
 
 // --- Last run result: each case's latest result across report/runs/*.json (one file per run, oldest first) ---
 // Two formats: Playwright's own JSON reporter output, and cep-results-v1 (a run log converted by log-to-results.js).
-// Statuses are the raw outcome of the test's own checks; a known bug that still fails is "failed" here.
 const RUNS = path.join(ROOT, 'report', 'runs');
 const lastRun = new Map(); // id -> { status, when, account, build }
 if (fs.existsSync(RUNS)) {
@@ -137,16 +144,13 @@ if (fs.existsSync(RUNS)) {
     }
   }
 }
-const LAST = ['Passed', 'Failed', 'Known bug still there', 'Known bug not seen (fixed?)', 'Skipped', 'Not run yet'];
-const lastResult = (r, note, automatedStatus) => {
+const LAST = ['Passed', 'Failed', 'Skipped', 'Not run yet'];
+const lastResult = (r, automatedStatus) => {
   if (!r) return automatedStatus ? 'Not run yet' : '';
   if (r.status === 'skipped') return 'Skipped';
-  if (note && note.kind === 'bug')
-    return r.status === 'failed' ? 'Known bug still there' : 'Known bug not seen (fixed?)';
   return r.status === 'passed' ? 'Passed' : 'Failed';
 };
 
-// --- Rows from the story files ---
 const rows = [HEADER];
 const summary = new Map();
 const files = fs
@@ -165,11 +169,11 @@ for (const file of files) {
     stories: 0,
     cases: 0,
     Automated: 0,
-    'Known bug': 0,
     Skipped: 0,
     'Manual only': 0,
     'To automate': 0,
     'Out of scope': 0,
+    'Not automated (improvement)': 0,
   };
   summary.set(no, sum);
   let storyId = '';
@@ -196,21 +200,35 @@ for (const file of files) {
     const text = raw.replace(/\*\*/g, '');
     const lead = text.replace(/^\((manual)\)\s*/i, '').match(/^([A-Za-z-]+)/);
     const type = lead && TYPES.includes(lead[1]) ? (lead[1] === 'Positive' ? 'Functional' : lead[1]) : 'Functional';
-    const manual = /\(manual|manual-only|Manual-only|excluded from automation/i.test(text) || storyId.startsWith('SB-');
+    const manual = /\(manual|manual-only|^Manual:|excluded from automation/i.test(text);
     const note = notes.get(id);
     let status;
-    // Ruled out of scope by the owner in the story text; the fixture skips these tests (fixtures/index.js).
     const outOfScope = (text.match(/_\((not supported|improvement|not applicable)/i) || [])[1];
-    if (outOfScope) status = 'Out of scope';
+    if (outOfScope && /improvement/i.test(outOfScope)) status = 'Not automated (improvement)';
+    else if (outOfScope) status = 'Out of scope';
     else if (manual && !automated.has(id)) status = 'Manual only';
-    else if (note && note.kind === 'bug') status = 'Known bug';
     else if (note && note.kind === 'skip') status = 'Skipped';
     else if (automated.has(id)) status = 'Automated';
     else status = manual ? 'Manual only' : 'To automate';
+    // Suite: Core = positive and main negative cases (the stable suite); Deep = edge, interruption, concurrency and
+    // performance (the later phase); Manual; Improvement or Out of scope (skipped with the reason).
+    const suite = /_\(\s*improvement/i.test(text)
+      ? 'Improvement'
+      : outOfScope
+        ? 'Out of scope'
+        : manual || type === 'Cross-Mode'
+          ? 'Manual'
+          : ['Edge', 'Interruption', 'Concurrency', 'Performance'].includes(type)
+            ? 'Deep'
+            : 'Core';
+    // Priority: P1 = smoke (main happy path) or a phase-1 core-flow case; P2 = other Core; P3 = Deep / Manual /
+    // Improvement / Out of scope.
+    const priority = suite === 'Core' ? (smoke.has(id) || /^FLOW-/.test(id) ? 'P1' : 'P2') : 'P3';
     sum.cases++;
     sum[status]++;
+    sum[`suite:${suite}`] = (sum[`suite:${suite}`] || 0) + 1;
     const run = lastRun.get(id);
-    const result = lastResult(run, note, ['Automated', 'Known bug', 'Skipped'].includes(status));
+    const result = lastResult(run, ['Automated', 'Skipped'].includes(status));
     if (result) sum[`last:${result}`] = (sum[`last:${result}`] || 0) + 1;
     rows.push([
       no,
@@ -222,7 +240,10 @@ for (const file of files) {
       id,
       text,
       type,
+      suite,
+      priority,
       status,
+      specOf.get(id) || '',
       note ? note.reason.replace(/\s+/g, ' ') : '',
       result,
       run ? [run.when, run.build, run.account].filter(Boolean).join(' | ') : '',
@@ -233,8 +254,8 @@ for (const file of files) {
 
 // --- Sheets ---
 const ws = XLSX.utils.aoa_to_sheet(rows);
-ws['!cols'] = [8, 18, 10, 28, 55, 55, 14, 85, 13, 15, 45, 22, 34, 30].map((wch) => ({ wch }));
-ws['!autofilter'] = { ref: `A1:N${rows.length}` };
+ws['!cols'] = [8, 18, 10, 28, 55, 55, 14, 85, 13, 12, 9, 15, 40, 45, 22, 34, 30].map((wch) => ({ wch }));
+ws['!autofilter'] = { ref: `A1:Q${rows.length}` };
 
 const sumRows = [
   [
@@ -243,7 +264,6 @@ const sumRows = [
     'Stories',
     'Test cases',
     'Automated',
-    'Known bug',
     'Skipped',
     'Manual only',
     'To automate',
@@ -256,11 +276,11 @@ const total = {
   stories: 0,
   cases: 0,
   Automated: 0,
-  'Known bug': 0,
   Skipped: 0,
   'Manual only': 0,
   'To automate': 0,
   'Out of scope': 0,
+  'Not automated (improvement)': 0,
 };
 for (const s of summary.values()) {
   sumRows.push([
@@ -269,7 +289,6 @@ for (const s of summary.values()) {
     s.stories,
     s.cases,
     s.Automated,
-    s['Known bug'],
     s.Skipped,
     s['Manual only'],
     s['To automate'],
@@ -286,7 +305,6 @@ sumRows.push([
   total.stories,
   total.cases,
   total.Automated,
-  total['Known bug'],
   total.Skipped,
   total['Manual only'],
   total['To automate'],
@@ -297,21 +315,18 @@ sumRows.push([
 sumRows.push([]);
 sumRows.push(['', 'How to read the Automation status column']);
 sumRows.push(['', 'Automated', 'An automated test exists and checks this case.']);
-sumRows.push(['', 'Known bug', 'Automated; the app currently fails it (test.fail). The reason is the product bug.']);
-sumRows.push(['', 'Skipped', 'Automated but skipped for a stated reason (data, device or owner decision missing).']);
+sumRows.push(['', 'Skipped', 'Automated but skipped for a stated reason (the data or device it needs is missing).']);
 sumRows.push(['', 'Manual only', 'Needs a person: Plan Mode, installing, hardware, second screens.']);
 sumRows.push(['', 'To automate', 'No automated test yet.']);
-sumRows.push([
-  '',
-  'Out of scope',
-  'Ruled out by the owner: not supported, an improvement, or not applicable. Skipped when run.',
-]);
+sumRows.push(['', 'Out of scope', 'Not in scope: not supported, an improvement, or not applicable. Skipped when run.']);
 sumRows.push([]);
 sumRows.push(['', 'How to read the Last run result column (latest result per case across report/runs/)']);
 sumRows.push(['', 'Passed', 'The test ran and the app behaved as the story expects.']);
-sumRows.push(['', 'Failed', 'The test ran and failed: a new product bug or a test/data problem to triage.']);
-sumRows.push(['', 'Known bug still there', 'A recorded product bug is still present.']);
-sumRows.push(['', 'Known bug not seen (fixed?)', 'A recorded bug did not happen: maybe fixed; confirm by hand.']);
+sumRows.push([
+  '',
+  'Failed',
+  'The test ran and failed: the app did not behave as the story expects, or a test/data problem. Review each one.',
+]);
 sumRows.push(['', 'Skipped', 'The test skipped itself with a reason.']);
 sumRows.push(['', 'Not run yet', 'Automated, but no result recorded yet.']);
 sumRows.push([]);

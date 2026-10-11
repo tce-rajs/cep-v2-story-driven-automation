@@ -5,7 +5,7 @@ const { test, expect } = require('../../fixtures');
 const { HeaderPage } = require('../../pages/header.page');
 
 test.describe('HDR-02 Date & Time', () => {
-  // The time and the date are one test each (split 2026-09-28): HDR-02-01/05 against the app's clock, HDR-02-04/06
+  // The time and the date are one test each: HDR-02-01/05 against the app's clock, HDR-02-04/06
   // against the computer's.
   const readShown = async (user) => {
     await expect(user.header.calendar).toBeVisible();
@@ -42,7 +42,7 @@ test.describe('HDR-02 Date & Time', () => {
     { tag: ['@long', '@functional'] },
     async ({ user }) => {
       // Under 4 minutes: after 4 minutes idle the inactivity warning appears, and a minute later the teacher is signed
-      // out (owner-stated rule, 2026-09-28; LOG-05-07/09), which would cut this idle-clock check short.
+      // out, which would cut this idle-clock check short.
       const idleMinutes = Number(process.env.HEADER_IDLE_MINUTES || 3.5);
       test.setTimeout((idleMinutes + 3) * 60 * 1000);
 
@@ -94,4 +94,25 @@ test.describe('HDR-02 Date & Time', () => {
     const nowDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     expect(shown.shownDate, "matches the computer's date").toBe(nowDate);
   });
+
+  test(
+    'HDR-02-07: the date and time are never blank or frozen after the app has been idle for a few minutes',
+    { tag: ['@long', '@negative'] },
+    async ({ user }) => {
+      // Idle for less than the 4-minute inactivity check (see HDR-02-02).
+      const idleMinutes = Number(process.env.HEADER_IDLE_MINUTES || 3.5);
+      test.setTimeout((idleMinutes + 3) * 60 * 1000);
+      const before = await readShown(user);
+      await user.page.waitForTimeout(idleMinutes * 60 * 1000);
+      const after = await readShown(user);
+      expect(after.shown, 'no placeholder after idling').not.toMatch(/undefined|null|NaN|invalid/i);
+      expect(after.shownMinutes, `a time in "${after.shown}"`).not.toBeNull();
+      expect(after.shownDate, `a date in "${after.shown}"`).not.toBeNull();
+      expect(after.shownDate, 'the date is today').toBe(after.nowDate);
+      expect(
+        HeaderPage.minuteGap(after.shownMinutes, before.shownMinutes),
+        'the time moved on (not frozen)'
+      ).toBeGreaterThanOrEqual(Math.floor(idleMinutes) - 1);
+    }
+  );
 });

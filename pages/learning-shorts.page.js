@@ -1,12 +1,11 @@
 // Page Object for Learning Shorts (Magnet -> Learning Shorts).
 //
-// CONFIRMED LIVE (probe, 2026-09-26, v 0.0.232):
+//
 // - The recorder shows learning-shorts-record-start-btn ("videocam") and learning-shorts-exit-btn ("cancel").
 // - Record switches it to learning-shorts-record-stop-btn ("stop"). The client runs with Chromium's fake media
 //   stream (fixtures/electron-app.js), so recording needs no real camera and no permission prompt.
 // - The composer's controls exist in the DOM before a recording is made: learning-shorts-close-btn, -title-input,
-//   -discard-btn, -save-playlist-btn, -save-revision-btn, -back-btn. Attachment and class controls are named per the
-//   reference suite: -delete-attachment-btn, -recapture-btn, -class-option-{i}, -class-checkbox-{i}, -send-btn.
+// -discard-btn, -save-playlist-btn, -save-revision-btn, -back-btn.
 // - Second entry point: an owned Video card's overflow menu (playlist-asset-overflow-icon-btn) -> Send
 //   (playlist-asset-send-btn) opens the same composer with that video attached.
 
@@ -54,14 +53,15 @@ class LearningShortsPage {
     await this.recordStartBtn.waitFor({ state: 'visible', timeout: 15000 });
   }
 
-  /** Screen recording needs a secure page (https). CONFIRMED LIVE 2026-09-29: 172.18.2.85 serves the app over plain
-   * http, so navigator.mediaDevices is undefined and Record throws "Cannot read properties of undefined (reading
-   * 'getDisplayMedia')" -- nothing records, for any teacher. Fail with that reason instead of a Stop-button timeout. */
+  /** Screen recording needs a secure page (https). 172.18.2.85 serves the app over plain http, so
+   * navigator.mediaDevices is undefined: Record shows a 0:00 timer, and Stop returns to the recorder with no video, no
+   * composer and no message -- nothing records, for any teacher. That is what a school on this server gets, so it is
+   * reported as a product failure (not ENVIRONMENT, which would hide it from the bug list). */
   async assertCanRecord() {
     const secure = await this.page.evaluate(() => window.isSecureContext && !!navigator.mediaDevices);
     if (!secure)
       throw new Error(
-        `ENVIRONMENT: screen recording is impossible here -- the app is served over plain http (${this.page.url()}), so the browser gives it no screen-capture access. Needs https on the server.`
+        `Learning Shorts cannot record on this server: the app is served over plain http (${this.page.url()}), so the client gets no screen-capture access and the teacher's recording is silently lost.`
       );
   }
 
@@ -75,7 +75,7 @@ class LearningShortsPage {
     await this.titleInput.waitFor({ state: 'visible', timeout: 30000 });
   }
 
-  /** CONFIRMED LIVE (2026-09-26, v 0.0.232): straight after a recording the composer offers only a pre-filled Title
+  /** Straight after a recording the composer offers only a pre-filled Title
    * ("<teacher> <date>"), Discard, Save to Playlist, "Save & Send as Revision", Back and Close -- no attachment controls,
    * no class list, no Send. Choosing classes and Send appear when an existing short is sent from its Playlist card
    * (Edit mode -> card menu -> Send). This records and saves a short, then opens that fuller composer for it.
@@ -126,7 +126,7 @@ class LearningShortsPage {
     return this.classCheckboxes.evaluateAll((els) => els.filter((e) => e.checked).length);
   }
 
-  /** Typing in the title opens the on-screen keyboard over Back (seen on video 2026-09-26); close it first -- same
+  /** Typing in the title opens the on-screen keyboard over Back; close it first -- same
    * control as in the notice composer. */
   async hideKeyboard() {
     await AiNoticesPage.prototype.hideKeyboard.call(this);

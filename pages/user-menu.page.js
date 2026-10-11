@@ -1,18 +1,10 @@
 // Page Object for the User menu (avatar popover: Profile / Account / Classroom Mode /
 // Theme / Feedback / Build / Virtual Keyboard / Sign out) and its Account/Profile tabs.
 //
-// CONFIRMED LIVE (2026-09-06): the manual pass's "screen not reached"
-// finding is corrected here -- avatar click -> toolbar-profile-trigger ->
-// user-profile-tab-account all work reliably with this account. Selectors
-// cross-checked against a Cypress reference project's own
-// AccountManagementPage.js.
+// Path to the Account tab: avatar -> toolbar-profile-trigger -> user-profile-tab-account.
 //
-// Change Password/PIN are deliberately NOT submitted in any test here
-// (destructive credential risk to the shared QA account) -- only the
-// surrounding menu/form-presence behavior is verified, matching this
-// project's established pattern for other destructive flows (Add
-// Resource's Create form, etc.) and the reference project's own explicit
-// scoping note for this module.
+// Change Password / Change PIN are submitted only on the spare account (DISPOSABLE_* in .env), never on the shared
+// test accounts.
 
 class UserMenuPage {
   constructor(page) {
@@ -22,7 +14,7 @@ class UserMenuPage {
     this.drilldownTrigger = page.locator('[data-qa-id="toolbar-profile-trigger"]');
     this.accountTab = page.locator('[data-qa-id="user-profile-tab-account"]');
     this.profileTab = page.locator('[data-qa-id="user-profile-tab-profile"]');
-    // CONFIRMED LIVE (v 0.0.223): the data-qa-ids above sit on an inner element; the tab itself (the one that carries
+    // The data-qa-ids above sit on an inner element; the tab itself (the one that carries
     // aria-selected) is only reachable by role. Use these to read which tab is active.
     this.accountTabItem = page.getByRole('tab', { name: /^\s*account/i });
     this.profileTabItem = page.getByRole('tab', { name: /^\s*profile/i });
@@ -49,9 +41,35 @@ class UserMenuPage {
     this.virtualKeyboardToggle = page.locator('[data-qa-id="toolbar-profile-keyboard-toggle"]');
     this.classroomModeSwitcher = page.locator('[data-qa-id="toolbar-profile-planning-mode"]');
     this.signOutBtn = page.locator('[data-qa-id="toolbar-profile-signout-btn"]');
+    // Whiteboard History: a panel headed "WHITEBOARD HISTORY" with one row per saved version, newest first,
+    // e.g. "#19 · 23 strokes +2 ~4 -0 · 11:00:25 07/10".
+    this.wbHistoryBtn = page.locator('[data-qa-id="toolbar-profile-wb-history-btn"]');
+    this.wbHistoryPanel = page
+      .locator('div, section, mat-dialog-container')
+      .filter({ has: page.getByText('WHITEBOARD HISTORY', { exact: true }) })
+      .last();
+
+    /** The Whiteboard History rows, newest first, parsed into { version, strokes, added, changed, removed, time }. */
+    this.wbHistoryRows = async () => {
+      const read = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+      let text = await read();
+      for (let i = 0; i < 16 && !/#\d+ · \d+ strokes/.test(text); i++) {
+        await page.waitForTimeout(500);
+        text = await read();
+      }
+      return [...text.matchAll(/#(\d+) · (\d+) strokes \+(\d+) ~(\d+) -(\d+) · (\d{2}:\d{2}:\d{2} \d{2}\/\d{2})/g)].map(
+        (m) => ({
+          version: Number(m[1]),
+          strokes: Number(m[2]),
+          added: Number(m[3]),
+          changed: Number(m[4]),
+          removed: Number(m[5]),
+          time: m[6],
+        })
+      );
+    };
     this.buildInfoBtn = page.locator('[data-qa-id="toolbar-profile-build-btn"]');
     this.feedbackBtn = page.locator('[data-qa-id="toolbar-profile-feedback-btn"]');
-    // New in v 0.0.232 (seen live 2026-09-30): opens a panel of the topic board's saved versions.
     this.wbHistoryBtn = page.locator('[data-qa-id="toolbar-profile-wb-history-btn"]');
 
     // --- Account tab: Preferred Resource Type + Subjects ---
@@ -71,14 +89,14 @@ class UserMenuPage {
     this.subjectPickerOptions = page.locator('[data-qa-id^="user-profile-subject-add-"]');
 
     // --- Signed-in-as popover (outer menu, before drilling into the tab group) ---
-    // CONFIRMED LIVE: the "Signed in as" label and the user's name are sibling elements inside one list row.
+    // The "Signed in as" label and the user's name are sibling elements inside one list row.
     this.signedInAsRow = page
       .locator('li')
       .filter({ hasText: /signed in as/i })
       .first();
   }
 
-  /** Confirmed live: the avatar click can fail to open the profile menu on
+  /** The avatar click can fail to open the profile menu on
    * the first attempt shortly after a fresh login (same class of timing
    * issue seen elsewhere in this app) -- retry once before giving up. */
   async openProfileMenu() {
@@ -93,7 +111,7 @@ class UserMenuPage {
     }
   }
 
-  /** Sign out via the real UI (avatar -> Sign Out). CONFIRMED LIVE: there is no confirmation
+  /** Sign out via the real UI (avatar -> Sign Out). There is no confirmation
    * dialog; signing out is immediate. Resolves once the avatar is gone. */
   async signOut() {
     await this.openProfileMenu();
@@ -101,9 +119,7 @@ class UserMenuPage {
     await this.avatarTrigger.waitFor({ state: 'hidden', timeout: 10000 });
   }
 
-  /** Navigates to the Account/Profile tab row. CONFIRMED LIVE: clicking
-   * "Account" specifically never actually reveals its own panel (a real
-   * bug, see the file-level comment) -- this only gets the caller to the
+  /** Navigates to the Account/Profile tab row. Clicking
    * tab row itself, not necessarily to Account's content. */
   async openAccountTab() {
     await this.openProfileMenu();

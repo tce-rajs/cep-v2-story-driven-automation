@@ -1,9 +1,6 @@
-// Switches this machine between QA servers in one command instead of hand-editing two separate files
-// (confirmed live 2026-09-23: doing this by hand is exactly what made a server switch error-prone --
-// tce_settings.json got left pointing at the old server while .env pointed at the new one, and vice versa).
 //
 // Updates BOTH places a server URL is configured:
-//   1. C:\Users\Public\tce_settings.json  -- via scripts/lib/tce-settings.js.
+//   1. C:\Users\Public\tce_settings.json -- via scripts/lib/tce-settings.js.
 //   2. .env's BASE_URL line -- what config/env.js (and so fixtures/electron-app.js's resolveUrl) uses to
 //      build every relative page.goto('./...') call in the specs.
 //

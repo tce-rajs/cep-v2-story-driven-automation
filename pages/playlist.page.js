@@ -15,6 +15,8 @@ class PlaylistPage {
     this.eBooksTile = page.locator('[data-qa-id="playlist-e-book-btn"]');
     this.contentsTile = page.locator('[data-qa-id="playlist-chapter-topic-btn"]');
     this.resourceCards = page.locator('[data-qa-id="playlist-resource-card"], [data-qa-id="playlist-asset-card"]');
+    // Resources the teacher added carry a share icon on their card; built-in resources do not.
+    this.shareIconOf = (card) => card.locator('img.share-icon');
     this.optionsMenuBtn = page.locator('[data-qa-id="playlist-resource-nav-filter-menu"]');
     this.leftScrollBtn = page.locator('[data-qa-id="playlist-resource-nav-left-scroll"]');
     this.rightScrollBtn = page.locator('[data-qa-id="playlist-resource-nav-right-scroll"]');
@@ -40,7 +42,7 @@ class PlaylistPage {
     this.filterResetBtn = page.locator('[data-qa-id="playlist-filter-menu-reset-btn"]');
     this.filterResetConfirmBtn = page.locator('[data-qa-id="playlist-filter-menu-reset-confirm-btn"]:visible');
     // The Edit-confirm and Reset-confirm popups share this same "Cancel"
-    // data-qa-id (confirmed live), and both popup templates stay mounted in
+    // data-qa-id, and both popup templates stay mounted in
     // the DOM at once -- filter to the currently visible one.
     this.filterCancelBtn = page.locator('[data-qa-id="playlist-filter-menu-cancel-btn"]:visible');
     this.filterCloseBtn = page.locator('[data-qa-id="playlist-filter-menu-close-btn"]');
@@ -48,7 +50,7 @@ class PlaylistPage {
     // --- Remove-resource confirmation (per-card) ---
     // Like the Filter menu's Edit/Reset dialogs, this app leaves every
     // previously-opened confirmation popup's template mounted in the DOM
-    // (confirmed live: 4 stacked instances after a few remove attempts) --
+    //  --
     // scope to the currently visible one.
     this.resourceRemoveBtn = page.locator(
       '[data-qa-id="playlist-resource-remove-btn"], [data-qa-id="playlist-quiz-remove-btn"]'
@@ -62,8 +64,7 @@ class PlaylistPage {
     // Cards added via Add Resource are their own type (playlist-asset-card)
     // and use a different remove path -- an overflow ("...") icon per card
     // that reveals its own Remove option, rather than a direct hover-reveal
-    // icon (cross-checked against a Cypress reference project's own page
-    // object, which confirmed this exact split).
+    // icon.
     this.assetOverflowIconBtn = page.locator('[data-qa-id="playlist-asset-overflow-icon-btn"]');
     this.assetRemoveBtn = page.locator('[data-qa-id="playlist-asset-remove-btn"]:visible');
     this.assetRemoveConfirmBtn = page.locator('[data-qa-id="playlist-asset-remove-confirm-btn"]:visible');
@@ -81,7 +82,7 @@ class PlaylistPage {
   }
 
   /** The Options/Filter menu is a plain toggle with NO backdrop and NO
-   * Escape-to-close support (both confirmed live) -- it only opens/closes by
+   * Escape-to-close support -- it only opens/closes by
    * clicking this same button, so callers must track open/closed state
    * themselves rather than assuming Escape closed it. */
   async openOptionsMenu() {
@@ -101,13 +102,11 @@ class PlaylistPage {
     if (stillOpen) await this.optionsMenuBtn.click();
   }
 
-  /** CONFIRMED LIVE (this pass): the whole Playlist strip (resource cards,
+  /** The whole Playlist strip (resource cards,
    * CONTENTS/E-BOOKS tiles, "+" Add Resources) can be fully COLLAPSED,
    * leaving cards attached-in-DOM (a plain .count() finds them) but
    * genuinely not visible/interactive on screen -- a scrollIntoView+click
-   * on a collapsed card is a silent no-op. Cross-checked against
-   * automation-cep-cypress's own PlaylistPage.ensureDrawerVisible(): the
-   * toggle's own text reads "SHOW"/"HIDE" depending on state. */
+   * on a collapsed card does nothing. The toggle's own text reads "SHOW"/"HIDE" depending on state. */
   async ensureDrawerVisible() {
     const text = ((await this.drawerBtn.textContent().catch(() => '')) || '').toUpperCase();
     if (text.includes('SHOW')) {
@@ -205,10 +204,10 @@ class PlaylistPage {
    * Playlist Edit mode. */
   async removeAssetCard(cardLocator) {
     await cardLocator.first().hover();
-    // CONFIRMED LIVE (2026-09-20): act on THIS card's own overflow icon. The old `assetOverflowIconBtn.first()` was the
+    // Act on THIS card's own overflow icon. The old `assetOverflowIconBtn.first()` was the
     // first one on the whole strip -- it only worked while the test's own asset was the only asset card; with
     // library-added items present it opened "Remove" for a different (curriculum) card.
-    // CONFIRMED LIVE: cards of the same "asset" family carry different remove controls -- an overflow icon (custom and
+    // Cards of the same "asset" family carry different remove controls -- an overflow icon (custom and
     // library assets) or a quiz-style remove button (e.g. AI Assist's FlashCard / "My Exercise"). Use whichever this card has.
     await cardLocator
       .first()
@@ -242,7 +241,7 @@ class PlaylistPage {
     );
   }
 
-  // --- Editing mode (Options > Edit). CONFIRMED LIVE in the previous suite: with every type checked, Edit
+  // --- Editing mode (Options > Edit). With every type checked, Edit
   // enters editing mode directly; only while a filter is narrowing the list does it first warn that editing
   // resets the filters. Per-card remove icons exist only while editing, and removing asks for confirmation. ---
   get finishEditingBtn() {
@@ -256,7 +255,7 @@ class PlaylistPage {
   }
 
   async finishEditing() {
-    // CONFIRMED LIVE (2026-09-26): right after a removal an ngx-spinner overlay covers the page for a moment and
+    // Right after a removal an ngx-spinner overlay covers the page for a moment and
     // intercepts the click -- wait for it to go first.
     await this.page
       .locator('.ngx-spinner-overlay')
@@ -283,7 +282,7 @@ class PlaylistPage {
   }
 
   /** Remove an asset card the test itself created (via Add Resource), leaving the shared topic as found.
-   * CONFIRMED LIVE: removing an asset card through its overflow menu already leaves editing mode, unlike
+   * Removing an asset card through its overflow menu already leaves editing mode, unlike
    * removing a curriculum resource -- so "Finish editing" is only clicked if it is still showing. */
   async removeOwnedAsset(card) {
     await this.enterEditMode();

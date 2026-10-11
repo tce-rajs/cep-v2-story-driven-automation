@@ -1,5 +1,5 @@
 // CLIENT-03 -- Switching server through the Settings UI
-// CONFIRMED LIVE (2026-09-23): editing the Server Path field and clicking Save & Run (a) reconnects the
+// Editing the Server Path field and clicking Save & Run (a) reconnects the
 // currently-open teach webview to the new URL, and (b) persists it to tce_settings.json's profiles[0].path --
 // the EXACT same field scripts/set-server.js (the project's own automation for this) edits directly. Confirmed
 // both mechanisms write the identical field, so they're equivalent, not two different systems.

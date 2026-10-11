@@ -21,9 +21,8 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
     'MM-03-01: clicking a point inside the Minimap pans the main canvas to it',
     { tag: ['@functional'] },
     async ({ user }) => {
-      // INTERMITTENT PRODUCT DEFECT, SEEN LIVE (2026-09-26, v 0.0.232): the first click inside a newly opened Minimap is
-      // sometimes ignored and only a second click pans (seen in 3 of 5 runs). Recorded as a note when it happens, so the
-      // test stays about "clicking pans the board" without going red on the intermittent part.
+      // Recorded as a note when it happens, so the test stays about "clicking pans the board" without going red on the
+      // intermittent part.
       await user.toolbar.penStroke({ x: 500, y: 400 }, { x: 700, y: 460 });
       await zoomIn(user, 2);
       await user.minimap.open(user.toolbar);
@@ -31,8 +30,14 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
       const rectBefore = (await user.minimap.readCanvas()).rect;
 
       // Click to the right of and below the rectangle, where the board has room (clicks past its edge clamp there).
-      await user.minimap.clickAt(0.8, 0.75);
-      const moved = async () => (await user.minimap.readCanvas()).rect.x > rectBefore.x;
+      // "Towards the point": the rectangle's centre ends up nearer the clicked point than it was.
+      const target = { x: 0.8, y: 0.75 };
+      const { width, height } = await user.minimap.readCanvas();
+      const distance = (rect) =>
+        Math.hypot(rect.x + rect.width / 2 - width * target.x, rect.y + rect.height / 2 - height * target.y);
+      const distanceBefore = distance(rectBefore);
+      await user.minimap.clickAt(target.x, target.y);
+      const moved = async () => distance((await user.minimap.readCanvas()).rect) < distanceBefore - 2;
       if (
         !(await expect
           .poll(moved, { timeout: 3000 })
@@ -44,20 +49,44 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
           type: 'issue',
           description: 'The first click inside the Minimap was ignored; a second click was needed.',
         });
-        await user.minimap.clickAt(0.8, 0.75);
+        await user.minimap.clickAt(target.x, target.y);
       }
       await expect
-        .poll(async () => (await user.minimap.readCanvas()).rect.x, {
+        .poll(async () => distance((await user.minimap.readCanvas()).rect), {
           message: 'viewport rectangle moved towards the clicked point',
         })
-        .toBeGreaterThan(rectBefore.x);
+        .toBeLessThan(distanceBefore - 2);
       const strokeAfter = await user.toolbar.lastPathBox();
       expect(strokeAfter.x !== strokeBefore.x || strokeAfter.y !== strokeBefore.y, 'main canvas moved').toBe(true);
     }
   );
 
+  // Reset View returns to the board's starting view. The test's own stroke sits on fresh space below the teacher's
+  // earlier writing (freshSpace), so the content expected back in view is that earlier writing -- the board as it
+  // opens. Only on a board with no earlier writing is it the test's own stroke.
+  const expectOriginalContentInView = async (user) => {
+    const original = await user.toolbar.wbSvg.evaluate((svg) => {
+      const inView = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.width + r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
+      };
+      const els = [...svg.querySelectorAll('[data-autotest-existing]')];
+      return { total: els.length, inView: els.filter(inView).length };
+    });
+    if (original.total > 0) {
+      expect(original.inView, 'the writing the board opened with is back in view').toBeGreaterThan(0);
+      return;
+    }
+    const back = await user.toolbar.lastPathBox();
+    const vp = await user.header.viewportSize();
+    expect(back.x + back.width, 'content back in view (x)').toBeGreaterThan(0);
+    expect(back.x, 'content back in view (x)').toBeLessThan(vp.width);
+    expect(back.y + back.height, 'content back in view (y)').toBeGreaterThan(0);
+    expect(back.y, 'content back in view (y)').toBeLessThan(vp.height);
+  };
+
   // Reset View after zooming and panning away: 100% zoom (MM-03-02), and the content back in view (MM-03-06) -- one
-  // test each (split 2026-09-28).
+  // test each.
   const zoomPanAwayThenReset = async (user) => {
     await user.toolbar.penStroke({ x: 500, y: 400 }, { x: 700, y: 460 });
     await user.toolbar.lastPathBox(); // content exists before zooming away
@@ -83,12 +112,7 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
     async ({ user }) => {
       await zoomPanAwayThenReset(user);
       await expect.poll(() => user.minimap.zoomPercent(), { message: 'set-up: reset done' }).toBe(100);
-      const back = await user.toolbar.lastPathBox();
-      const vp = await user.header.viewportSize();
-      expect(back.x + back.width, 'content back in view (x)').toBeGreaterThan(0);
-      expect(back.x, 'content back in view (x)').toBeLessThan(vp.width);
-      expect(back.y + back.height, 'content back in view (y)').toBeGreaterThan(0);
-      expect(back.y, 'content back in view (y)').toBeLessThan(vp.height);
+      await expectOriginalContentInView(user);
     }
   );
 
@@ -104,7 +128,7 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
   });
 
   // Clicking 10 points in the Minimap quickly: it ends on the last point (MM-03-04), and the canvas stays responsive
-  // (MM-03-07) -- one test each (split 2026-09-28).
+  // (MM-03-07) -- one test each.
   const point = (box, i) => ({ x: box.x + box.width * (0.1 + 0.08 * i), y: box.y + box.height * (0.2 + 0.06 * i) });
   const clickTenPoints = async (user) => {
     await zoomIn(user, 2);
@@ -156,12 +180,7 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
 
       await user.minimap.resetBtn.click({ force: true });
       await expect.poll(() => user.minimap.zoomPercent()).toBe(100);
-      const back = await user.toolbar.lastPathBox();
-      const vp = await user.header.viewportSize();
-      expect(back.x + back.width, 'content back in view (x)').toBeGreaterThan(0);
-      expect(back.x, 'content back in view (x)').toBeLessThan(vp.width);
-      expect(back.y + back.height, 'content back in view (y)').toBeGreaterThan(0);
-      expect(back.y, 'content back in view (y)').toBeLessThan(vp.height);
+      await expectOriginalContentInView(user);
     }
   );
 });

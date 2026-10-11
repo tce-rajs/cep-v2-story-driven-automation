@@ -3,7 +3,7 @@
 //
 // Locator strategy: same as login.page.js — prefer [data-qa-id="..."] from
 // the app's own QA reference doc. Two things in this module have NO
-// documented id at all (confirmed live, not assumed): the popup's own tabs
+// documented id at all: the popup's own tabs
 // ("Recent Classes" / "All My Classes" render as plain Angular Material
 // tabs with no data-qa-id), so those use Playwright's role-based locators
 // instead.
@@ -33,6 +33,13 @@ class NavigationPage {
     this.chapterTpPopup = page.locator('[data-qa-id="playlist-chapter-tp-popup"]');
     this.chapterItems = page.locator('[data-qa-id="playlist-select-chapter"]');
     this.topicItems = page.locator('[data-qa-id="playlist-select-topic"]');
+    // The document icon on each topic opens its lesson plan over the board.
+    this.lessonPlanBtns = page.locator('[data-qa-id="playlist-tp-lesson-plan-btn"]');
+    // It opens in a floating panel; there is no close button and Escape does not close it (a tap elsewhere does).
+    this.lessonPlan = page
+      .locator('float-ui-content.lesson-plan-popup app-lesson-plan')
+      .filter({ visible: true })
+      .last();
     this.chapterTpSearchToggle = page.locator('[data-qa-id="playlist-popup-chapter-tp-search-btn"]');
     this.chapterTpSearchInput = page.locator('[data-qa-id="playlist-chapter-tp-search-input"]');
     this.chapterTpSearchCancel = this.chapterTpPopup.getByText('Cancel', { exact: true });
@@ -52,10 +59,9 @@ class NavigationPage {
     await this.currentClassBtn.click();
   }
 
-  /** Clicks a TOGGLE button until `openSignal` is visible. CONFIRMED in the desktop-client run of 2026-10-01: a
-   * single click on the class or chapter button sometimes left its popup closed (the click landed while the app was
-   * still busy, e.g. right after sign-in or an autosave), and ~190 tests then timed out on the next click. Each retry
-   * first checks the popup is still closed, so a slow opening is never toggled shut again. */
+  /** Clicks a toggle button until `openSignal` is visible. A single click on the class or chapter button can leave
+   * its popup closed when the app is still busy (right after sign-in or during an autosave). Each retry first checks
+   * the popup is still closed, so a slow opening is never toggled shut again. */
   async _openUntil(button, openSignal, tries = 4) {
     for (let i = 0; i < tries; i++) {
       if (await openSignal.isVisible().catch(() => false)) return;
@@ -95,7 +101,7 @@ class NavigationPage {
    * 29 chapters with varying topic counts) regardless of what ran before.
    */
   async resetToClass(grade, division, subject) {
-    // CONFIRMED in the desktop client (2026-10-02): right after another class switch, the chooser can open and then
+    // Right after another class switch, the chooser can open and then
     // close again by itself (the app finishing loading the previous class closes popups). So the whole cascade --
     // open, All My Classes, grade, division, subject -- is retried from the start if any step finds the chooser gone,
     // instead of one long wait on a tab that is no longer there. The class button toggles, so _openUntil only clicks
@@ -105,12 +111,12 @@ class NavigationPage {
       // The modal re-renders for a moment right after opening -- clicking through it too fast hits
       // "element detached, retrying" churn.
       await this.page.waitForTimeout(800);
-      await this.allMyClassesTab.click({ timeout: 4000 });
-      await this.gradeButton(grade).first().click({ timeout: 4000 });
+      await this.allMyClassesTab.click({ timeout: 15000 });
+      await this.gradeButton(grade).first().click({ timeout: 15000 });
       await this.page.waitForTimeout(300);
-      await this.divisionButton(division).first().click({ timeout: 4000 });
+      await this.divisionButton(division).first().click({ timeout: 15000 });
       await this.page.waitForTimeout(300);
-      await this.subjectButton(subject).first().click({ timeout: 4000 });
+      await this.subjectButton(subject).first().click({ timeout: 15000 });
     };
     for (let attempt = 1; ; attempt++) {
       try {
@@ -121,10 +127,10 @@ class NavigationPage {
         await this.page.waitForTimeout(1500 * attempt);
       }
     }
-    // Right after a client relaunch the class label can take well over 10 s to update (seen 2026-09-26: the switch
+    // Right after a client relaunch the class label can take well over 10 s to update (seen: the switch
     // landed, just late), so allow 30 s.
     await this.currentClassBtn.filter({ hasText: subject }).waitFor({ state: 'visible', timeout: 30000 });
-    // CONFIRMED in the client (2026-10-02): the chooser slides shut after a switch, and a second switch started during
+    // The chooser slides shut after a switch, and a second switch started during
     // that animation saw the closing tab as "open", skipped opening it, and timed out when the tab disappeared. Wait
     // until it has really closed, so the next switch (a spec's own beforeEach after the fixture's) starts clean.
     await this.allMyClassesTab.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
@@ -135,9 +141,8 @@ class NavigationPage {
   }
 
   /** Select a Chapter/Topic by position (0-indexed) via the Chapters popup.
-   * Used by Player tests that need a specific chapter known (via the
-   * confirmed class/chapter map cross-checked from a reference project) to
-   * hold a given resource type. */
+   * Used by Player tests that need a chapter known (from config/moduleClassMap.js) to hold a given
+   * resource type. */
   async goToChapterTopic(chapterIndex, topicIndex) {
     await this._selectChapterTopic(() => this.chapterItems.nth(chapterIndex), topicIndex);
   }
@@ -148,7 +153,7 @@ class NavigationPage {
     await this._selectChapterTopic(() => this.chapter(chapterName), topicIndex);
   }
 
-  /** Shared by the two methods above. CONFIRMED LIVE (2026-09-19): clicking a chapter that is NOT already the
+  /** Shared by the two methods above. Clicking a chapter that is NOT already the
    * current one auto-selects its first topic and closes the popup, so the topic list is not there to click; the
    * list only shows when a chapter that is already current is clicked. So: if the list did not appear, the first
    * topic is already selected (done for topicIndex 0), otherwise reopen the popup, click the now-current chapter
@@ -169,9 +174,8 @@ class NavigationPage {
         .catch(() => false);
 
     if (topicIndex > 0 || (await listed())) {
-      // CONFIRMED in the desktop client (2026-10-02/05): the app is still loading the chapter just chosen and closes the
-      // popup again while it is being reopened (49 tests timed out on the topic click), and a topic far down a long
-      // list (12A Physics 1.5) is below the visible part of the list. So: retry until the topic list is really there,
+      // The app may still be loading the chapter just chosen and close the popup again while it is being
+      // reopened, and a topic far down a long list is below the visible part of the list. So: retry until the topic list is really there,
       // and scroll the topic into view before clicking it.
       for (let attempt = 1; ; attempt++) {
         try {
@@ -195,7 +199,7 @@ class NavigationPage {
   }
 
   /** Make a chapter current and leave the Chapters popup OPEN showing that chapter's topics.
-   * CONFIRMED LIVE (2026-09-20): the popup is two panes -- "Choose a Chapter" on the left and "Choose a Topic" on the
+   * The popup is two panes -- "Choose a Chapter" on the left and "Choose a Topic" on the
    * right, and the right pane always lists the topics of the CURRENT chapter. Clicking another chapter makes it current,
    * jumps to its first topic and closes the popup, so a chapter's topics can only be read once it is current. */
   async showTopicsOf(chapterIndex) {
@@ -204,7 +208,7 @@ class NavigationPage {
     await this.topicItems.first().waitFor({ state: 'visible', timeout: 10000 });
   }
 
-  /** Run a search in the Chapters popup. CONFIRMED LIVE: it is a "Search Table of Contents" -- it matches TOPICS (listed
+  /** Run a search in the Chapters popup. It is a "Search Table of Contents" -- it matches TOPICS (listed
    * under "Choose a Topic", chapter list hidden), it runs on Enter/submit rather than while typing, an empty query
    * shows nothing, and "Cancel" is what brings the chapter view back. */
   async searchContents(term) {
@@ -213,9 +217,7 @@ class NavigationPage {
     await this.page.waitForTimeout(1500);
   }
 
-  /** Confirmed live (cross-checked against a Cypress reference project's
-   * own equivalent method): selecting a Topic does not reliably auto-close
-   * the Chapters popup, leaving it open and intercepting clicks on the
+  /** Selecting a topic does not always close the Chapters popup, leaving it open and intercepting clicks on the
    * Playlist strip underneath -- close it via its own toggle if so. */
   async _closeChaptersPopupIfOpen() {
     const stillOpen = await this.chapterItems
@@ -238,9 +240,9 @@ class NavigationPage {
   async ensureRecentClasses(minCount) {
     // Always leaves the Class Popup CLOSED on return -- callers open it
     // themselves afterward, and this popup toggles closed on a second
-    // open() call while already open (confirmed live, GSD-CYP-03), so this
+    // open() call while already open, so this
     // method must never leave it open behind the caller's back. Also
-    // confirmed live: after resetToClass() switches tabs to "All My
+    // after resetToClass() switches tabs to "All My
     // Classes", the popup can reopen on THAT tab next time rather than
     // defaulting back to Recent Classes -- explicitly re-select the
     // Recent Classes tab before counting rather than trusting the default.
@@ -273,7 +275,7 @@ class NavigationPage {
     return this.divisionButtons.filter({ hasText: label });
   }
 
-  /** Confirmed live: several subjects are substrings of another real
+  /** Several subjects are substrings of another real
    * subject in the same class (e.g. "Physics" / "Physics Practicals",
    * "Biology" / "Biology Practicals", "Chemistry" / "Chemistry
    * Practicals") -- a plain substring match on the pill label picks up

@@ -3,7 +3,7 @@
 // plus the autosave confirmation and a comparable snapshot of what is on the board.
 //
 // It composes the Toolbar, Whiteboard and Add Resource page objects rather than duplicating their locators.
-// Confirmed live in the previous suite: autosave shows "Saving whiteboard …" then a "Whiteboard Saved! N stroke(s)"
+// Autosave shows "Saving whiteboard …" then a "Whiteboard Saved! N stroke(s)"
 // message; a Gallery-inserted image lands on the canvas but creates no Playlist card.
 
 const { ToolbarPage } = require('./toolbar.page');
@@ -36,7 +36,7 @@ class WhiteboardContent {
   async addGalleryImage() {
     const ar = this.addResource;
     const { stillStuck } = await ar.openPickerReliably(ar.actions.gallery);
-    if (stillStuck) throw new Error('Add Resource picker never became clickable (known intermittent bug)');
+    if (stillStuck) throw new Error('Add Resource picker did not become clickable');
     await ar.actions.gallery.click({ force: true });
     await ar.galleryImageCards.first().waitFor({ state: 'visible', timeout: 15000 });
     await ar.galleryImageCards.first().click({ force: true });
@@ -123,9 +123,9 @@ class WhiteboardContent {
     }
   }
 
-  /** Start a test on empty board space WITHOUT erasing anything (owner rule, 2026-09-29: never clear the teacher's
-   * board). Pans below everything already on the board, then tags that content as existing so the test's own counts,
-   * snapshots and "last stroke" lookups see only what the test adds. Replaces the old Clear-whiteboard set-up. */
+  /** Start a test on empty board space without erasing anything: the teacher's board is never cleared. Pans below
+   * everything already on the board, then tags that content as existing so the test's own counts, snapshots and
+   * "last stroke" lookups see only what the test adds. */
   async startOnFreshSpace() {
     await this.toolbar.waitForBoardToSettle();
     await this.panBelowExistingWriting();
@@ -187,7 +187,7 @@ class WhiteboardContent {
 
   /** The identity, position and size of every image on the board. `snapshot()` only counts images, so a reload that
    * restores the right COUNT but the WRONG image (or shifts/resizes it) passes snapshot() unnoticed — this catches
-   * that. CONFIRMED LIVE: the SVG <image> element carries its href as `xlink:href`, not `href`. */
+   * that. The SVG <image> element carries its href as `xlink:href`, not `href`. */
   async imageFingerprint() {
     return this.page.evaluate(() => {
       const svg = document.querySelector('[data-qa-id="wb-drawing-container"] svg');
@@ -211,6 +211,37 @@ class WhiteboardContent {
     await this.page.mouse.move(box.x + (from.x + to.x) / 2, box.y + (from.y + to.y) / 2);
     await this.page.mouse.move(box.x + to.x, box.y + to.y);
     await this.page.mouse.up();
+  }
+
+  /** How clearly an element's ink (stroke colour, or text colour for a text box) stands out from the board behind it:
+   * { ink, board, ratio } where ratio is the WCAG contrast ratio (1 = invisible, 21 = black on white). The board colour
+   * is the first non-transparent background found from the drawing surface upwards. */
+  async inkContrast(locator) {
+    return locator.evaluate((el) => {
+      const parse = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+      const lum = ([r, g, b]) => {
+        const f = (v) => {
+          const s = v / 255;
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const cs = getComputedStyle(el);
+      const ink = el.tagName.toLowerCase() === 'path' ? cs.stroke : cs.color;
+      let node = document.querySelector('[data-qa-id="wb-drawing-container"] svg');
+      let board = 'rgb(255, 255, 255)';
+      while (node && node.nodeType === 1) {
+        const bg = getComputedStyle(node).backgroundColor;
+        const p = parse(bg);
+        if (p.length >= 3 && (p.length < 4 || p[3] > 0.5)) {
+          board = bg;
+          break;
+        }
+        node = node.parentElement;
+      }
+      const [a, b] = [lum(parse(ink)), lum(parse(board))].sort((x, y) => y - x);
+      return { ink, board, ratio: Math.round(((a + 0.05) / (b + 0.05)) * 100) / 100 };
+    });
   }
 
   /** Percentage shown under the Zoom tool, e.g. 100 for "100%". */

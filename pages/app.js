@@ -21,6 +21,7 @@ const { AttendancePage } = require('./attendance.page');
 const { AiHomeworkPage } = require('./ai-homework.page');
 const { LearningShortsPage } = require('./learning-shorts.page');
 const { AiNoticesPage } = require('./ai-notices.page');
+const { PlanModePage } = require('./plan-mode.page');
 
 const PAGES = {
   login: LoginPage,
@@ -43,6 +44,7 @@ const PAGES = {
   aiHomework: AiHomeworkPage,
   learningShorts: LearningShortsPage,
   aiNotices: AiNoticesPage,
+  plan: PlanModePage,
 };
 
 class App {

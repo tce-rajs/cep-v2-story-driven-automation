@@ -1,5 +1,5 @@
 // CLIENT-01 -- Cold launch with a single saved profile
-// CONFIRMED LIVE (2026-09-23): with exactly one saved profile, the client connects straight to that profile's
+// With exactly one saved profile, the client connects straight to that profile's
 // server on launch -- no profile-picker step. This is the assumption ../../fixtures/electron-app.js (the main
 // suite's own launch fixture) is built on. CLIENT-04 covers what changes once a second profile exists.
 

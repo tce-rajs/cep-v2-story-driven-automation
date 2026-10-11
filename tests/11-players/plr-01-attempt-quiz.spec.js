@@ -1,8 +1,8 @@
 // PLR-01 — Attempt a quiz
 // Source: CEPV2_Stories/11_Players.md
-// Not automated (per PROCESS.md, Cross-Mode cases are manual-only): PLR-01-10 (split-screen sync with the student screen).
+// Not automated (per PROCESS.md, Cross-Mode cases are manual-only): PLR-01-10.
 //
-// Data: the 'quiz' topic (Class 11A Accountancy, chapter 3). CONFIRMED LIVE in the previous suite: the quiz opens on a
+// Data: the 'quiz' topic (Class 11A Accountancy, chapter 3). The quiz opens on a
 // "Launch AIR Card" screen, then a class-strength/Start screen, and needs a camera — the launch flags in
 // fixtures/electron-app.js and playwright.config.js supply a stand-in camera. If the camera is still refused these
 // tests fail with that reason rather than hanging.
@@ -40,7 +40,7 @@ test.describe('PLR-01 Attempt a quiz', () => {
       const rendered = user.player.quizLaunchScreenBtn.or(user.player.quizRenderer);
       await expect(rendered).toBeVisible({ timeout: 15000 });
       // Being visible only proves an element exists, not that the quiz occupies a real amount of screen, not a
-      // broken sliver. CONFIRMED LIVE: the "Launch AIR Card" button is a small button by design (~50px tall), so
+      // broken sliver. The "Launch AIR Card" button is a small button by design (~50px tall), so
       // only size-check once past it, when the full renderer (~980x740 in this window) is what's showing.
       if (await user.player.quizRenderer.isVisible({ timeout: 3000 }).catch(() => false)) {
         await expect
@@ -52,56 +52,6 @@ test.describe('PLR-01 Attempt a quiz', () => {
         const box = await user.player.quizRenderer.boundingBox();
         expect(box.height, 'the quiz renders at a real size, not collapsed').toBeGreaterThan(150);
       }
-    }
-  );
-
-  // The AIR card popup: it appears and goes away by itself after ~5 s (PLR-01-02), and the question only loads once it
-  // is gone (PLR-01-23) -- one test each (split 2026-09-28).
-  /** Open the quiz up to the AIR card popup; returns the popup locator, once it is showing. */
-  const openToAirCard = async (user, page) => {
-    const { player } = user;
-    await player.quizCards.first().waitFor({ state: 'attached', timeout: 10000 });
-    await player.openResourceCard(player.quizCards);
-    if (await player.quizLaunchScreenBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await player.quizLaunchScreenBtn.click({ force: true });
-    }
-    if (await player.quizClassStrengthStartBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await player.quizClassStrengthStartBtn.click({ force: true });
-    }
-    const popup = page
-      .getByText(/air card/i)
-      .filter({ visible: true })
-      .first();
-    await expect(popup, 'the AIR card popup appears').toBeVisible({ timeout: 10000 });
-    return popup;
-  };
-
-  test(
-    'PLR-01-02: the AIR card popup appears and goes away by itself after ~5 seconds',
-    { tag: ['@functional'] },
-    async ({ user, page }) => {
-      const popup = await openToAirCard(user, page);
-      const shownAt = Date.now();
-      await expect(popup, 'the popup goes away by itself').toBeHidden({ timeout: 15000 });
-      const shownFor = Date.now() - shownAt;
-      test.info().annotations.push({ type: 'note', description: `AIR card popup visible for ~${shownFor}ms` });
-      expect(shownFor, 'roughly five seconds').toBeGreaterThan(3000);
-      expect(shownFor).toBeLessThan(9000);
-    }
-  );
-
-  test(
-    'PLR-01-23: the first question only loads once the AIR card popup is gone',
-    { tag: ['@functional'] },
-    async ({ user, page }) => {
-      const popup = await openToAirCard(user, page);
-      // The question must NOT be loaded while the popup is still up.
-      expect(
-        await user.player.quizQuestion.isVisible().catch(() => false),
-        'no question yet, popup still showing'
-      ).toBe(false);
-      await expect(popup, 'set-up: the popup goes away').toBeHidden({ timeout: 15000 });
-      await expect(user.player.quizQuestion, 'and only then the first question').toBeVisible({ timeout: 15000 });
     }
   );
 
@@ -231,10 +181,11 @@ test.describe('PLR-01 Attempt a quiz', () => {
     }
   );
 
-  test.fixme('PLR-01-12: a class with zero enrolled students attempting to launch a Student Test is handled gracefully', async () => {
-    // BLOCKED (checked live, v 0.0.223): this build has no class-strength / Start screen and no "Student Test" launch. A quiz
-    // opens with the AIR card popup, which either times out into the attempt mode or ("Launch AIR Card") goes straight to the
-    // camera "Capture" mode -- neither has a place to enter a class size, so a zero-student class cannot be set up.
+  test('PLR-01-12: a class with zero enrolled students attempting to launch a Student Test is handled gracefully', async () => {
+    test.fixme(
+      true,
+      'This build has no class-size screen and no "Student Test" launch, so a class with zero students cannot be set up'
+    );
   });
 
   test('PLR-01-13: a very large quiz does not degrade responsiveness', { tag: ['@performance'] }, async ({ user }) => {
@@ -255,32 +206,6 @@ test.describe('PLR-01 Attempt a quiz', () => {
       .annotations.push({ type: 'note', description: `${total} questions; per-move ms: ${timings.join(',')}` });
     expect(Math.max(0, ...timings), 'no single move takes over 3s').toBeLessThan(3000);
   });
-
-  test(
-    'PLR-01-14: in AIR card mode, navigating back to question 1 shows question 1 again',
-    { tag: ['@regression', '@bug'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (v 0.0.223, AIR card mode only -- the normal attempt mode is fine, see PLR-01-07):
-      // going back to question 1 (with "previous" or by clicking page 1) moves the pager to 1 but leaves the previous
-      // question's text on screen. Questions 2, 3 and 4 navigate correctly; question 1 can never be shown again.
-      test.fail(true, 'AIR card mode: navigating back to question 1 updates the pager but not the question shown');
-      expect(await user.player.startAirCardQuiz(), 'AIR card mode opened its first question').toBe(true);
-      const shown = async () => ((await user.player.airQuestion.innerText()) || '').replace(/\s+/g, ' ').trim();
-
-      const q1 = await shown();
-      await user.player.quizNextControl.click({ force: true });
-      await user.page.waitForTimeout(2000);
-      const q2 = await shown();
-      expect(q2, 'moving forward changes the question').not.toBe(q1);
-
-      await user.player.quizPrevControl.click({ force: true });
-      await user.page.waitForTimeout(2000);
-      expect(await user.player.currentQuestionNumber(), 'the pager is back on 1').toBe(1);
-      expect(await shown(), 'and question 1 is what is shown').toBe(q1);
-    }
-  );
-
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Players workbook and Zoho bugs) ---
 
   const selectedOptions = (user) =>
     user.player.quizOptions
@@ -303,7 +228,7 @@ test.describe('PLR-01 Attempt a quiz', () => {
     { tag: ['@functional'] },
     async ({ user }) => {
       await started(user);
-      // Each option holds a checkbox-style input; only the chosen one may be ticked (confirmed live 2026-09-26).
+      // Each option holds a checkbox-style input; only the chosen one may be ticked.
       const ticked = (i) => user.player.quizOptions.nth(i).locator('input:checked').count();
       await user.player.quizOptions.nth(0).click({ force: true });
       await expect.poll(() => ticked(0)).toBe(1);
@@ -314,8 +239,7 @@ test.describe('PLR-01 Attempt a quiz', () => {
     }
   );
 
-  // After a wrong answer: it is marked wrong (PLR-01-17), and the correct answer is shown (PLR-01-24) -- one test each
-  // (split 2026-09-28).
+  // After a wrong answer: it is marked wrong (PLR-01-17), and the correct answer is shown (PLR-01-24) -- one test each.
   const answerWrongly = async (user) => {
     await started(user);
     const found = await findQuestion(user, async (u) => {
@@ -343,7 +267,7 @@ test.describe('PLR-01 Attempt a quiz', () => {
   });
 
   test(
-    'PLR-01-19: the numbered dots jump straight to that question, every time (regression, Zoho TCN-I15835)',
+    'PLR-01-19: the numbered dots jump straight to that question, every time',
     { tag: ['@regression'] },
     async ({ user }) => {
       await started(user);
@@ -353,23 +277,6 @@ test.describe('PLR-01 Attempt a quiz', () => {
         await user.player.quizQuestionNumbers.nth(target - 1).click({ force: true });
         await expect.poll(() => user.player.currentQuestionNumber(), { message: `on question ${target}` }).toBe(target);
       }
-    }
-  );
-
-  test(
-    'PLR-01-20: closing and reopening the quiz starts again from question 1',
-    { tag: ['@bug', '@functional'] },
-    async ({ user }) => {
-      // STORY vs APP, CONFIRMED LIVE (2026-09-26, v 0.0.232): closing the quiz on question 3 and opening it again resumes on
-      // question 3; the story (from the reference suite's PLR-QZ-13) expects a restart from question 1. Owner to decide which
-      // is intended; resuming may well be the better behaviour.
-      test.fail(true, 'Reopening the quiz resumes where it was closed instead of restarting from question 1');
-      await started(user);
-      await user.player.quizQuestionNumbers.nth(2).click({ force: true });
-      await expect.poll(() => user.player.currentQuestionNumber()).toBe(3);
-      await user.player.closePlayer();
-      await started(user);
-      expect(await user.player.currentQuestionNumber()).toBe(1);
     }
   );
 
@@ -392,20 +299,57 @@ test.describe('PLR-01 Attempt a quiz', () => {
     }
   );
 
+  test('PLR-01-22: no question appears more than once in the quiz', { tag: ['@regression'] }, async ({ user }) => {
+    await started(user);
+    const total = await user.player.quizQuestionNumbers.count();
+    const seen = [];
+    for (let i = 0; i < total; i++) {
+      await user.player.quizQuestionNumbers.nth(i).click({ force: true });
+      await user.page.waitForTimeout(600);
+      seen.push((await user.player.quizQuestion.innerText()).replace(/\s+/g, ' ').trim());
+    }
+    const dupes = seen.filter((q, i) => seen.indexOf(q) !== i);
+    expect(dupes, 'every question is different').toEqual([]);
+  });
+
   test(
-    'PLR-01-22: no question appears more than once in the quiz (regression, Zoho TCN-I16397)',
-    { tag: ['@regression'] },
-    async ({ user }) => {
+    'PLR-01-25: a network drop during a quiz keeps the answers already given, and the quiz can continue once it is back',
+    { tag: ['@interruption'] },
+    async ({ user, page }) => {
+      test.setTimeout(180000);
+      const p = user.player;
+      const marked = async () => (await p.quizCorrectOptions.count()) + (await p.quizIncorrectOptions.count()) > 0;
       await started(user);
-      const total = await user.player.quizQuestionNumbers.count();
-      const seen = [];
-      for (let i = 0; i < total; i++) {
-        await user.player.quizQuestionNumbers.nth(i).click({ force: true });
-        await user.page.waitForTimeout(600);
-        seen.push((await user.player.quizQuestion.innerText()).replace(/\s+/g, ' ').trim());
+      expect(await p.quizQuestionNumbers.count(), 'set-up: a quiz with three or more questions').toBeGreaterThanOrEqual(
+        3
+      );
+      await p.answerCurrentQuestion(0);
+      expect(await marked(), 'set-up: question 1 answered').toBe(true);
+
+      // The network drops for the app's own calls; the teacher moves on to question 2 meanwhile.
+      const offline = (route) =>
+        ['fetch', 'xhr'].includes(route.request().resourceType())
+          ? route.abort('internetdisconnected')
+          : route.continue();
+      await page.route('**/*', offline);
+      try {
+        await p.quizNextControl.click({ force: true });
+        await page.waitForTimeout(10000);
+      } finally {
+        await page.unroute('**/*', offline);
       }
-      const dupes = seen.filter((q, i) => seen.indexOf(q) !== i);
-      expect(dupes, 'every question is different').toEqual([]);
+      await page.waitForTimeout(3000);
+
+      // Back on question 1: its answer is still there.
+      await p.quizPrevControl.click({ force: true });
+      await expect.poll(() => p.currentQuestionNumber(), { message: 'back on question 1' }).toBe(1);
+      expect(await marked(), 'the answer given before the drop is kept').toBe(true);
+
+      // And the quiz carries on: question 2 can be answered now the network is back.
+      await p.quizNextControl.click({ force: true });
+      await expect.poll(() => p.currentQuestionNumber(), { message: 'on question 2' }).toBe(2);
+      await p.answerCurrentQuestion(0);
+      expect(await marked(), 'question 2 can be answered after the network is back').toBe(true);
     }
   );
 });

@@ -53,7 +53,7 @@ test.describe('PL-05 Navigation', () => {
       await page.reload();
       await expect(user.login.avatar).toBeVisible({ timeout: 30000 });
       await user.playlist.ensureDrawerVisible();
-      // Same resources, compared as a set: CONFIRMED LIVE (2026-09-26) two same-titled cards can swap places on reload,
+      // Same resources, compared as a set: two same-titled cards can swap places on reload,
       // and card order is PL-09-02's concern.
       const sorted = (a) => [...a].sort();
       await expect
@@ -62,6 +62,32 @@ test.describe('PL-05 Navigation', () => {
           timeout: 20000,
         })
         .toEqual(sorted(before));
+    }
+  );
+
+  test(
+    "PL-05-04: switching topic never shows the previous topic's resources in the strip",
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const { nav, playlist } = user;
+      await nav.goToChapterTopic(1, 0);
+      const titlesB = await playlist.cardTitles();
+      await nav.goToChapterTopic(0, 0);
+      const titlesA = await playlist.cardTitles();
+      const onlyA = titlesA.filter((t) => t && !titlesB.includes(t));
+      expect(onlyA.length, 'set-up: topic A has resources topic B does not').toBeGreaterThan(0);
+
+      await nav.goToChapterTopic(1, 0);
+      // Watch the strip while topic B loads: once the label shows B, no card of topic A may be shown.
+      const seen = new Set();
+      const end = Date.now() + 6000;
+      while (Date.now() < end) {
+        const label = ((await nav.currentChapterTopicBtn.innerText().catch(() => '')) || '').trim();
+        if (label.startsWith('2.1')) for (const t of await playlist.cardTitles()) if (onlyA.includes(t)) seen.add(t);
+        await page.waitForTimeout(250);
+      }
+      expect([...seen], "no card of the previous topic shown on topic B's strip").toEqual([]);
+      expect(await playlist.cardTitles(), "topic B's own strip").toEqual(titlesB);
     }
   );
 });

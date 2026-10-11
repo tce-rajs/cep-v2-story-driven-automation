@@ -2,9 +2,9 @@
 // Source: CEPV2_Stories/02_NewUserFlow.md
 //
 // Continues from new-02-pin-setup.spec.js: the account now has its PIN and has never chosen a class. ONE-SHOT PER FRESH
-// ACCOUNT (see new-01-first-login.spec.js). Order matters: NEW-03-03 (leave without choosing, prompt must return) has to
+// Order matters: NEW-03-03 (leave without choosing, prompt must return) has to
 // run BEFORE NEW-03-02 (which actually chooses a class and so ends the first-time state for good).
-// Known from the previous suite: the "Choose a class" prompt is `button.choose-a-class` (CONFIRMED LIVE v 0.0.223) inside `.first-time-user-message`.
+// The "Choose a class" prompt is `button.choose-a-class` inside `.first-time-user-message`.
 
 const { test, expect } = require('../../fixtures');
 const { NewUserPage } = require('../../pages/new-user.page');
@@ -37,7 +37,7 @@ test.describe('NEW-03 Welcome screen and first-time class selection', () => {
     );
   };
 
-  /** Open the class chooser from the first-time prompt. CONFIRMED LIVE (v 0.0.223): a forced click right after sign-in is
+  /** Open the class chooser from the first-time prompt. A forced click right after sign-in is
    * swallowed (nothing opens); a plain click once the prompt has settled opens it, and the grade buttons appear. */
   const openChooser = async (app) => {
     await expect(app.newUser.chooseClassBtn.first()).toBeVisible({ timeout: 15000 });
@@ -83,6 +83,20 @@ test.describe('NEW-03 Welcome screen and first-time class selection', () => {
       await expect(app.newUser.chooseClassBtn, 'the prompt is back — not silently skipped').toBeVisible({
         timeout: 15000,
       });
+    }
+  );
+
+  test(
+    'NEW-03-04: closing the welcome screen without choosing a class opens no class and shows the prompt again',
+    { tag: ['@negative'] },
+    async ({ app }) => {
+      await app.signIn(pin);
+      await skipIfClassAlreadyChosen(app);
+      await openChooser(app);
+      await app.page.keyboard.press('Escape');
+      await expect(app.nav.gradeButtons.first(), 'the class chooser closed').toBeHidden({ timeout: 10000 });
+      await expect(app.nav.currentClassBtn, 'no class was opened').toBeHidden();
+      await expect(app.newUser.chooseClassBtn.first(), 'the Choose Class prompt is shown again').toBeVisible();
     }
   );
 

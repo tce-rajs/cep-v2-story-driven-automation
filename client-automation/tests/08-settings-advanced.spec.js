@@ -1,5 +1,5 @@
 // CLIENT-08 -- Settings: Add Web URL / Advanced Options / clear-cache
-// CONFIRMED LIVE (2026-09-23): beyond Basic Options (CLIENT-02), the Settings screen has two more collapsible
+// Beyond Basic Options (CLIENT-02), the Settings screen has two more collapsible
 // sections -- "Add Web URL" and "Advanced Options" (Display Mode, CE Version, Player Behaviour, Erase
 // Strength, Classroom/Animation/Whiteboard/Gesture toggles, Abbreviation) -- plus a clear-cache icon
 // (paint-brush, top right, alongside add-profile/remove-profile) not covered by any other test in this suite.

@@ -27,7 +27,7 @@ and the newly-set password.
 3. NEW-01-03 — To check setting the new password succeeds and returns the user to the sign-in page, rather than logging them in directly
 4. NEW-01-04 — To check signing in again with the username and the newly-set password succeeds
 5. NEW-01-05 — Negative: to check the old default password (`classedge`) no longer works once the new password is set
-6. NEW-01-06 — To check choosing the school by hand shows the chosen school and the username field is reachable _(split from NEW-01-01, 2026-09-28)_
+6. NEW-01-06 — To check choosing the school by hand shows the chosen school and the username field is reachable
 
 ### NEW-02 — PIN setup on first successful password login
 
@@ -43,8 +43,8 @@ and the newly-set password.
 2. NEW-02-02 — To check setting a new PIN completes successfully
 3. NEW-02-03 — To check the user can subsequently log in using the PIN, as an alternative to the password
 4. NEW-02-04 — Negative: to check a PIN that is too short (3 digits) cannot be submitted, not a silent rejection
-5. NEW-02-05 — Negative: to check letters are not accepted into the PIN boxes _(split from NEW-02-04, 2026-09-28)_
-6. NEW-02-06 — Negative: to check a different PIN in the confirmation step is refused with a clear message _(added 2026-09-30 for the acceptance criteria)_
+5. NEW-02-05 — Negative: to check letters are not accepted into the PIN boxes
+6. NEW-02-06 — Negative: to check a different PIN in the confirmation step is refused with a clear message
 
 ### NEW-03 — Welcome screen and first-time class selection
 
@@ -59,3 +59,4 @@ and the newly-set password.
 1. NEW-03-01 — To check that logging in for the first time after setup (via either PIN or password) shows a welcome message with a "Choose Class" option centered on the page
 2. NEW-03-02 — To check selecting a class for the first time completes correctly and proceeds into the normal app flow
 3. NEW-03-03 — Edge: to check closing or navigating away before selecting a class means the "Choose Class" prompt reappears on the next login, rather than being silently skipped
+4. NEW-03-04 — Negative: to check closing the welcome screen without choosing a class opens no class and shows the prompt again

@@ -1,10 +1,4 @@
 // Page Object for the Whiteboard Toolbar module.
-//
-// Heavily cross-checked against a Cypress reference project's own
-// ToolbarPage.js and its e2e specs (tests/pages under automation-cep-cypress)
-// -- most selectors below are confirmed there already; a few (autosave
-// toast, text-object formatting panel, background option ids) were
-// additionally confirmed live for this project on 2026-09-05.
 
 const TOOL_IDS = [
   'gtSelect',
@@ -31,16 +25,15 @@ class ToolbarPage {
     this.container = page.locator('.toolbar-container');
     this.allTools = page.locator('[data-qa-id^="toolbar-tool-"]');
     // Like several other float-ui popups across this app, closed panel
-    // templates stay mounted in the DOM (confirmed live: 2 stacked
+    // templates stay mounted in the DOM (2 stacked
     // instances) -- scope to the currently visible one.
     this.panel = page.locator('.toolbar-submenu-floating-ui .float-ui-container:visible');
 
     // --- Whiteboard drawing surface ---
     this.wbContainer = page.locator('[data-qa-id="wb-drawing-container"]');
     this.wbSvg = this.wbContainer.locator('svg').first();
-    // Owner rule (2026-09-29): tests never clear the teacher's board. What was already on it is tagged with
-    // EXISTING_ATTR (markExisting) and left alone, so `paths` -- and every count built on it -- sees only what the test
-    // itself adds. `allPaths` is everything on the board.
+    // What was already on it is tagged with EXISTING_ATTR (markExisting) and left alone, so `paths` -- and every count
+    // built on it -- sees only what the test itself adds. `allPaths` is everything on the board.
     this.allPaths = this.wbContainer.locator('svg path');
     this.paths = this.wbContainer.locator(`svg path:not([${EXISTING_ATTR}])`);
 
@@ -93,7 +86,7 @@ class ToolbarPage {
     this.zoomOutBtn = page.locator('[data-qa-id="toolbar-zoom-out-btn"]');
     this.zoomResetBtn = page.locator('[data-qa-id="toolbar-zoom-reset-btn"]');
 
-    // --- Autosave toast (confirmed live: "Saving whiteboard E:x / N:y in
+    // --- Autosave toast ("Saving whiteboard E:x / N:y in
     // Zs" counts down, then "Whiteboard Saved! N stroke(s)") ---
     this.savingToast = page.getByText(/saving whiteboard/i);
     this.savedToast = page.getByText(/whiteboard saved/i);
@@ -111,7 +104,7 @@ class ToolbarPage {
   async openToolPanel(toolId) {
     await this.tool(toolId).dblclick({ force: true });
     await this.page.waitForTimeout(1000);
-    // Confirmed live: the double-tap that opens a tool's panel doesn't
+    // The double-tap that opens a tool's panel doesn't
     // always register on the first attempt (more so right after other
     // panel/tool activity) -- retry once rather than fail outright.
     const opened = await this.panel.isVisible().catch(() => false);
@@ -121,7 +114,7 @@ class ToolbarPage {
     }
   }
 
-  /** CONFIRMED LIVE: every tool button's inner `.toolpadding` div is
+  /** Every tool button's inner `.toolpadding` div is
    * ALWAYS present regardless of active state -- the tool's actual
    * selected/active state is signalled by an extra `changecolor` class
    * appended to that same div (e.g. "toolpadding tools hello changecolor"
@@ -201,7 +194,7 @@ class ToolbarPage {
       .catch(() => {});
   }
 
-  /** Confirmed live: right after login, pathCount() can briefly read 0
+  /** Right after login, pathCount() can briefly read 0
    * before this account's persisted whiteboard content has finished
    * loading/rendering -- polls until two consecutive reads agree, so a
    * "before" baseline captured right after login is trustworthy. */
@@ -217,9 +210,8 @@ class ToolbarPage {
     return last;
   }
 
-  /** Press the app's own Eraser -> Clear whiteboard -> confirm. This WIPES the teacher's board: owner rule
-   * (2026-09-29) -- only a test whose subject is the Clear feature itself may call it, and it must restore the
-   * content afterwards. To start a test on empty space, use WhiteboardContent.startOnFreshSpace() instead.
+  /** Press the app's own Eraser -> Clear whiteboard -> confirm. This wipes the teacher's board: only a test whose
+   * subject is the Clear feature itself may call it, and it must restore the content afterwards. To start a test on empty space, use WhiteboardContent.startOnFreshSpace() instead.
    * `whiteboard` is the WhiteboardPage, which owns the Clear button and its confirm dialog. */
   async pressClearWhiteboard(whiteboard) {
     await this.waitForBoardToSettle();
@@ -249,7 +241,7 @@ class ToolbarPage {
     await this.page.waitForTimeout(700);
   }
 
-  /** Confirmed live: the very first Pen stroke right after a fresh
+  /** The very first Pen stroke right after a fresh
    * login/tool switch can silently not register (canvas still settling) --
    * verify a new path actually landed (via the same `paths` count the tests
    * themselves check) and retry once if not. */
@@ -285,8 +277,23 @@ class ToolbarPage {
     return this.paths.last().boundingBox();
   }
 
+  /** The centre of each of the test's own paths in BOARD coordinates (independent of pan and zoom), rounded, so a
+   * position can be compared before and after a reload. */
+  async boardCentres() {
+    return this.paths.evaluateAll((els) => {
+      const group = document.querySelector('[data-qa-id="wb-drawing-container"] g.svg-pan-zoom_viewport, #panGroup');
+      const toBoard = group && group.getCTM() ? group.getCTM().inverse() : null;
+      return els.map((p) => {
+        const b = p.getBBox();
+        let pt = new DOMPoint(b.x + b.width / 2, b.y + b.height / 2).matrixTransform(p.getCTM());
+        if (toBoard) pt = pt.matrixTransform(toBoard);
+        return { x: Math.round(pt.x), y: Math.round(pt.y) };
+      });
+    });
+  }
+
   /** Set a range slider to a position between its own min (0) and max (1) by clicking along its track.
-   * CONFIRMED LIVE: the eraser's Material slider only takes a REAL pointer input -- a script-set value or a keyboard
+   * The eraser's Material slider only takes a REAL pointer input -- a script-set value or a keyboard
    * key moves the "Size" label but the eraser keeps cutting at its previous size (gap cut out of a stroke: 40px at
    * size 2, 100px at size 83 via mouse; unchanged via keyboard). A click at 2px from the left edge lands on ~0. */
   async setSlider(slider, fraction) {
@@ -330,7 +337,7 @@ class ToolbarPage {
   }
 
   /** Choose a Shapes-panel entry by its data-qa-id suffix (e.g. 'gtDrawRect') from a freshly opened panel.
-   * CONFIRMED LIVE in the previous suite: the tool is not armed for repeated inserts, so this must be
+   * The tool is not armed for repeated inserts, so this must be
    * called again before every individual shape. */
   async chooseShape(shapeId) {
     await this.openToolPanel('gtShapes');

@@ -35,7 +35,7 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
     'TB-04-02: drawing with each available pen colour renders that colour correctly',
     { tag: ['@functional'] },
     async ({ user }) => {
-      // One stroke per colour takes just over 90 s in a full run (timed out there 2026-09-26), so allow more.
+      // One stroke per colour takes just over 90 s in a full run, so allow more.
       test.setTimeout(240000);
       const tb = user.toolbar;
       await tb.openToolPanel('gtPen');
@@ -63,7 +63,7 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
           expect(color, `stroke colour matches swatch ${i + 1}`).toBe(swatch);
         }
       }
-      // CONFIRMED LIVE: the palette lists white twice ("default" and "white-19" are both rgb(255, 255, 255)), so 25
+      // The palette lists white twice ("default" and "white-19" are both rgb(255, 255, 255)), so 25
       // options are only 24 distinct colours. Every DISTINCT swatch must render as its own distinct colour.
       const distinctSwatches = new Set(swatches).size;
       if (distinctSwatches < colours) {
@@ -105,7 +105,7 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
   );
 
   // A 2000-character text (TB-04-04), emoji (TB-04-08) and right-to-left text (TB-04-09): one test each (split
-  // 2026-09-28).
+  // ).
   for (const [id, name, text] of [
     ['TB-04-04', 'a 2000-character text', 'The quick brown fox jumps over the lazy dog. '.repeat(45).slice(0, 2000)],
     ['TB-04-08', 'emoji text', 'Great work 😀👍🎉'],
@@ -122,8 +122,6 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
       await user.toolbar.selectTool('gtSelect');
     });
   }
-
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Toolbar workbook and Zoho bugs) ---
 
   /** Start a Pen drag, switch to the Eraser half-way, finish the drag; returns how many paths it added. */
   const switchToEraserMidDrag = async (user, page) => {
@@ -168,7 +166,7 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
   );
 
   test(
-    'TB-04-06: curved strokes are drawn as curves, not straight lines (regression, Zoho TCN-I16705)',
+    'TB-04-06: curved strokes are drawn as curves, not straight lines',
     { tag: ['@regression'] },
     async ({ user, page }) => {
       const tb = user.toolbar;
@@ -205,17 +203,64 @@ test.describe('TB-04 Pen (Draw / Size / Color)', () => {
     }
   );
 
+  test('TB-04-07: a long continuous stroke is drawn without breaks', { tag: ['@regression'] }, async ({ user }) => {
+    const tb = user.toolbar;
+    const before = await tb.pathCount();
+    await tb.selectTool('gtPen');
+    await tb.drawStroke({ x: 200, y: 300 }, { x: 1100, y: 600 }, 90);
+    expect(await tb.pathCount(), 'one stroke, not several pieces').toBe(before + 1);
+    const length = await tb.paths.last().evaluate((p) => p.getTotalLength());
+    expect(length, 'the whole drag was drawn').toBeGreaterThan(0.85 * Math.hypot(900, 300));
+  });
+
   test(
-    'TB-04-07: a long continuous stroke is drawn without breaks (regression, Zoho TCN-I15837)',
-    { tag: ['@regression'] },
+    'TB-04-11: the chosen pen colour and thickness stay selected after switching to another tool and back',
+    { tag: ['@functional'] },
     async ({ user }) => {
       const tb = user.toolbar;
-      const before = await tb.pathCount();
+      await tb.openToolPanel('gtPen');
+      const colour = tb.penColorOptions.nth(5);
+      const colourId = await colour.getAttribute('data-qa-id');
+      await colour.click({ force: true });
+      // Picking a colour can close the panel: open it again for the thickness.
+      if (!(await tb.panel.getByText('Thick', { exact: true }).isVisible())) await tb.openToolPanel('gtPen');
+      await tb.panel.getByText('Thick', { exact: true }).click({ force: true });
+      await tb.closePanelByTappingOutside();
+      await tb.penStroke({ x: 400, y: 400 }, { x: 600, y: 460 });
+      const first = await tb.paths
+        .last()
+        .evaluate((p) => ({ stroke: p.getAttribute('stroke'), width: p.getAttribute('stroke-width') }));
+      await tb.selectTool('gtSelect');
       await tb.selectTool('gtPen');
-      await tb.drawStroke({ x: 200, y: 300 }, { x: 1100, y: 600 }, 90);
-      expect(await tb.pathCount(), 'one stroke, not several pieces').toBe(before + 1);
-      const length = await tb.paths.last().evaluate((p) => p.getTotalLength());
-      expect(length, 'the whole drag was drawn').toBeGreaterThan(0.85 * Math.hypot(900, 300));
+      await tb.penStroke({ x: 400, y: 520 }, { x: 600, y: 580 });
+      const second = await tb.paths
+        .last()
+        .evaluate((p) => ({ stroke: p.getAttribute('stroke'), width: p.getAttribute('stroke-width') }));
+      expect(second, `the next stroke keeps the chosen colour (${colourId}) and thickness`).toEqual(first);
+    }
+  );
+
+  test(
+    'TB-04-12: a single click without dragging with the pen leaves no stray mark larger than a dot',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const tb = user.toolbar;
+      await tb.selectTool('gtPen');
+      const before = await tb.pathCount();
+      const c = await tb.wbSvg.boundingBox();
+      await page.mouse.move(c.x + 600, c.y + 450);
+      await page.mouse.down();
+      await page.mouse.up();
+      await page.waitForTimeout(1000);
+      const added = (await tb.pathCount()) - before;
+      expect(added, 'at most one dot').toBeLessThanOrEqual(1);
+      if (added === 1) {
+        const box = await tb.lastPathBox();
+        const { width } = await tb.strokeOf(tb.paths.last());
+        // A dot is no bigger than the pen tip (plus a little for its round cap).
+        const max = Math.max(width, 4) + 6;
+        expect(Math.max(box.width, box.height), `the mark is a dot (at most ${max}px)`).toBeLessThanOrEqual(max);
+      }
     }
   );
 });

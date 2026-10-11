@@ -2,7 +2,7 @@
 // types, subjects) and Profile tab (Change Password, Change PIN). The User menu itself is UserMenuPage; this builds on
 // its locators.
 //
-// CONFIRMED LIVE (probe, 2026-09-26, v 0.0.232): toolbar-profile-trigger opens the window on the Account tab
+// Toolbar-profile-trigger opens the window on the Account tab
 // (user-profile-tab-account / -tab-profile, user-profile-pref-toggle "Video, Learning Shorts, ...",
 // user-profile-add-subjects-btn). Profile tab: user-profile-open-change-password / -open-change-pin; the password form
 // is user-profile-pwd-form with -current-pwd-input / -new-pwd-input / -repeat-pwd-input, -pwd-cancel-btn and a Save
@@ -32,7 +32,7 @@ class ProfilePage extends UserMenuPage {
     this.filterOptions = page.locator('[data-qa-id^="user-profile-filter-"]');
   }
 
-  /** CONFIRMED LIVE (2026-09-26): a loading spinner overlay (ngx-spinner) covers the window for a moment after it opens
+  /** A loading spinner overlay (ngx-spinner) covers the window for a moment after it opens
    * and after each save, swallowing clicks -- wait it out before pressing anything. */
   async waitForSpinner() {
     await this.page
@@ -127,7 +127,7 @@ class ProfilePage extends UserMenuPage {
   }
 
   /** Take a type out of the preferred list: each chip (user-profile-filter-<i>) has its own remove button (button.closeBtn)
-   * that only shows on hover -- clicking the chip itself does nothing (confirmed live 2026-09-26). */
+   * That only shows on hover -- clicking the chip itself does nothing. */
   async removeFilter(name) {
     const chip = this.filterOptions.filter({ hasText: name }).first();
     await chip.hover().catch(() => {});

@@ -1,6 +1,6 @@
 // CLIENT-07 -- Desktop (minimize)
-// CONFIRMED LIVE (2026-09-23): admin menu -> Desktop calls the app's own minimizeApp() -- it minimizes the
-// window, it does not show a literal desktop or switch profiles. CONFIRMED LIVE: a screenshot attempt on a
+// Admin menu -> Desktop calls the app's own minimizeApp() -- it minimizes the
+// window, it does not show a literal desktop or switch profiles. A screenshot attempt on a
 // minimized window hangs (Playwright's page.screenshot() waits indefinitely for a paintable frame) -- do not
 // screenshot after minimizing; check window state instead.
 

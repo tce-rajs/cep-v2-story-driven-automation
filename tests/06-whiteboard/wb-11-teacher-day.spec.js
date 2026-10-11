@@ -2,7 +2,7 @@
 // cleared)
 // Source: CEPV2_Stories/06_Whiteboard.md
 //
-// Data: 'longSession' (Class 12A Physics, 3.1) -- a board that is NEVER cleared (owner's request, 2026-09-27): each run
+// Data: 'longSession' (Class 12A Physics, 3.1) -- a board that is NEVER cleared: each run
 // adds more handwriting to what earlier runs left, like a real classroom board filling up, and checks that everything
 // written before -- in this run and in earlier runs -- is still there, unchanged, and not duplicated.
 //
@@ -65,7 +65,6 @@ const writeSession = async (app, how, words, seed) => {
   const touch = new TouchInput(app.page);
   try {
     const area = await app.content.writingArea();
-    // Fresh space with the Pan tool (a two-finger drag draws lines instead of panning: bug WB-10-04).
     await app.content.panBelowExistingWriting();
     const draw = how === 'finger' ? (pts) => touch.fingerStroke(pts, 0) : (pts) => touch.penStroke(pts);
     const pages = layoutHandwriting(lessonText(words), area, { seed, xHeight: how === 'finger' ? 20 : 16 });
@@ -143,6 +142,26 @@ test.describe('WB-11 A teacher’s day on one topic', () => {
         await app.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
         await app.toolbar.waitForBoardToSettle();
         expectBoard(await loadedBoard(app, before.length), before, 0, 'after a reload');
+      });
+    }
+  );
+
+  test(
+    'WB-11-06: signing out and back in never shows writing twice',
+    { tag: ['@regression', '@negative'] },
+    async () => {
+      test.setTimeout(10 * 60 * 1000);
+      await withClient(async (app) => {
+        const added = await writeSession(app, 'stylus', 15, 66);
+        const before = await loadedBoard(app, 0);
+        await app.userMenu.signOut();
+        await signInToTopic(app);
+        expectBoard(
+          await loadedBoard(app, before.length),
+          before,
+          0,
+          `after signing out and in (${added} new strokes)`
+        );
       });
     }
   );

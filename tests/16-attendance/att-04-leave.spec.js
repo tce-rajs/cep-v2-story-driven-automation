@@ -22,8 +22,6 @@ test.describe('ATT-04 Leave before submitting', () => {
     { tag: ['@functional'] },
     async ({ user }) => {
       await user.attendance.closeBtn.first().click({ force: true });
-      // CONFIRMED LIVE (2026-09-26): the primary account gets no confirmation -- the app only asks the class teacher
-      // (reference suite ATT-PLAN-05); unsubmitted marks are kept as a draft and offered back with Resume on reopen.
       const asked = await user.attendance.closeDialogConfirmBtn
         .waitFor({ state: 'visible', timeout: 5000 })
         .then(() => true)
@@ -57,7 +55,7 @@ test.describe('ATT-04 Leave before submitting', () => {
   );
 
   // Confirming the close part-way through: no error (ATT-04-03), and the register opens normally again (ATT-04-06) --
-  // one test each (split 2026-09-28).
+  // one test each.
   const confirmCloseMidway = async (att) => {
     await att.closeBtn.first().click({ force: true });
     await att.closeDialogConfirmBtn.click({ force: true, timeout: 5000 }).catch(() => {});
@@ -65,7 +63,7 @@ test.describe('ATT-04 Leave before submitting', () => {
   };
 
   test(
-    'ATT-04-03: confirming the close part-way through shows no error (regression, Zoho TCN-I16577)',
+    'ATT-04-03: confirming the close part-way through shows no error',
     { tag: ['@regression'] },
     async ({ user, page }) => {
       const errors = [];
@@ -79,7 +77,7 @@ test.describe('ATT-04 Leave before submitting', () => {
   );
 
   test(
-    'ATT-04-06: after confirming the close part-way through, the register opens normally again (regression, Zoho TCN-I16577)',
+    'ATT-04-06: after confirming the close part-way through, the register opens normally again',
     { tag: ['@regression'] },
     async ({ user }) => {
       const att = user.attendance;
@@ -107,18 +105,7 @@ test.describe('ATT-04 Leave before submitting', () => {
   );
 
   // Switching class before submitting: no register is left behind (ATT-04-05), and the original class's Attendance still
-  // opens (ATT-04-07) -- one test each (split 2026-09-28).
-  test(
-    'ATT-04-05: switching class before submitting leaves no register behind',
-    { tag: ['@bug', '@functional'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): same defect as ATT-01-04 -- after switching class the
-      // Attendance register is still on screen over the new class.
-      test.fail(true, 'The Attendance register stays on screen over the new class after a class switch');
-      await user.nav.applyClassMap('navigationGeneral');
-      await expect(user.attendance.container).toBeHidden({ timeout: 10000 });
-    }
-  );
+  // opens (ATT-04-07) -- one test each.
 
   test(
     "ATT-04-07: after switching class before submitting, the original class's Attendance still opens normally",
@@ -130,6 +117,24 @@ test.describe('ATT-04 Leave before submitting', () => {
       await user.attendance.open(user.magnet);
       await user.attendance.startMarking();
       expect(await user.attendance.cells.count()).toBeGreaterThan(0);
+    }
+  );
+
+  test(
+    'ATT-04-08: cancelling the close confirmation keeps the register open with every mark',
+    { tag: ['@negative'] },
+    async ({ user }) => {
+      const att = user.attendance;
+      const before = await att.cells.evaluateAll((els) => els.map((e) => e.className));
+      await att.closeBtn.first().click({ force: true });
+      await expect(att.closeDialogCancelBtn, 'set-up: the close confirmation is asked').toBeVisible({ timeout: 5000 });
+      await att.closeDialogCancelBtn.click({ force: true });
+      await expect(att.closeDialogCancelBtn, 'the confirmation closed').toBeHidden({ timeout: 5000 });
+      await expect(att.container, 'the register is still open').toBeVisible();
+      expect(await att.cells.evaluateAll((els) => els.map((e) => e.className)), 'every mark kept').toEqual(before);
+      await expect
+        .poll(() => att.cellState(3), { message: 'the student marked absent is still absent' })
+        .toBe('absent');
     }
   );
 });

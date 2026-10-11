@@ -33,4 +33,35 @@ test.describe('HDR-01 Logo & Version', () => {
       expect((await app.header.versionText.innerText()).trim()).toBe(guestVersion);
     }
   );
+
+  test(
+    'HDR-01-03: tapping the logo keeps the teacher on the board with their writing in place',
+    { tag: ['@edge'] },
+    async ({ user, page }) => {
+      await user.content.startOnFreshSpace();
+      await user.toolbar.penStroke({ x: 600, y: 400 }, { x: 860, y: 470 });
+      const before = await user.toolbar.pathCount();
+      await user.header.logoImage.click({ force: true });
+      await page.waitForTimeout(3000);
+      await expect(page, 'still on the board').toHaveURL(/\/teach\/whiteboard/);
+      await expect(user.login.avatar, 'still signed in').toBeVisible();
+      expect(await user.toolbar.pathCount(), 'the writing is still there').toBe(before);
+    }
+  );
+
+  test(
+    'HDR-01-04: the version shown is never blank and matches the version in the User menu',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const headerVersion = ((await user.header.versionText.innerText()) || '').replace(/^v\s*/i, '').trim();
+      expect(headerVersion, 'the header version is not blank').not.toBe('');
+      expect(headerVersion, 'a real version number').toMatch(/^\d+\.\d+\.\d+/);
+      await user.userMenu.openProfileMenu();
+      await user.userMenu.buildInfoBtn.click({ force: true });
+      // The User menu's Build Version (release notes, in a Shadow DOM component) shows the same number.
+      await expect(page.getByText(headerVersion).first(), `the User menu shows ${headerVersion}`).toBeVisible({
+        timeout: 10000,
+      });
+    }
+  );
 });

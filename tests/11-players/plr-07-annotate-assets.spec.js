@@ -15,7 +15,7 @@ test.describe('PLR-07 Annotate on Playlist assets', () => {
     expect(await user.player.isPlayerOpen(), 'the asset opened').toBe(true);
     // isPlayerOpen() only proves the close icon exists — not that the PDF occupies a real amount of screen. A
     // collapsed player would otherwise surface here only as a confusing stroke-count/geometry mismatch further
-    // down. CONFIRMED LIVE elsewhere in this suite: a correctly-opened worksheet canvas is 1200+px tall.
+    // down. elsewhere in this suite: a correctly-opened worksheet canvas is 1200+px tall.
     const rendered = user.player.worksheetHeader.or(user.page.locator('canvas').first());
     await expect
       .poll(async () => (await rendered.first().boundingBox())?.width || 0, {
@@ -26,16 +26,16 @@ test.describe('PLR-07 Annotate on Playlist assets', () => {
     await user.page.waitForTimeout(2500);
   };
 
-  // Annotations are saved with the asset and pile up across tests and runs. They are NEVER wiped (owner rule
-  // 2026-09-29: "Clear annotations" would also erase a teacher's own writing on the asset), so every check compares
-  // before vs after and looks only at the strokes the test itself drew.
+  // Annotations are saved with the asset and pile up across tests and runs. They are never wiped ("Clear annotations"
+  // would also erase a teacher's own writing on the asset), so every check compares before vs after and looks only at
+  // the strokes the test itself drew.
 
   const strokes = (user) => user.player.worksheetAnnotationLayer.first().locator('path');
   const geometry = (user) => strokes(user).evaluateAll((els) => els.map((e) => e.getAttribute('d')));
 
   /** Drag across the open asset, `dx`/`dy` from a point in its middle. */
   const drag = async (user, { offsetX = 0, offsetY = 0, dx = 200, dy = 60 } = {}) => {
-    // CONFIRMED LIVE: the annotation layer is ONE tall svg spanning the whole multi-page document (1229 x 5234), so its
+    // The annotation layer is ONE tall svg spanning the whole multi-page document (1229 x 5234), so its
     // centre is far below the window (y ~ 2650 in an 864px-high window) and a drag from there is off-screen. Start from
     // the centre of the part of the layer that is actually visible.
     const box = await user.player.worksheetAnnotationLayer.first().boundingBox();
@@ -54,7 +54,7 @@ test.describe('PLR-07 Annotate on Playlist assets', () => {
     await user.toolbar.selectTool('gtPen');
     const before = await strokes(user).count();
     await drag(user, opts);
-    // CONFIRMED LIVE (same as ToolbarPage.penStroke): the first pen stroke right after switching tools can silently not
+    // The first pen stroke right after switching tools can silently not
     // register -- verify a stroke landed and retry once if not.
     if ((await strokes(user).count()) === before) {
       await user.page.waitForTimeout(500);
@@ -154,8 +154,37 @@ test.describe('PLR-07 Annotate on Playlist assets', () => {
       await openWorksheet(user);
       const before = await geometry(user);
 
+      // Annotations from earlier tests and runs stay on the asset, so erase across a part of it that has none: the
+      // first candidate stretch whose path (widened by the eraser's size) touches no existing stroke.
+      const layer = await user.player.worksheetAnnotationLayer.first().boundingBox();
+      const viewH = await page.evaluate(() => window.innerHeight);
+      const centre = {
+        x: layer.x + layer.width / 2,
+        y: (Math.max(layer.y, 0) + Math.min(layer.y + layer.height, viewH)) / 2,
+      };
+      const strokeBoxes = await strokes(user).evaluateAll((els) =>
+        els.map((e) => e.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, width: r.width, height: r.height }))
+      );
+      const margin = 90;
+      const candidates = [];
+      for (const offsetY of [-240, -160, -80, 0, 80, 160, 240])
+        for (const offsetX of [-450, -250, -50, 150, 350]) candidates.push({ offsetX, offsetY, dx: 100, dy: 20 });
+      const isClear = ({ offsetX, offsetY, dx, dy }) => {
+        const x1 = centre.x + offsetX - margin;
+        const y1 = centre.y + offsetY - margin;
+        const x2 = centre.x + offsetX + dx + margin;
+        const y2 = centre.y + offsetY + dy + margin;
+        return (
+          x1 >= layer.x &&
+          x2 <= layer.x + layer.width &&
+          strokeBoxes.every((b) => b.x > x2 || b.x + b.width < x1 || b.y > y2 || b.y + b.height < y1)
+        );
+      };
+      const spot = candidates.find(isClear);
+      expect(spot, 'a part of the asset with no annotation on it').toBeTruthy();
+
       await user.toolbar.selectTool('gtErase');
-      await drag(user, { offsetX: 100, offsetY: 120, dx: 200, dy: 40 });
+      await drag(user, spot);
 
       expect(await geometry(user), 'nothing changed').toEqual(before);
       expect(await user.player.isPlayerOpen(3000), 'the asset is still open').toBe(true);

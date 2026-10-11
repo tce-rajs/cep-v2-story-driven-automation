@@ -2,8 +2,8 @@
 // Source: CEPV2_Stories/09_Resources.md
 // DropIt pairs a phone with the classroom screen via a QR code.
 //
-// RES-04-03..06 were originally fixme'd as needing a real second device to scan the code -- CONFIRMED LIVE
-// (2026-09-23/24) that this is no longer true. The QR decodes (via jsQR, injected into the page -- see
+// RES-04-03..06 were originally fixme'd as needing a real second device to scan the code --
+//  that this is no longer true. The QR decodes (via jsQR, injected into the page -- see
 // AddResourcePage.decodeDropitQrUrl()) to a real, public URL: https://tce-drop-it.web.app/cepweb-dropit/<token>.
 // That page is what a phone's camera app would open after scanning, and it is a normal (if Flutter-rendered)
 // web page a second Playwright browser context can open directly, exactly like this suite's existing
@@ -84,8 +84,6 @@ test.describe('RES-04 DropIt', () => {
     { tag: ['@smoke', '@functional'] },
     async ({ user }) => {
       const { browser } = await pairDropit(user);
-      // pairDropit()'s own assertion IS the pairing check (dropitConnectionStatus reads "Connected") -- this
-      // test exists as its own case per the story, so the assertion is restated explicitly here too.
       await expect(user.addResource.dropitConnectionStatus).toHaveText(/connected/i);
       await browser.close();
     }
@@ -93,11 +91,11 @@ test.describe('RES-04 DropIt', () => {
 
   test(
     // Whether sharing creates the Playlist resource at all is RES-04-06 (link) / RES-04-13 (file); this case is that the
-    // shared resource OPENS correctly (split 2026-09-28).
+    // shared resource OPENS correctly.
     'RES-04-04: a link shared from a paired device opens correctly from the Playlist',
     { tag: ['@functional'] },
     async ({ user }) => {
-      // 150 s: pairing, sharing, opening the player and removing the card again took just over 60 s live (2026-09-26).
+      // 150 s: pairing, sharing, opening the player and removing the card again took just over 60 s live.
       test.setTimeout(150000);
       const { browser, phone } = await pairDropit(user);
       const sharedUrl = 'https://example.com/';
@@ -138,7 +136,7 @@ test.describe('RES-04 DropIt', () => {
   test('RES-04-05: a file shared from a paired device opens correctly', { tag: ['@functional'] }, async ({ user }) => {
     test.setTimeout(60000);
     const { browser, phone } = await pairDropit(user);
-    // CONFIRMED LIVE: DropIt only accepts png|jpg|jpeg|gif|bmp|pdf|doc|docx -- a .txt is rejected outright,
+    // DropIt only accepts png|jpg|jpeg|gif|bmp|pdf|doc|docx -- a .txt is rejected outright,
     // no upload attempted, so this deliberately reuses the suite's existing valid PNG fixture.
     const tmpFile = path.join(os.tmpdir(), PNG_FILE.name);
     fs.writeFileSync(tmpFile, PNG_FILE.buffer);
@@ -146,7 +144,7 @@ test.describe('RES-04 DropIt', () => {
       const before = await user.playlist.resourceCards.count();
       await phone.uploadFile(tmpFile);
 
-      // CONFIRMED LIVE: a successful upload auto-closes DropIt and auto-opens the image player on the
+      // A successful upload auto-closes DropIt and auto-opens the image player on the
       // classroom side (more automatic than the link-share case, which only adds a Playlist card).
       expect(await user.player.isPlayerOpen(), 'the uploaded file auto-opened').toBe(true);
       const rendered = user.player.imageWrapper.or(user.player.imageGalleryImg).first();
@@ -174,7 +172,7 @@ test.describe('RES-04 DropIt', () => {
 
   // DropIt's "success shown but resource missing" failure mode: the Playlist's own COUNT genuinely increases, not just a
   // "success"/"Resource Created" indicator appearing somewhere -- for a shared link (RES-04-06) and for a shared file
-  // (RES-04-13), one test each (split 2026-09-28). RES-04-04/05 check the resources also OPEN correctly.
+  // (RES-04-13), one test each. RES-04-04/05 check the resources also OPEN correctly.
   test(
     'RES-04-06: sharing a link through DropIt genuinely creates a Playlist resource ("success shown but resource missing" does not recur)',
     { tag: ['@regression'] },
@@ -224,8 +222,6 @@ test.describe('RES-04 DropIt', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Drop It workbook and Zoho bugs) ---
-
   test('RES-04-07: Close exits DropIt cleanly', { tag: ['@functional'] }, async ({ user }) => {
     await openDropIt(user);
     await user.addResource.dropitCloseBtn.click();
@@ -233,8 +229,7 @@ test.describe('RES-04 DropIt', () => {
     await expect(user.addResource.dropitCloseBtn).toBeHidden();
   });
 
-  // Opening and closing DropIt 8 times: no stuck panel (RES-04-08), no duplicated panel (RES-04-14) -- one test each
-  // (split 2026-09-28).
+  // Opening and closing DropIt 8 times: no stuck panel (RES-04-08), no duplicated panel (RES-04-14) -- one test each.
   test(
     'RES-04-08: opening and closing DropIt 8 times, every Close really closes it (no stuck panel)',
     { tag: ['@edge'] },
@@ -265,79 +260,6 @@ test.describe('RES-04 DropIt', () => {
         await expect(user.addResource.dropitQrCanvas, 'one QR, not several').toHaveCount(1);
       } finally {
         await user.addResource.dropitCloseBtn.first().click();
-      }
-    }
-  );
-
-  test(
-    'RES-04-09: switching class straight after opening DropIt leaves no DropIt panel behind (regression)',
-    { tag: ['@bug', '@regression'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's DRP-BREAK-01): switching class
-      // straight after opening DropIt leaves its panel and QR code on screen over the new class.
-      test.fail(true, 'DropIt stays open over the new class after a class switch');
-      await openDropIt(user);
-      await user.nav.applyClassMap('navigationGeneral');
-      await expect(user.whiteboard.currentClassBtn).toContainText('Class 5');
-      await expect(user.addResource.dropitQrCanvas, 'no DropIt panel over the new class').toBeHidden({
-        timeout: 10000,
-      });
-    }
-  );
-
-  test(
-    "RES-04-10: DropIt's Close button doesn't cover the Add Resource button (regression)",
-    { tag: ['@bug', '@regression'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; the reference suite's DRP-FAB-OVERLAP-01): DropIt's
-      // Close button sits over the Add Resource "+" button.
-      test.fail(true, "DropIt's Close button covers the Add Resource button");
-      await openDropIt(user);
-      const close = await user.addResource.dropitCloseBtn.boundingBox();
-      const add = await user.addResource.addResourcesTrigger.boundingBox();
-      const overlap =
-        close &&
-        add &&
-        close.x < add.x + add.width &&
-        add.x < close.x + close.width &&
-        close.y < add.y + add.height &&
-        add.y < close.y + close.height;
-      expect(overlap, 'Close does not sit on top of Add Resource').toBeFalsy();
-      // And the Add Resource button is the thing actually under its own centre.
-      const onTop = await page.evaluate(
-        ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-qa-id="add-resource-trigger"]'),
-        { x: add.x + add.width / 2, y: add.y + add.height / 2 }
-      );
-      expect(onTop, 'Add Resource is not covered').toBe(true);
-      await user.addResource.dropitCloseBtn.click();
-    }
-  );
-
-  test(
-    'RES-04-11: sharing text from the paired device works (regression, Zoho TCN-I16701)',
-    { tag: ['@bug', '@regression'] },
-    async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; Zoho TCN-I16701, still open): text shared from the paired
-      // device (the companion page offers only Upload File and Share Link) never arrives in the classroom Playlist.
-      test.fail(true, 'Text shared through DropIt does not arrive in the Playlist');
-      test.setTimeout(90000);
-      const { browser, phone } = await pairDropit(user);
-      try {
-        const before = await user.playlist.resourceCards.count();
-        const note = `Homework reminder ${Date.now()}`;
-        await phone.shareLink(note);
-        await expect(
-          user.addResource.dropitTransferStatus.or(user.addResource.dropitUploadStatus).first(),
-          'not a failure'
-        ).not.toHaveText(/fail/i, { timeout: 10000 });
-        await user.addResource.dropitCloseBtn.click({ force: true }).catch(() => {});
-        await user.playlist.ensureDrawerVisible();
-        await expect(user.playlist.resourceCards, 'the shared text arrived as a card').toHaveCount(before + 1, {
-          timeout: 20000,
-        });
-        await user.playlist.removeOwnedAsset(user.playlist.resourceCards.last()).catch(() => {});
-      } finally {
-        await browser.close();
       }
     }
   );

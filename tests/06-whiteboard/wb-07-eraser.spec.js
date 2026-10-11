@@ -4,8 +4,8 @@
 
 const { test, expect } = require('../../fixtures');
 
-// The board persists per topic: the tests work on fresh space below it and count only their own strokes (the
-// teacher's writing is kept, never cleared -- owner rule 2026-09-29).
+// The board persists per topic: the tests work on fresh space below it and count only their own strokes; the
+// teacher's existing writing is never cleared.
 test.use({ freshSpace: true });
 
 test.describe('WB-07 Eraser', () => {

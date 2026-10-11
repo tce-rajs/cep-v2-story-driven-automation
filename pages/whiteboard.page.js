@@ -4,10 +4,6 @@
 // themselves (wbSvg, paths, drawStroke, penStroke, tool selection) already
 // live on ToolbarPage (pages/toolbar.page.js) since Whiteboard's canvas IS
 // Toolbar's drawing surface -- reuse that instead of duplicating it here.
-//
-// Selectors cross-checked against automation-cep-cypress's own
-// WhiteboardPage.js (cypress/pages/WhiteboardPage.js) and the QA reference
-// doc (D:\Projects\cep2-workspace\docs\qa\DATA-QA-ID-REFERENCE.md).
 
 class WhiteboardPage {
   constructor(page) {
@@ -19,11 +15,11 @@ class WhiteboardPage {
     this.versionText = page.locator('[data-qa-id="wb-header-version-text"]');
     this.calendar = page.locator('[data-qa-id="wb-header-calendar-container"]');
 
-    // --- Welcome Back panel (WB-WELCOME-01's paradox subject) ---
+    // --- Welcome Back panel ---
     this.welcomeBackContainer = page.locator('[data-qa-id="wb-welcome-back-container"]');
     this.welcomeBackTitle = page.locator('[data-qa-id="wb-welcome-back-title"]');
 
-    // --- First-time "Choose a class" prompt (confirmed dead no-op, WB-CHOOSE-01) ---
+    // --- First-time "Choose a class" prompt ---
     this.chooseAClassBtn = page.locator('button.choose-a-class, .choose-class');
     this.firstTimeUserMessage = page.locator('.first-time-user-message');
 
@@ -38,7 +34,7 @@ class WhiteboardPage {
     this.paths = this.wbContainer.locator('svg path:not([data-autotest-existing])');
     this.panGroup = this.wbContainer.locator('g.svg-pan-zoom_viewport, g#panGroup');
 
-    // --- Text objects (foreignObject + contenteditable, WB-TEXT-01/02) ---
+    // --- Text objects (foreignObject + contenteditable) ---
     this.textObjects = this.wbContainer.locator('foreignObject.text-element:not([data-autotest-existing])');
     this.textEditor = this.wbContainer.locator('.text-input-container[contenteditable="true"]');
 
@@ -48,10 +44,18 @@ class WhiteboardPage {
     this.clearConfirmDialogConfirmBtn = page.getByRole('button', { name: /clear whiteboard/i });
     this.clearConfirmDialogCancelBtn = page.getByRole('button', { name: /cancel/i });
 
-    // --- Add Resource -> Whiteboard action card save/download (WB-SAVE-DEAD-02) ---
+    // --- Add Resource -> Whiteboard action card save/download ---
     this.addResourceWhiteboardCard = page.locator('[data-qa-id="add-resource-action-whiteboard"]');
     this.addResourceWhiteboardSaveBtn = page.locator('[data-qa-id="add-resource-whiteboard-save-playlist-btn"]');
     this.addResourceWhiteboardDownloadBtn = page.locator('[data-qa-id="add-resource-whiteboard-download-pdf-btn"]');
+    // "Save to Playlist" dialog (no data-qa-ids): board title, Is Shared, Discard, Save to Playlist.
+    this.saveBoardDialog = page
+      .locator('mat-dialog-container, [role=dialog], .cdk-overlay-pane')
+      .filter({ hasText: 'BOARD TITLE' })
+      .last();
+    this.saveBoardTitleInput = this.saveBoardDialog.locator('input:not([type=checkbox])').first();
+    this.saveBoardDiscardBtn = this.saveBoardDialog.getByRole('button', { name: /discard/i });
+    this.saveBoardConfirmBtn = this.saveBoardDialog.getByRole('button', { name: /save to playlist/i });
 
     // --- Playlist strip (to confirm Clear Whiteboard doesn't touch resources) ---
     this.playlistResourceCards = page.locator('[data-qa-id="playlist-resource-card"]');
@@ -74,7 +78,7 @@ class WhiteboardPage {
 
   /** Insert a text object via the Insert Text tool, click at a canvas point,
    * and return the locator for the newly created (last) text object.
-   * CONFIRMED LIVE (verifier pass): the very first Insert-Text click right
+   * The very first Insert-Text click right
    * after selecting the tool can silently not register (canvas/tool still
    * settling) -- same class of flake already documented for the Pen tool's
    * own penStroke() helper. Verify a new foreignObject actually landed and
@@ -94,11 +98,7 @@ class WhiteboardPage {
     return this.textObjects.last();
   }
 
-  /** Insert a text object and type into it. CONFIRMED LIVE (this project,
-   * contradicts the cross-repo Cypress-suite claim in WB-TEXT-01's workbook
-   * row): whether the newly created text object is already focused on
-   * insertion is NON-DETERMINISTIC (observed both ways across repeated
-   * runs) -- check first and only click when it genuinely isn't focused
+  /** Insert a text object and type into it. The new text object is not always focused on insertion, so check first and only click when it genuinely isn't focused
    * yet (clicking an already-focused/editing element can hang on this app). */
   async insertTextAndType(x, y, text) {
     const textObj = await this.insertTextAt(x, y);
@@ -118,15 +118,13 @@ class WhiteboardPage {
 
   /** Fire a full synthetic pointer+mouse event sequence at (x1,y1)->(x2,y2)
    * on the element matching `selector`, evaluated in-page.
-   * CONFIRMED LIVE: the minimal 3-event sequence (pointerdown/move/up alone)
+   * The minimal 3-event sequence (pointerdown/move/up alone)
    * does NOT register with this app's drawing handlers regardless of
    * target -- the FULL sequence (pointerover+pointerenter+pointerdown+
    * mousedown, then interleaved pointermove+mousemove steps, then
-   * pointerup+mouseup), matching automation-cep-cypress's own
-   * WhiteboardPage.drawStroke exactly, is required. With the full sequence,
+   * pointerup+mouseup) is required. With the full sequence,
    * dispatching on the OUTER wb-drawing-container wrapper is still a
-   * confirmed no-op, while the INNER <svg> registers a real stroke -- see
-   * WB-DISPATCH-01. */
+   * confirmed no-op, while the INNER <svg> registers a real stroke. */
   async dispatchFullPointerSequence(selector, x1, y1, x2, y2, steps = 14) {
     return this.page.evaluate(
       ({ sel, x1, y1, x2, y2, steps }) => {

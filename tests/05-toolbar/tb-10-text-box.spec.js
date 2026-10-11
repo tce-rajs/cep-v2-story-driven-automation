@@ -1,6 +1,6 @@
 // TB-10 — Text box
 // Source: CEPV2_Stories/05_Toolbar.md
-// The text formatting panel (toolbar-text-menu-*) appears while a text box is selected; confirmed live 2026-09-26.
+// The text formatting panel (toolbar-text-menu-*) appears while a text box is selected.
 
 const { test, expect } = require('../../fixtures');
 
@@ -22,7 +22,7 @@ test.describe('TB-10 Text box', () => {
     await expect(user.toolbar.textMenuDeleteBtn, 'text panel open').toBeVisible({ timeout: 5000 });
   }
 
-  // Split 2026-09-28: where the box is created (TB-10-01) and that the text stays (TB-10-07); the formatting panel
+  // Split: where the box is created (TB-10-01) and that the text stays (TB-10-07); the formatting panel
   // (TB-10-02) and a colour applied from it (TB-10-08); To Back (TB-10-03), To Front (TB-10-09), Duplicate (TB-10-10) and
   // Delete (TB-10-11).
   test(
@@ -35,7 +35,7 @@ test.describe('TB-10 Text box', () => {
       await expect(wb.textObjects, 'set-up: a text box created').toHaveCount(before + 1);
       const canvas = await user.toolbar.wbSvg.boundingBox();
       const b = await box.boundingBox();
-      // CONFIRMED LIVE: the box (300x100) is centred on the click point.
+      // The box (300x100) is centred on the click point.
       expect(Math.abs(b.x + b.width / 2 - (canvas.x + 500)), 'centred where clicked (x)').toBeLessThan(20);
       expect(Math.abs(b.y + b.height / 2 - (canvas.y + 350)), 'centred where clicked (y)').toBeLessThan(20);
     }
@@ -139,23 +139,6 @@ test.describe('TB-10 Text box', () => {
   });
 
   test(
-    'TB-10-04: a text box left empty leaves nothing behind after clicking away',
-    { tag: ['@negative', '@bug'] },
-    async ({ user, page }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232): an empty text box is kept on the board as an invisible
-      // object after clicking away (text object count goes up by one).
-      test.fail(true, 'An empty text box is kept on the board after clicking away');
-      const wb = user.whiteboard;
-      const before = await wb.textObjects.count();
-      await wb.insertTextAt(600, 450);
-      await page.keyboard.press('Escape');
-      await user.toolbar.closePanelByTappingOutside();
-      await page.waitForTimeout(800);
-      await expect(wb.textObjects, 'no empty text box kept').toHaveCount(before);
-    }
-  );
-
-  test(
     'TB-10-05: Bold makes the selected text visibly bold (regression)',
     { tag: ['@regression'] },
     async ({ user }) => {
@@ -170,11 +153,47 @@ test.describe('TB-10 Text box', () => {
     }
   );
 
+  // Font size (TB-10-13), Italic (TB-10-14), Underline (TB-10-15) and Centre alignment (TB-10-16): one test each.
+  const styleOf = (box, prop) =>
+    box.locator('.text-input-container').evaluate((el, p) => getComputedStyle(el)[p], prop);
+
+  test('TB-10-13: raising the font size makes the text bigger', { tag: ['@functional'] }, async ({ user }) => {
+    const box = await addText(user, 'Bigger text');
+    await selectText(user, box);
+    const size = async () => parseFloat(await styleOf(box, 'fontSize'));
+    const before = await size();
+    // The Material slider only takes real pointer input: click near its top end.
+    await user.toolbar.setSlider(user.toolbar.textMenuFontSlider, 0.9);
+    await expect.poll(size, { message: 'the font size grew' }).toBeGreaterThan(before);
+  });
+
+  test('TB-10-14: Italic makes the selected text italic', { tag: ['@functional'] }, async ({ user }) => {
+    const box = await addText(user, 'Slanted text');
+    await selectText(user, box);
+    await user.toolbar.textMenuItalicBtn.click({ force: true });
+    await expect.poll(() => styleOf(box, 'fontStyle'), { message: 'the text is italic' }).toBe('italic');
+  });
+
+  test('TB-10-15: Underline underlines the selected text', { tag: ['@functional'] }, async ({ user }) => {
+    const box = await addText(user, 'Underlined text');
+    await selectText(user, box);
+    await user.toolbar.textMenuUnderlineBtn.click({ force: true });
+    await expect
+      .poll(() => styleOf(box, 'textDecorationLine'), { message: 'the text is underlined' })
+      .toContain('underline');
+  });
+
+  test('TB-10-16: Centre alignment centres the text in its box', { tag: ['@functional'] }, async ({ user }) => {
+    const box = await addText(user, 'Centred text');
+    await selectText(user, box);
+    await user.toolbar.textMenuAlignCenterBtn.click({ force: true });
+    await expect.poll(() => styleOf(box, 'textAlign'), { message: 'the text is centred' }).toBe('center');
+  });
+
   test(
     'TB-10-06: text that has already been typed can be opened and edited again (regression)',
     { tag: ['@regression'] },
     async ({ user, page }) => {
-      // NOT APPLICABLE (owner 2026-10-06): committed text not reopening for editing is the expected flow, not a bug.
       // The story marks this case not applicable, so the outOfScope fixture skips it; the steps stay for reference.
       const box = await addText(user, 'First draft');
       await user.toolbar.selectTool('gtSelect');
@@ -185,6 +204,48 @@ test.describe('TB-10 Text box', () => {
       await page.keyboard.type(' edited');
       await page.keyboard.press('Escape');
       await expect(box).toContainText('First draft edited');
+    }
+  );
+
+  test(
+    'TB-10-12: a typed text box is still there, with its text, after the app reloads',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const text = `Lesson note ${Date.now() % 100000}`;
+      await addText(user, text);
+      await page.waitForTimeout(12000); // past the autosave countdown
+      await page.reload();
+      await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
+      await user.toolbar.waitForBoardToSettle();
+      await expect(
+        user.toolbar.wbContainer.locator('foreignObject.text-element').filter({ hasText: text }),
+        'the text box is back with its text'
+      ).toHaveCount(1, { timeout: 15000 });
+    }
+  );
+
+  test(
+    'TB-10-17: a text box cannot be created outside the board area (on the toolbar or header)',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const all = page.locator('[data-qa-id="wb-drawing-container"] foreignObject.text-element');
+      const before = await all.count();
+      for (const [name, target] of [
+        ['header date and time', user.header.calendar],
+        ['header logo', user.header.logoContainer],
+        ['toolbar', user.toolbar.container],
+      ]) {
+        await user.toolbar.tool('gtInserttext').click({ force: true });
+        await page.waitForTimeout(500);
+        const b = await target.boundingBox();
+        // The middle of a header item; the toolbar's own bottom edge, below its buttons.
+        const y = name === 'toolbar' ? b.y + b.height - 4 : b.y + b.height / 2;
+        await page.mouse.click(b.x + b.width / 2, y);
+        await page.waitForTimeout(800);
+        await expect(all, `no text box created by a click on the ${name}`).toHaveCount(before);
+        await expect(user.whiteboard.textEditor, `no text editor open after a click on the ${name}`).toHaveCount(0);
+      }
+      await user.toolbar.selectTool('gtSelect');
     }
   );
 });

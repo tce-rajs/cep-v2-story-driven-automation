@@ -23,9 +23,9 @@ test.describe('PL-01 Open assets from Playlist', () => {
         const rendered = player.worksheetHeader.or(user.page.locator('canvas').first());
         await expect(rendered).toBeVisible({ timeout: 15000 });
         // isPlayerOpen()/toBeVisible() only prove the close icon and a header/canvas exist — not that the PDF
-        // occupies a real amount of screen. CONFIRMED LIVE: the canvas can still be mid-layout (a narrow sliver)
+        // occupies a real amount of screen. The canvas can still be mid-layout (a narrow sliver)
         // right after becoming visible, then settle to its real ~1200px-tall size — poll rather than measure once.
-        // CONFIRMED LIVE on a second server: a real multi-page curriculum PDF can take longer than 10s to settle
+        // On a second server: a real multi-page curriculum PDF can take longer than 10s to settle
         // (a synthetic single-page test PDF settled well within that); 20s covers both.
         await expect
           .poll(async () => (await rendered.first().boundingBox())?.width || 0, {
@@ -50,7 +50,7 @@ test.describe('PL-01 Open assets from Playlist', () => {
         expect(await player.isPlayerOpen(), 'the video player opened').toBe(true);
         await expect(player.videoFrame.or(player.videoPlayToggle)).toBeVisible({ timeout: 15000 });
         // isPlayerOpen()/toBeVisible() only prove the close icon and frame/toggle exist — not that the video
-        // occupies a real amount of screen. CONFIRMED LIVE: a correctly-opened video element is ~300x185.
+        // occupies a real amount of screen. A correctly-opened video element is ~300x185.
         await expect(player.videoElement).toBeAttached({ timeout: 15000 });
         await expect
           .poll(async () => (await player.videoElement.boundingBox())?.width || 0, {
@@ -98,7 +98,7 @@ test.describe('PL-01 Open assets from Playlist', () => {
           await player.openResourceCard(cards);
           expect(await player.isPlayerOpen(), `${name} opened`).toBe(true);
           // isPlayerOpen() only proves the close icon exists, not that a leftover from the PREVIOUS player didn't
-          // leave this one rendering broken/collapsed. CONFIRMED LIVE elsewhere in this suite: each of these types
+          // leave this one rendering broken/collapsed. elsewhere in this suite: each of these types
           // renders at 100px+/80px+ when working correctly.
           await expect
             .poll(async () => (await rendered.boundingBox())?.width || 0, {
@@ -118,9 +118,6 @@ test.describe('PL-01 Open assets from Playlist', () => {
       'PL-01-06: an asset that failed to load or is corrupted shows an error, not a silent failure',
       { tag: ['@negative'] },
       async ({ user, page }) => {
-        // NOTE: v0.0.223 showed a blank loader with no error message here (tracked at the time as a confirmed
-        // product bug). Re-tested 2026-09-23: a real error message now appears reliably, including in isolation.
-        // Reverted the test.fail() marking since it currently works correctly.
         // Make every media/document file request fail, then open the PDF asset.
         const blockFiles = (route) => route.abort();
         await page.route(/\.(pdf|mp4|m3u8|webm|jpe?g|png)(\?|$)/i, blockFiles);
@@ -158,7 +155,7 @@ test.describe('PL-01 Open assets from Playlist', () => {
         const rendered = player.quizLaunchScreenBtn.or(player.quizRenderer);
         await expect(rendered).toBeVisible({ timeout: 15000 });
         // Being visible only proves an element exists, not that the quiz occupies a real amount of screen, not a
-        // broken sliver. CONFIRMED LIVE: the "Launch AIR Card" button is a small button by design (~50px tall), so
+        // broken sliver. The "Launch AIR Card" button is a small button by design (~50px tall), so
         // only size-check once past it, when the full renderer (~980x740 in this window) is what's showing.
         if (await player.quizRenderer.isVisible({ timeout: 3000 }).catch(() => false)) {
           await expect
@@ -173,4 +170,17 @@ test.describe('PL-01 Open assets from Playlist', () => {
       }
     );
   });
+
+  test(
+    'PL-01-07: closing an opened asset returns to the board with the board unchanged',
+    { tag: ['@functional'] },
+    async ({ user }) => {
+      const board = await user.content.pathGeometry();
+      await user.player.openResourceCard(user.playlist.resourceCards.first());
+      await expect.poll(() => user.player.isPlayerOpen(5000), { message: 'set-up: the asset opened' }).toBe(true);
+      await user.player.closePlayer();
+      await expect.poll(() => user.player.isPlayerOpen(1000), { message: 'the asset closed' }).toBe(false);
+      expect(await user.content.pathGeometry(), 'board unchanged').toEqual(board);
+    }
+  );
 });

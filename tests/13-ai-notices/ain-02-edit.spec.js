@@ -14,7 +14,7 @@ test.describe('AIN-02 Write and edit the notice', () => {
     await app.aiNotices.closeAll();
   });
 
-  // Send with an empty title (AIN-02-01) and with a title (AIN-02-07): one test each (split 2026-09-28).
+  // Send with an empty title (AIN-02-01) and with a title (AIN-02-07): one test each.
   test('AIN-02-01: Send is blocked while the notice title is empty', { tag: ['@functional'] }, async ({ user }) => {
     const n = user.aiNotices;
     await n.titleInput.fill('');
@@ -28,7 +28,7 @@ test.describe('AIN-02 Write and edit the notice', () => {
     await expect(n.sendBtn, 'Ready to Send enabled with a title').toBeEnabled();
   });
 
-  // Backspace (AIN-02-02) and Delete (AIN-02-08) in the title: one test each (split 2026-09-28).
+  // Backspace (AIN-02-02) and Delete (AIN-02-08) in the title: one test each.
   test(
     'AIN-02-02: Backspace removes characters from the notice title (regression)',
     { tag: ['@regression'] },
@@ -106,7 +106,7 @@ test.describe('AIN-02 Write and edit the notice', () => {
   );
 
   // Recapture: the title (AIN-02-06) and the body (AIN-02-09) come from the fresh capture -- one test each (split
-  // 2026-09-28).
+  // ).
   /** Edit the title, then Recapture the same text area and approve it. */
   const editThenRecapture = async (user) => {
     const n = user.aiNotices;

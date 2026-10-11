@@ -98,8 +98,6 @@ test.describe('NAV-01 Select Grade', () => {
     }
   );
 
-  // --- Added 2026-09-26 (gap-fill from the reference suite's Grade/Subject/Division workbook) ---
-
   const isOn = (locator) =>
     locator.evaluate((el) =>
       /active|selected|mdc-chip-selected|checked/i.test(
@@ -108,7 +106,7 @@ test.describe('NAV-01 Select Grade', () => {
     );
 
   // Choosing the second Recent class: it switches to it (NAV-01-07), and it moves to the top of the list (NAV-01-15) --
-  // one test each (split 2026-09-28).
+  // one test each.
   /** Choose the second class in Recent Classes; returns its label ("Class 12 | A | Physics") and subject. */
   const chooseSecondRecent = async (user) => {
     await user.nav.ensureRecentClasses(3);
@@ -244,6 +242,27 @@ test.describe('NAV-01 Select Grade', () => {
       const classOpen = await user.nav.allMyClassesTab.isVisible().catch(() => false);
       const chapterOpen = await user.nav.chapterTpPopup.isVisible().catch(() => false);
       expect(classOpen && chapterOpen, 'not both windows open').toBe(false);
+    }
+  );
+
+  test(
+    'NAV-01-16: closing the class window without choosing keeps the current class, chapter and topic',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const where = async () => ({
+        cls: await classText(user),
+        topic: ((await user.nav.currentChapterTopicBtn.innerText()) || '').replace(/\s+/g, ' ').trim(),
+      });
+      const before = await where();
+      await user.nav.openClassPopup();
+      await user.nav.allMyClassesTab.click({ timeout: 10000 });
+      // Start choosing another class, then close the window before a subject is picked.
+      await user.nav.gradeButton('Class 5').first().click({ timeout: 10000 });
+      await page.keyboard.press('Escape');
+      if (await user.nav.allMyClassesTab.isVisible().catch(() => false)) await user.nav.currentClassBtn.click();
+      await expect(user.nav.allMyClassesTab, 'the class window closed').toBeHidden({ timeout: 10000 });
+      await page.waitForTimeout(1500);
+      expect(await where(), 'the same class, chapter and topic').toEqual(before);
     }
   );
 });

@@ -1,5 +1,4 @@
 // Page Object for the header bar (logo, version, date/time) and the toolbar dock toggle.
-// Locators confirmed live in Module 01 (signed-out) and in the previous suite (signed-in).
 
 class HeaderPage {
   constructor(page) {
@@ -42,8 +41,7 @@ class HeaderPage {
     return {
       shown,
       shownMinutes,
-      // The header pads the day ("Oct 01"); the clock's format does not ("Oct 1"). Compare the day as a number
-      // (seen 2026-10-01: the first single-digit day this suite ran on).
+      // The header pads the day ("Oct 01"); the clock's format does not ("Oct 1"). Compare the day as a number.
       shownDate: date ? `${date[1]}, ${date[2]} ${Number(date[3])}` : null,
       nowMinutes: now.minutes,
       nowDate: now.date,

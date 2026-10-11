@@ -1,5 +1,5 @@
 // CLIENT-02 -- Settings screen
-// CONFIRMED LIVE (2026-09-23): reached via the bottom-right admin toggle (#adminToggle, a checkbox-hack menu
+// Reached via the bottom-right admin toggle (#adminToggle, a checkbox-hack menu
 // with no visible label until clicked) -> Settings. Shows Basic Options (ClassEdge Server Path, Profile Name,
 // Online, school name), Add Web URL, Advanced Options, and Save & Run.
 

@@ -1,10 +1,11 @@
 // PLR-09 — Run a checkpoint
 // Source: CEPV2_Stories/11_Players.md
-// Data: 'checkpoints' = Class 8R Mathematics, chapter "Foundation Checkpoint". The resource's status drifts as it is
+// Data: the 'checkpoints' class map entry (class, topic and checkpoint title). The resource's status drifts as it is
 // tested (CREATED -> PAUSED -> LAUNCHED), so every step reads what is on screen. Launching is irreversible and uses up
-// one of the account's checkpoints (owner-approved, 2026-09-26).
+// one of the account's checkpoints.
 
 const { test, expect } = require('../../fixtures');
+const { getClassMap } = require('../../config/moduleClassMap');
 
 test.describe('PLR-09 Run a checkpoint', () => {
   test.use({ classMap: 'checkpoints' });
@@ -13,17 +14,18 @@ test.describe('PLR-09 Run a checkpoint', () => {
   const checkpointCards = (user) =>
     user.playlist.resourceCards
       .filter({ has: user.page.locator('img.type-icon[src*="heckpoint" i], img.type-icon[src*="assessment" i]') })
-      .or(user.playlist.resourceCards.filter({ hasText: /testR-|checkpoint/i }));
+      .or(user.playlist.resourceCards.filter({ hasText: /\bTest\b|checkpoint|baseline/i }));
 
   // The known checkpoint named in config/moduleClassMap.js; other cards in the topic sit in other states.
-  const target = (user) => user.playlist.resourceCards.filter({ hasText: 'testR-25.08.26' }).first();
+  const target = (user) =>
+    user.playlist.resourceCards.filter({ hasText: getClassMap('checkpoints').checkpointTitle }).first();
   const openFirst = async (user) => {
     await expect(target(user)).toBeAttached({ timeout: 15000 });
     await user.player.openResourceCard(target(user));
     await expect(user.player.checkpointCloseBtn).toBeVisible({ timeout: 20000 });
   };
 
-  /** From whichever state the checkpoint is in, get it to Started. CONFIRMED LIVE (2026-09-26): the timer badge already
+  /** From whichever state the checkpoint is in, get it to Started. The timer badge already
    * shows on a merely LAUNCHED checkpoint; Started is when the "End Checkpoint" button (player-checkpoint-end-btn)
    * replaces "Start". */
   const reachStarted = async (user) => {
@@ -60,7 +62,7 @@ test.describe('PLR-09 Run a checkpoint', () => {
     await expect(dialog, 'summary: questions / duration / concepts').toContainText(/question|min|concept|marks/i);
   });
 
-  // Starting a checkpoint (PLR-09-03) and ending it (PLR-09-05): one test each (split 2026-09-28), in this order -- the
+  // Starting a checkpoint (PLR-09-03) and ending it (PLR-09-05): one test each, in this order -- the
   // checkpoint is real, shared data: PLR-09-03 leaves it Started and PLR-09-05 ends it again.
   test(
     'PLR-09-03: launching and starting a checkpoint moves it to Started, with the student roster shown',
@@ -78,7 +80,7 @@ test.describe('PLR-09 Run a checkpoint', () => {
     async ({ user }) => {
       await openFirst(user);
       await reachStarted(user); // set-up: from whatever state PLR-09-03 left it in
-      // CONFIRMED LIVE (2026-09-26): End -> "N of M students submitted ... Lock the current Test?" (Lock Test) -> "Lock Test?"
+      // End -> "N of M students submitted ... Lock the current Test?" (Lock Test) -> "Lock Test?"
       // confirmation (player-checkpoint-confirm-pause-btn). A timer overlay sits over End, so it is clicked in the DOM.
       // The start-up timer overlay (with its Hide Timer link) can appear a few seconds after Start and covers the page.
       const hideTimer = user.page.getByText('Hide Timer', { exact: true });
@@ -102,7 +104,7 @@ test.describe('PLR-09 Run a checkpoint', () => {
         timeout: 15000,
       });
       await expect(user.player.checkpointCloseBtn, 'the player closes by itself').toBeHidden({ timeout: 30000 });
-      // CONFIRMED LIVE (2026-09-26): without a reload the card keeps reading STARTED (still so 30 s later; the app's own
+      // Without a reload the card keeps reading STARTED (still so 30 s later; the app's own
       // message says "Open the Test from Playlist to see Test status"). Record that, then judge the real status after a
       // reload.
       await user.playlist.ensureDrawerVisible();

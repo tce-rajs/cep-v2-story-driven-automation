@@ -8,7 +8,7 @@ test.use({ classMap: 'attendance' });
 test.describe('ATT-05 Play Attendance (roll call)', () => {
   test.beforeEach(async ({ user }) => {
     await user.attendance.open(user.magnet);
-    // CONFIRMED LIVE (2026-09-26): Play Attendance is offered on a fresh day (Play button) or by resuming a draft; once
+    // Play Attendance is offered on a fresh day (Play button) or by resuming a draft; once
     // today's attendance is submitted the register only offers Edit Attendance -> the marking grid, with no Play. This
     // file is named att-00 so it runs before the rest of the module submits today's attendance.
     const playable =
@@ -55,15 +55,17 @@ test.describe('ATT-05 Play Attendance (roll call)', () => {
     async ({ user }) => {
       const att = user.attendance;
       if (await att.playBtn.isVisible().catch(() => false)) await att.playBtn.click({ force: true });
-      await expect(att.speedSelector.first()).toBeVisible({ timeout: 15000 });
-      const before = (await att.speedDisplay.first().innerText()).trim();
-      await att.speedSelector.first().click({ force: true });
-      const option = user.page
-        .locator('mat-option, .speed-option, [role="option"]')
-        .filter({ hasNotText: before })
-        .first();
-      if (await option.isVisible().catch(() => false)) await option.click();
-      await expect(att.speedDisplay.first(), 'speed changed').not.toHaveText(before, { timeout: 5000 });
+      await expect(att.speedToggle).toBeVisible({ timeout: 15000 });
+      await expect(att.speedToggle).toContainText('1x');
+      await att.speedToggle.click({ force: true });
+      await expect(att.speedMenu, 'speed menu opens').toHaveClass(/\bvisible\b/, { timeout: 5000 });
+      await att.speedOptions.filter({ hasText: 'Fast' }).click({ force: true });
+      await expect(att.speedToggle, 'speed shows the chosen option').toContainText('1.5x', { timeout: 5000 });
+      // At 1x the roll call moves on about every 2 s; at 1.5x it must call more students in the same time.
+      const start = Number(await att.activeRollNumber.innerText());
+      await user.page.waitForTimeout(8000);
+      const called = Number(await att.activeRollNumber.innerText()) - start;
+      expect(called, 'more than 4 students called in 8 s at 1.5x').toBeGreaterThan(4);
     }
   );
 
@@ -80,6 +82,41 @@ test.describe('ATT-05 Play Attendance (roll call)', () => {
         .catch(() => false);
       test.skip(!hasBirthday, 'Needs a Class 12A student whose birthday is today; none today. Re-run on such a day.');
       await expect(att.birthdayText.first()).toBeVisible();
+    }
+  );
+
+  test(
+    'ATT-05-05: pausing Play Attendance stops the roll call on the current student',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      const att = user.attendance;
+      if (await att.playBtn.isVisible().catch(() => false)) await att.playBtn.click({ force: true });
+      await expect(att.pauseBtn.first(), 'set-up: the roll call is running').toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(3000);
+      await att.pauseBtn.first().click({ force: true });
+      await page.waitForTimeout(1000);
+      const paused = await att.activeRollNumber.innerText();
+      await page.waitForTimeout(8000);
+      expect(await att.activeRollNumber.innerText(), 'still on the same student after 8 s').toBe(paused);
+    }
+  );
+
+  test(
+    'ATT-05-04: closing Play Attendance part-way through leaves no carousel behind and the register still works',
+    { tag: ['@functional'] },
+    async ({ user, page }) => {
+      const att = user.attendance;
+      if (await att.playBtn.isVisible().catch(() => false)) await att.playBtn.click({ force: true });
+      await expect(att.carouselItems.first(), 'set-up: the roll call is running').toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(4000);
+      await att.closeBtn.first().click({ force: true });
+      await att.closeDialogConfirmBtn.click({ force: true, timeout: 5000 }).catch(() => {});
+      await expect(att.container, 'the register closed').toBeHidden({ timeout: 15000 });
+      await expect(att.carouselItems.filter({ visible: true }), 'no roll-call carousel left behind').toHaveCount(0);
+      // The register opens again and students can be marked.
+      await att.open(user.magnet);
+      await att.startMarking();
+      await expect(att.cells.first(), 'the register still works').toBeVisible();
     }
   );
 });

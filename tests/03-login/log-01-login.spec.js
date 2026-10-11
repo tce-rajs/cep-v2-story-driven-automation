@@ -55,23 +55,22 @@ test.describe('LOG-01 Login', () => {
     }
   );
 
-  test.fixme('LOG-01-04: logging in with a new PIN succeeds after an admin resets it', async () => {
-    // BLOCKED: needs an admin action (PIN reset) on a disposable account before each run. There is no
-    // admin credential or reset endpoint available to the suite, and resetting the shared QA PIN would
-    // lock every other test out.
+  const ADMIN_RESET =
+    'Needs an admin to reset the PIN of a spare account before each run; no admin access is available to the suite';
+  test('LOG-01-04: logging in with a new PIN succeeds after an admin resets it', async () => {
+    test.fixme(true, ADMIN_RESET);
   });
 
-  test.fixme('LOG-01-05: the old PIN is rejected with a clear message after a reset', async () => {
-    // BLOCKED: same prerequisite as LOG-01-04 (an admin PIN reset on a disposable account).
+  test('LOG-01-05: the old PIN is rejected with a clear message after a reset', async () => {
+    test.fixme(true, ADMIN_RESET);
   });
 
-  test.fixme('LOG-01-06: signing in with an expired profile shows a specific "expired" message', async () => {
-    // BLOCKED: needs a QA account whose profile is in the expired state. None is provided in .env.
+  test('LOG-01-06: signing in with an expired profile shows a specific "expired" message', async () => {
+    test.fixme(true, 'Needs an account whose profile has expired; none is available on this server');
   });
 
-  test.fixme('LOG-01-07: "school license expired" blocks login with the right message', async () => {
-    // BLOCKED: needs a school whose license is expired. None is provided in .env; the real school's
-    // license must not be altered for a test.
+  test('LOG-01-07: "school license expired" blocks login with the right message', async () => {
+    test.fixme(true, "Needs a school whose licence has expired; the real school's licence must not be changed");
   });
 
   test(
@@ -99,10 +98,7 @@ test.describe('LOG-01 Login', () => {
     'LOG-01-09: auto-logout does not come early — idle for under 4 minutes, the session stays and no warning shows',
     { tag: ['@long', '@regression'] },
     async ({ user }) => {
-      // Owner-stated rule (2026-09-28): the inactivity warning comes after 4 minutes idle, and an unanswered warning signs
-      // the teacher out a minute later (LOG-05-07/09). So "auto-logout does not recur" means: nothing happens BEFORE
-      // 4 minutes. (Until 2026-09-28 this idled 6 minutes and expected the session to survive, which the rule now
-      // says is wrong.)
+      // So "auto-logout does not recur" means: nothing happens BEFORE 4 minutes.
       const idleMinutes = Number(process.env.SESSION_IDLE_MINUTES || 3.5);
       test.setTimeout((idleMinutes + 3) * 60 * 1000);
 

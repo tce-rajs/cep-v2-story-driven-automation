@@ -1,11 +1,11 @@
 // Page Object for the Magnet quick-access menu and the panels it opens
 // (Notice, Learning Shorts, Homework, Attendance).
 //
-// CONFIRMED LIVE in the previous suite: Magnet only exists after login, and WHICH items
+// Magnet only exists after login, and WHICH items
 // it lists is gated per class/subject (e.g. Attendance is absent on Class 11A Accountancy
 // but present on Class 12A Physics/Mathematics) -- see the `attendance` and `compassBaseline`
 // entries in config/moduleClassMap.js. Magnet-menu item ids: toolbar-magnet-gtAIWorksheet
-// (Homework), toolbar-magnet-gtAttendance. CONFIRMED LIVE (v 0.0.223): Learning Shorts is
+// (Homework), toolbar-magnet-gtAttendance. Learning Shorts is
 // toolbar-magnet-gtScreenRecord (NOT gtLearningShorts) and Notice is toolbar-magnet-gtAINotices.
 
 class MagnetPage {
@@ -22,7 +22,7 @@ class MagnetPage {
 
     // What each item opens
     this.noticeCaptureBanner = page.getByText(/capture the text area/i); // AI Notices drag-select mode
-    this.learningShortsExitBtn = page.locator('[data-qa-id="learning-shorts-exit-btn"]'); // Learning Shorts recorder (CONFIRMED LIVE v 0.0.223; was exitBtn)
+    this.learningShortsExitBtn = page.locator('[data-qa-id="learning-shorts-exit-btn"]'); // Learning Shorts recorder
     this.homeworkSelectChapterBtn = page.locator('[data-qa-id="ai-homework-option-select-chapter-btn"]');
     this.attendanceContainer = page.locator('[data-qa-id="attendance-container"]');
   }
@@ -53,7 +53,7 @@ class MagnetPage {
   }
 
   /** Open the menu and choose an entry ('notice' | 'learningShorts' | 'homework' | 'attendance').
-   * CONFIRMED LIVE: the Homework item can take a few seconds to appear after the menu opens;
+   * The Homework item can take a few seconds to appear after the menu opens;
    * one re-open is attempted before giving up. */
   async choose(name) {
     const item = this.items[name];

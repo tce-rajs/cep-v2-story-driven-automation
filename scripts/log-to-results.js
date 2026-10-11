@@ -9,8 +9,6 @@ if (!logFile || !stamp) {
   console.error('usage: node scripts/log-to-results.js <run.log> <yyyy-mm-dd_hh-mm-ss> "<account>" "<build>"');
   process.exit(1);
 }
-// Raw outcome of the test's own checks (a known bug that still fails is 'failed' here; the workbook knows which tests
-// are known bugs and words the result accordingly).
 const STATUS = { ok: 'passed', x: 'failed', '-': 'skipped' };
 const tests = [];
 for (const line of fs.readFileSync(logFile, 'utf8').split(/\r?\n/)) {

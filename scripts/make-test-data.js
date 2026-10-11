@@ -8,7 +8,7 @@
 // built from their XML parts (scripts/lib/office-docs.js) or with the `xlsx` package. Everything is generated, so the
 // kit contains no real people's data. The binaries are gitignored; rerun this script to rebuild them.
 //
-// The Create form accepts (CONFIRMED LIVE 2026-09-27, v 0.0.232): .jpeg .jpg .png .mp4 .pdf .xlsx .xls .doc .docx .ppt
+// The Create form accepts: .jpeg .jpg .png .mp4 .pdf .xlsx .xls .doc .docx .ppt
 // .pptx .txt .gif .odp .ods .odt, "File Size Limit is 10 MB".
 
 const fs = require('fs');

@@ -1,9 +1,9 @@
-// Recorded session (owner request 2026-10-06): a teacher kept continuously active -- handwriting on the board, opening a
+// Recorded session: a teacher kept continuously active -- handwriting on the board, opening a
 // worksheet / video / image and writing on them, playing the video -- until the app's forced sign-out, to find the
 // EXACT time of the forced sign-out. Every action, token request and the sign-out moment are timestamped (minutes and
 // seconds from sign-in) and saved, with an uncut video of the whole client session.
 // Run (one client launch = one uncut video):
-//   RECORD_VIDEO_DIR=report/session-video/<stamp> VALID_PIN=<pin> npx playwright test tests/_probe/session-activity-recording.spec.js
+//   RECORD_VIDEO_DIR=report/session-video/<stamp> VALID_PIN=<pin> npx playwright test tools/exploration/session-activity-recording.spec.js
 // Writing goes below anything already on the board (never cleared) and only on assets / a non-data topic.
 const fs = require('fs');
 const path = require('path');

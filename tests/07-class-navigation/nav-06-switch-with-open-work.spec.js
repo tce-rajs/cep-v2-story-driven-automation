@@ -6,7 +6,7 @@ const { test, expect } = require('../../fixtures');
 
 test.describe('NAV-06 Switching class while other work is open', () => {
   // With a video playing, switching class: the player closes (NAV-06-01), and the video stops (NAV-06-06) -- one test
-  // each (split 2026-09-28).
+  // each.
   const switchClassWithVideoPlaying = async (user, page) => {
     await user.nav.applyClassMap('playersDefault');
     await user.playlist.ensureDrawerVisible();
@@ -34,12 +34,8 @@ test.describe('NAV-06 Switching class while other work is open', () => {
 
   test(
     'NAV-06-02: switching class while a Magnet panel is open leaves no panel behind',
-    { tag: ['@functional', '@bug'] },
+    { tag: ['@functional'] },
     async ({ user }) => {
-      // PRODUCT FINDING, CONFIRMED LIVE (2026-09-26, v 0.0.232; same as the reference suite's AIH-BREAK-01): while the
-      // Homework panel is open, its container (playlist-grade-subject-chapter-tp-wrapper) sits over the Current Class
-      // control and intercepts every click, so the class cannot be switched until the panel is closed.
-      test.fail(true, 'Current Class cannot be clicked while a Magnet panel (Homework) is open');
       await user.nav.applyClassMap('default');
       await user.magnet.choose('homework');
       await expect(user.magnet.panels.homework).toBeVisible({ timeout: 15000 });
@@ -51,7 +47,7 @@ test.describe('NAV-06 Switching class while other work is open', () => {
   );
 
   test(
-    "NAV-06-03: after switching class, the Playlist shows only the new class's resources (regression, Zoho CWR-I768, TCN-I15324)",
+    "NAV-06-03: after switching class, the Playlist shows only the new class's resources",
     { tag: ['@regression'] },
     async ({ user }) => {
       await user.nav.applyClassMap('playersDefault');
@@ -118,6 +114,22 @@ test.describe('NAV-06 Switching class while other work is open', () => {
       await user.page.keyboard.press('Escape');
       expect(await flat(user.whiteboard.currentClassBtn), 'class unchanged').toBe(cls);
       expect(await flat(user.whiteboard.currentChapterTopicBtn), 'chapter/topic unchanged').toBe(topic);
+    }
+  );
+
+  test(
+    "NAV-06-07: switching class never leaves the previous class's player or video playing",
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      await switchClassWithVideoPlaying(user, page);
+      await expect(user.nav.currentClassBtn, 'set-up: switched class').toContainText('Physics', { timeout: 15000 });
+      // A little later still: nothing from the previous class comes back or keeps playing.
+      await page.waitForTimeout(5000);
+      await expect(user.player.closeIcon.filter({ visible: true }), 'no player left open').toHaveCount(0);
+      const playing = await page
+        .locator('video, audio')
+        .evaluateAll((els) => els.filter((v) => !v.paused && !v.ended && v.currentTime > 0).length);
+      expect(playing, 'no video or sound still playing').toBe(0);
     }
   );
 });

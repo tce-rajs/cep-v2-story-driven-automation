@@ -24,7 +24,7 @@ test.describe('AIH-05 AI Homework when the network fails', () => {
   });
 
   // Generation fails: the teacher is told (AIH-05-01), the spinner stops (AIH-05-03), and pressing Generate again works
-  // (AIH-05-04) -- one test each (split 2026-09-28).
+  // (AIH-05-04) -- one test each.
   const generateWhileItFails = async (user, page) => {
     await page.route('**/*', (route) =>
       isGenerate(route.request()) ? route.abort('internetdisconnected') : route.continue()
@@ -70,7 +70,7 @@ test.describe('AIH-05 AI Homework when the network fails', () => {
   );
 
   // Sending fails: no success message (AIH-05-02), the teacher is told (AIH-05-06), and the form stays open with the
-  // title (AIH-05-07) -- one test each (split 2026-09-28). Nothing is really assigned: the send is blocked.
+  // title (AIH-05-07) -- one test each. Nothing is really assigned: the send is blocked.
   /** Generate, title the homework, make only the assign request fail, and press Ready to Send; returns the title. */
   const sendWhileItFails = async (user, page) => {
     const hw = user.aiHomework;
@@ -117,6 +117,27 @@ test.describe('AIH-05 AI Homework when the network fails', () => {
     async ({ user, page }) => {
       const title = await sendWhileItFails(user, page);
       await expect(user.aiHomework.assignTitleInput, 'the form stays open with the title').toHaveValue(title);
+    }
+  );
+
+  test(
+    'AIH-05-08: after a failed send, sending again once the network is back sends the homework exactly once',
+    { tag: ['@negative'] },
+    async ({ user, page }) => {
+      // Really assigns one homework to the 'aiHomework' class, like AIH-04-06.
+      const title = await sendWhileItFails(user, page);
+      await page.unroute('**/*');
+      const sends = [];
+      page.on('response', (r) => {
+        if (isAssign(r.request()) && r.status() < 400) sends.push(r.url());
+      });
+      await expect(user.aiHomework.assignTitleInput, 'set-up: the form is still open').toHaveValue(title);
+      await user.aiHomework.assignSendBtn.click();
+      await expect(user.aiHomework.snackbar.first(), 'sent this time').toContainText(/sent|success|assigned|shared/i, {
+        timeout: 30000,
+      });
+      await page.waitForTimeout(8000);
+      expect(sends.length, `exactly one successful send (${sends.join(', ')})`).toBe(1);
     }
   );
 });

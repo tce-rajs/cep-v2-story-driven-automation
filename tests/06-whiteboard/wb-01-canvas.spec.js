@@ -52,4 +52,40 @@ test.describe('WB-01 Canvas', () => {
       }
     }
   );
+
+  // Data: 'longSession' (12A Physics 3.1), a board that holds writing from every long run and is never cleared.
+  // Read-only here.
+  test.describe('a topic with content', () => {
+    test.use({ classMap: 'longSession', freshSpace: false });
+
+    test(
+      'WB-01-03: the board never opens blank or grey when the topic has content',
+      { tag: ['@negative'] },
+      async ({ user, page }) => {
+        await expect(user.toolbar.wbSvg, 'the board is shown').toBeVisible();
+        await expect
+          .poll(() => user.toolbar.allPaths.count(), { message: 'the writing on this topic loads', timeout: 60000 })
+          .toBeGreaterThan(0);
+        // Not blank: some of the writing is on screen where the board opens.
+        const inView = await user.toolbar.allPaths.evaluateAll(
+          (els) =>
+            els.filter((e) => {
+              const r = e.getBoundingClientRect();
+              return (
+                r.width + r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight
+              );
+            }).length
+        );
+        expect(inView, 'writing is visible on the opened board').toBeGreaterThan(0);
+        // Not grey: no loading veil or overlay covers the board.
+        const covered = await page.evaluate(() => {
+          const el = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+          return !(el && el.closest('[data-qa-id="wb-drawing-container"]'));
+        });
+        expect(covered, 'nothing covers the board').toBe(false);
+        const ink = await user.content.inkContrast(user.toolbar.allPaths.first());
+        expect(ink.ratio, `the writing stands out from the board (${ink.ink} on ${ink.board})`).toBeGreaterThan(1.5);
+      }
+    );
+  });
 });
