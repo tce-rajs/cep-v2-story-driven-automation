@@ -349,58 +349,25 @@ const MODULE_CLASS_MAP = {
   },
 };
 
-/** Returns the raw map entry for a module key (throws if unknown, so a
- * typo'd key fails loudly at the call site rather than navigating
- * somewhere unintended). */
-function getClassMap(moduleKey) {
-  const entry = MODULE_CLASS_MAP[moduleKey];
-  if (!entry) {
-    throw new Error(
-      `moduleClassMap: no entry for "${moduleKey}" -- known keys: ${Object.keys(MODULE_CLASS_MAP).join(', ')}`
-    );
-  }
-  // The data this key needs is not on the current server: fail with a clear, recognisable reason (the result summary
-  // lists these as DATA MISSING) rather than a confusing locator timeout -- never a silent skip.
-  if (entry.unavailable) throw new Error(`DATA MISSING ON THIS SERVER (${moduleKey}): ${entry.unavailable}`);
-  return entry;
-}
+const {
+  DYNAMIC_CLASS_REGISTRY,
+  getBaselineClass,
+  registerClassMapping,
+  clearDynamicClassRegistry,
+  resolveClassConfig,
+  getClassMap,
+  applyClassMap,
+  pinForModule,
+} = require('./classNavigationManager');
 
-/** Navigates an already-logged-in page (via its NavigationPage instance)
- * to a module's confirmed class/chapter/topic. Does NOT log in -- callers
- * still sign in themselves first (see pinForModule),
- * since which account to log into is a test-setup decision this helper
- * shouldn't silently make.
- *
- * `opts.chapterNav` (default true) lets a caller reuse an entry's
- * grade/division/subject WITHOUT also triggering its chapter/topic
- * navigation -- needed because several real call sites only ever called
- * resetToClass() and never goToChapterTopic(ByName), even though the
- * entry they match also happens to record a confirmed chapterIndex for
- * OTHER callers that do navigate chapters. Passing
- * `{ chapterNav: false }` keeps this a pure 1:1 behavior-preserving
- * refactor for those call sites -- it must never silently add a
- * navigation step that wasn't there before. */
-async function applyClassMap(nav, moduleKey, opts = {}) {
-  const entry = getClassMap(moduleKey);
-  const { chapterNav = true } = opts;
-  await nav.resetToClass(entry.grade, entry.division, entry.subject);
-  if (chapterNav) {
-    if (entry.chapterName) {
-      await nav.goToChapterTopicByName(entry.chapterName, entry.topicIndex ?? 0);
-    } else if (typeof entry.chapterIndex === 'number') {
-      await nav.goToChapterTopic(entry.chapterIndex, entry.topicIndex ?? 0);
-    }
-  }
-  return entry;
-}
-
-/** The PIN to sign in with for a module's map entry: the entry's account (VALID_PIN / VALID_PIN_2), or VALID_PIN
- * when that account's PIN is not set in .env. */
-function pinForModule(moduleKey) {
-  const entry = getClassMap(moduleKey);
-  // ONLY_PRIMARY_ACCOUNT=1: every entry signs in with the primary account.
-  if (process.env.ONLY_PRIMARY_ACCOUNT) return process.env.VALID_PIN;
-  return process.env[entry.account] || process.env.VALID_PIN;
-}
-
-module.exports = { MODULE_CLASS_MAP, getClassMap, applyClassMap, pinForModule };
+module.exports = {
+  MODULE_CLASS_MAP,
+  DYNAMIC_CLASS_REGISTRY,
+  getClassMap,
+  applyClassMap,
+  pinForModule,
+  getBaselineClass,
+  registerClassMapping,
+  clearDynamicClassRegistry,
+  resolveClassConfig,
+};

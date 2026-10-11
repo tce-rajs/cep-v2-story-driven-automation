@@ -8,11 +8,15 @@
 // tabs with no data-qa-id), so those use Playwright's role-based locators
 // instead.
 
-const { applyClassMap } = require('../config/moduleClassMap');
+const { applyClassMap, getBaselineClass } = require('../config/classNavigationManager');
 
 class NavigationPage {
   constructor(page) {
     this.page = page;
+
+    // --- State & History Tracking ---
+    this.previousClass = null;
+    this.classHistory = [];
 
     // --- Core Navigation UI ---
     this.currentClassBtn = page.locator('[data-qa-id="playlist-current-grade-subject-btn"]');
@@ -48,11 +52,84 @@ class NavigationPage {
     this.userAvatar = page.locator('[data-qa-id="toolbar-user-avatar"]');
   }
 
+  /** Reads current class and chapter/topic displayed on the navigation buttons. */
+  async getCurrentClassInfo() {
+    const rawClass = (await this.currentClassBtn.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+    const rawTopic = (await this.currentChapterTopicBtn.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+    let grade = null;
+    let division = null;
+    let subject = null;
+
+    if (rawClass.includes('|')) {
+      const parts = rawClass.split('|').map((s) => s.trim());
+      subject = parts[1] || null;
+      const classPart = parts[0] || '';
+      const match = classPart.match(/^(Class\s+\d+|[^\s\d]+(?:\s+\d+)?)\s*([A-Za-z0-9])?$/i);
+      if (match) {
+        grade = match[1].trim();
+        division = match[2] ? match[2].trim() : null;
+      } else {
+        grade = classPart;
+      }
+    }
+
+    return {
+      rawClassLabel: rawClass,
+      rawTopicLabel: rawTopic,
+      grade,
+      division,
+      subject,
+      capturedAt: new Date().toISOString(),
+    };
+  }
+
+  /** Captures and records the currently active class into `previousClass` and history stack. */
+  async saveCurrentClass() {
+    const info = await this.getCurrentClassInfo();
+    if (info.rawClassLabel) {
+      this.previousClass = info;
+      this.classHistory.push(info);
+    }
+    return info;
+  }
+
+  /** Switch to a new class by moduleKey, registered preset name, or custom config object.
+   * Automatically saves previous class before switching unless opts.savePrevious === false. */
+  async switchToClass(moduleKeyOrConfig, opts = {}) {
+    if (opts.savePrevious !== false) {
+      await this.saveCurrentClass().catch(() => {});
+    }
+    const resolved = await applyClassMap(this, moduleKeyOrConfig, opts);
+    await this.page.waitForTimeout(1000);
+    return resolved;
+  }
+
+  /** Restores the account to the class that was active prior to switching.
+   * If no previous class was recorded, cleanly falls back to resetToBaseline(). */
+  async resetToPreviousClass(opts = {}) {
+    if (this.previousClass && this.previousClass.grade && this.previousClass.division && this.previousClass.subject) {
+      await this.resetToClass(this.previousClass.grade, this.previousClass.division, this.previousClass.subject);
+      return this.previousClass;
+    }
+    return await this.resetToBaseline(opts);
+  }
+
+  /** Resets the account back to the default baseline class (Class 9A Science).
+   * Leaves nothing for the user to memorize or clean up manually. */
+  async resetToBaseline(opts = {}) {
+    const baseline = getBaselineClass();
+    await this.resetToClass(baseline.grade, baseline.division, baseline.subject);
+    if (opts.chapterNav !== false) {
+      await this.goToChapterTopic(baseline.chapterIndex ?? 3, baseline.topicIndex ?? 0);
+    }
+    await this.page.waitForTimeout(1000);
+    return baseline;
+  }
+
   /** Land on the confirmed-working class/chapter/topic for a module (see
    * config/moduleClassMap.js). Caller must already be signed in. */
-  async applyClassMap(moduleKey) {
-    await applyClassMap(this, moduleKey);
-    await this.page.waitForTimeout(1000);
+  async applyClassMap(moduleKey, opts = {}) {
+    return await this.switchToClass(moduleKey, opts);
   }
 
   async openClassPopup() {

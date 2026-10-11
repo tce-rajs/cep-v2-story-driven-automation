@@ -13,7 +13,7 @@
 
 const { test: base, expect } = require('./electron-app');
 const { App } = require('../pages/app');
-const { pinForModule, getClassMap } = require('../config/moduleClassMap');
+const { pinForModule, getClassMap, resolveClassConfig } = require('../config/classNavigationManager');
 
 const fs = require('fs');
 const path = require('path');
@@ -28,6 +28,8 @@ for (const file of fs.readdirSync(STORIES).filter((f) => /^\d\d_.+\.md$/.test(f)
 
 const test = base.extend({
   classMap: [null, { option: true }],
+  classOverride: [null, { option: true }],
+  autoResetClass: [false, { option: true }],
   freshSpace: [false, { option: true }],
 
   outOfScope: [
@@ -43,10 +45,12 @@ const test = base.extend({
     await use(new App(page));
   },
 
-  user: async ({ app, classMap, freshSpace }, use) => {
-    await app.signIn(classMap ? pinForModule(classMap) : process.env.VALID_PIN);
-    if (classMap) {
-      await app.nav.applyClassMap(classMap);
+  user: async ({ app, classMap, classOverride, autoResetClass, freshSpace }, use) => {
+    const target = classOverride ? resolveClassConfig(classMap || 'default', classOverride) : classMap;
+
+    await app.signIn(target ? pinForModule(target) : process.env.VALID_PIN);
+    if (target) {
+      await app.nav.switchToClass(target);
       await app.playlist.ensureDrawerVisible();
     } else {
       // A test that names no class would otherwise start wherever the account was left -- possibly one of the
@@ -60,6 +64,10 @@ const test = base.extend({
     // Never erases: moves to empty space below the teacher's writing and ignores it in counts.
     if (freshSpace) await app.content.startOnFreshSpace();
     await use(app);
+
+    if (autoResetClass) {
+      await app.nav.resetToBaseline().catch(() => {});
+    }
   },
 });
 
