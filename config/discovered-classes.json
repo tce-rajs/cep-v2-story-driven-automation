@@ -1,0 +1,49 @@
+{
+  "lastFetched": "2026-10-11T19:00:00.000Z",
+  "environment": ".85 (QA Primary)",
+  "accounts": {
+    "VALID_PIN": {
+      "name": "Primary QA Account",
+      "classes": [
+        { "grade": "Class 9", "division": "A", "subject": "Science", "account": "VALID_PIN" },
+        { "grade": "Class 9", "division": "A", "subject": "Hindi Language", "account": "VALID_PIN" },
+        { "grade": "Class 10", "division": "A", "subject": "Science", "account": "VALID_PIN" },
+        { "grade": "Class 10", "division": "A", "subject": "Mathematics", "account": "VALID_PIN" },
+        { "grade": "Class 11", "division": "A", "subject": "Mathematics", "account": "VALID_PIN" },
+        { "grade": "Class 11", "division": "A", "subject": "History", "account": "VALID_PIN" },
+        { "grade": "Class 12", "division": "A", "subject": "Physics", "account": "VALID_PIN" }
+      ]
+    },
+    "VALID_PIN_2": {
+      "name": "Secondary QA Account",
+      "classes": [
+        { "grade": "Class 11", "division": "A", "subject": "Accountancy", "account": "VALID_PIN_2" },
+        { "grade": "Class 12", "division": "A", "subject": "Computer Science", "account": "VALID_PIN_2" }
+      ]
+    }
+  },
+  "tree": {
+    "Class 5": {
+      "A": ["Mathematics"]
+    },
+    "Class 7": {
+      "A": ["Hindi Language"]
+    },
+    "Class 8": {
+      "A": ["Mathematics"],
+      "R": ["Mathematics"]
+    },
+    "Class 9": {
+      "A": ["Science", "Hindi Language"]
+    },
+    "Class 10": {
+      "A": ["Science", "Mathematics"]
+    },
+    "Class 11": {
+      "A": ["Accountancy", "Mathematics", "History"]
+    },
+    "Class 12": {
+      "A": ["Physics", "Computer Science"]
+    }
+  }
+}
