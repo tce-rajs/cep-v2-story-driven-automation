@@ -2,10 +2,11 @@
 // Minimal, ultra-clean, and focused dashboard for CEP v2 Module Testing.
 // Purpose: Test any module with a different Class or Teacher PIN in seconds without touching code.
 // Features:
+// - Direct 1-click test execution via local server (no command copy/paste required)
+// - Real-time live terminal streaming right inside the web page
 // - Editable Teacher PIN (globally and per-module)
 // - Simplified module list: Existing Class | New Class Dropdown | Editable PIN | Reset | Run Test
 // - "Add New Class" option right in the dropdown
-// - 1-Click "▶ Run Test" generating exact command for scripts/run-with-class.js
 
 require('dotenv').config();
 const fs = require('fs');
@@ -43,7 +44,6 @@ const CEP_CLASSES = [
   { label: 'Class 8A — Mathematics', grade: 'Class 8', division: 'A', subject: 'Mathematics', pin: DEFAULT_PIN },
 ];
 
-// Clean functional display names for modules
 const MODULE_FRIENDLY_NAMES = {
   aiHomework: 'AI Homework',
   aiNotices: 'AI Notices',
@@ -391,26 +391,38 @@ const html = `<!doctype html>
       box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
       transform: translateY(-1px);
     }
+    .btn-run:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
 
-    /* Active Run Drawer (Bottom) */
+    /* Active Run Drawer & Live Terminal */
     .run-drawer {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      background: #0f121b;
+      background: #0b0d14;
       border-top: 1px solid var(--card-border);
       padding: 14px 24px;
-      box-shadow: 0 -8px 30px rgba(0,0,0,0.5);
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
       display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
+      flex-direction: column;
+      gap: 12px;
       z-index: 100;
+      max-height: 55vh;
       animation: slideUp 0.2s ease-out forwards;
     }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     .run-drawer.active { display: flex; }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
     .drawer-info {
       display: flex;
       align-items: center;
@@ -444,17 +456,22 @@ const html = `<!doctype html>
       align-items: center;
       gap: 10px;
     }
-    .btn-copy-cmd {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 7px 16px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 12px;
-      cursor: pointer;
+    .drawer-terminal-wrap {
+      background: #050608;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      max-height: 240px;
+      overflow-y: auto;
     }
-    .btn-copy-cmd:hover { background: var(--accent-hover); }
+    .drawer-terminal {
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
 
     /* Toast */
     .toast {
@@ -483,7 +500,7 @@ const html = `<!doctype html>
     <div class="top-bar">
       <div class="brand">
         <h1>ClassMap Runner <span class="pill-badge">CEP v2</span></h1>
-        <p>Test any module with a different Class or Teacher PIN in seconds without touching test code.</p>
+        <p>Direct 1-click execution for any module with custom classes and credentials.</p>
       </div>
 
       <div class="global-controls">
@@ -509,7 +526,7 @@ const html = `<!doctype html>
         <input type="search" id="searchInput" placeholder="Search module name or key…">
       </div>
       <div style="font-size: 12px; color: var(--text-dim);">
-        <span id="moduleCountText">${modules.length}</span> modules available · Click <b>▶ Run</b> to copy terminal command
+        <span id="moduleCountText">${modules.length}</span> modules available · Click <b>▶ Run</b> to execute directly!
       </div>
     </div>
 
@@ -523,7 +540,7 @@ const html = `<!doctype html>
             <th>Test In Class (Select / Custom)</th>
             <th style="width: 110px;">Teacher PIN</th>
             <th style="width: 50px;">Reset</th>
-            <th style="width: 110px; text-align: right;">Action</th>
+            <th style="width: 120px; text-align: right;">Action</th>
           </tr>
         </thead>
         <tbody id="moduleTableBody">
@@ -533,18 +550,24 @@ const html = `<!doctype html>
     </div>
   </div>
 
-  <!-- Bottom Run Command Drawer -->
+  <!-- Bottom Run Command Drawer & Terminal -->
   <div class="run-drawer" id="runDrawer">
-    <div class="drawer-info">
-      <span class="drawer-badge">READY TO RUN</span>
-      <div class="drawer-cmd" id="drawerCmdText">node scripts/run-with-class.js</div>
+    <div class="drawer-header">
+      <div class="drawer-info">
+        <span class="drawer-badge" id="drawerBadge">READY TO RUN</span>
+        <div class="drawer-cmd" id="drawerCmdText">node scripts/run-with-class.js</div>
+      </div>
+      <div class="drawer-actions">
+        <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
+          <input type="checkbox" id="drawerHeadedCheck"> Headed (Show Client)
+        </label>
+        <button class="btn btn-reset" id="stopTestBtn" style="display: none;" onclick="stopActiveTest()">⏹ Stop</button>
+        <button class="btn" id="drawerCopyBtn" style="padding: 6px 12px;">📋 Copy</button>
+        <button class="btn" id="drawerCloseBtn" style="padding: 6px 10px;">✕</button>
+      </div>
     </div>
-    <div class="drawer-actions">
-      <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
-        <input type="checkbox" id="drawerHeadedCheck"> Headed (Show Client)
-      </label>
-      <button class="btn-copy-cmd" id="drawerCopyBtn">📋 Copy Command</button>
-      <button class="btn" id="drawerCloseBtn" style="padding: 6px 10px;">✕</button>
+    <div class="drawer-terminal-wrap" id="drawerTerminalWrap" style="display: none;">
+      <pre class="drawer-terminal" id="liveTerminal"></pre>
     </div>
   </div>
 
@@ -562,8 +585,13 @@ const html = `<!doctype html>
     const runDrawer = document.getElementById('runDrawer');
     const drawerCmdText = document.getElementById('drawerCmdText');
     const drawerHeadedCheck = document.getElementById('drawerHeadedCheck');
+    const drawerBadge = document.getElementById('drawerBadge');
+    const drawerTerminalWrap = document.getElementById('drawerTerminalWrap');
+    const liveTerminal = document.getElementById('liveTerminal');
+    const stopTestBtn = document.getElementById('stopTestBtn');
 
     let currentActiveRow = null;
+    let isTestRunning = false;
 
     function showToast(msg) {
       toast.textContent = msg;
@@ -571,7 +599,6 @@ const html = `<!doctype html>
       setTimeout(() => toast.classList.remove('show'), 2000);
     }
 
-    // Build Table Rows
     function renderTable() {
       const q = searchInput.value.toLowerCase().trim();
       const filtered = MODULES.filter(m => !q || m.name.toLowerCase().includes(q) || m.key.toLowerCase().includes(q));
@@ -607,7 +634,7 @@ const html = `<!doctype html>
               <button class="btn-row-reset" onclick="resetRow('\${m.key}')" title="Reset to default">↺</button>
             </td>
             <td style="text-align: right;">
-              <button class="btn-run" onclick="runModule('\${m.key}')">▶ Run</button>
+              <button class="btn-run" id="btn-run-\${m.key}" onclick="runModule('\${m.key}')">▶ Run</button>
             </td>
           </tr>
         \`;
@@ -673,16 +700,6 @@ const html = `<!doctype html>
       if (currentActiveRow === key) updateDrawer(key);
     };
 
-    window.runModule = function(key) {
-      currentActiveRow = key;
-      updateDrawer(key);
-      runDrawer.classList.add('active');
-
-      const cmd = drawerCmdText.textContent;
-      navigator.clipboard.writeText(cmd);
-      showToast(\`Command copied! Paste in terminal to start test.\`);
-    };
-
     function updateDrawer(key) {
       const mod = MODULES.find(m => m.key === key);
       const select = document.getElementById('select-' + key);
@@ -716,6 +733,149 @@ const html = `<!doctype html>
       drawerCmdText.textContent = cmd;
     }
 
+    // Direct Execution Function
+    window.runModule = async function(key) {
+      if (isTestRunning) {
+        showToast('A test is already running. Please stop it or wait for completion.');
+        return;
+      }
+
+      currentActiveRow = key;
+      updateDrawer(key);
+      runDrawer.classList.add('active');
+
+      const select = document.getElementById('select-' + key);
+      const pinInput = document.getElementById('pin-' + key);
+      const pin = pinInput.value.trim() || globalPinInput.value.trim();
+      const isHeaded = drawerHeadedCheck.checked;
+      const mod = MODULES.find(m => m.key === key);
+
+      let grade = mod.defaultGrade;
+      let division = mod.defaultDivision;
+      let subject = mod.defaultSubject;
+
+      if (select.value && select.value !== 'DEFAULT') {
+        try {
+          const parsed = JSON.parse(select.value);
+          grade = parsed.grade;
+          division = parsed.division;
+          subject = parsed.subject;
+        } catch (e) {}
+      }
+
+      const isHttp = window.location.protocol.startsWith('http');
+
+      if (!isHttp) {
+        // Fallback if user opened via file:/// without running server
+        const cmd = drawerCmdText.textContent;
+        navigator.clipboard.writeText(cmd);
+        showToast('Command copied! (To run directly in browser, launch "npm run classmap")');
+        return;
+      }
+
+      // Live Execution via server!
+      isTestRunning = true;
+      const runBtn = document.getElementById('btn-run-' + key);
+      if (runBtn) {
+        runBtn.textContent = '⏳ Running...';
+        runBtn.disabled = true;
+      }
+
+      drawerTerminalWrap.style.display = 'block';
+      liveTerminal.textContent = \`[ClassMap Live Runner] Starting test for \${mod.name}...\\nTarget: \${grade} \${division} | \${subject} (PIN: \${pin})\\nCommand: \${drawerCmdText.textContent}\\n\\n\`;
+      drawerBadge.textContent = \`RUNNING: \${mod.name}\`;
+      drawerBadge.style.background = 'var(--warning)';
+      stopTestBtn.style.display = 'inline-flex';
+
+      try {
+        const response = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            module: key,
+            grade,
+            division,
+            subject,
+            pin,
+            headed: isHeaded
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          liveTerminal.textContent += \`\\n[Error] \${errData.error || response.statusText}\\n\`;
+          drawerBadge.textContent = 'FAILED';
+          drawerBadge.style.background = 'var(--danger)';
+          stopTestBtn.style.display = 'none';
+          cleanup();
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\\n\\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.slice(6));
+                if (event.type === 'log') {
+                  liveTerminal.textContent += event.text;
+                  drawerTerminalWrap.scrollTop = drawerTerminalWrap.scrollHeight;
+                } else if (event.type === 'done') {
+                  stopTestBtn.style.display = 'none';
+                  if (event.success) {
+                    drawerBadge.textContent = '✔ PASSED';
+                    drawerBadge.style.background = 'var(--run-green)';
+                    showToast(\`Test PASSED for \${mod.name}!\`);
+                  } else {
+                    drawerBadge.textContent = '✖ FAILED';
+                    drawerBadge.style.background = 'var(--danger)';
+                    showToast(\`Test finished with errors (code \${event.code})\`);
+                  }
+                } else if (event.type === 'error') {
+                  liveTerminal.textContent += \`\\n[Fatal Error] \${event.message}\\n\`;
+                  drawerBadge.textContent = 'ERROR';
+                  drawerBadge.style.background = 'var(--danger)';
+                  stopTestBtn.style.display = 'none';
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (err) {
+        liveTerminal.textContent += \`\\n[Connection Error] \${err.message}\\n\`;
+        drawerBadge.textContent = 'OFFLINE';
+        drawerBadge.style.background = 'var(--danger)';
+        stopTestBtn.style.display = 'none';
+      } finally {
+        cleanup();
+      }
+
+      function cleanup() {
+        isTestRunning = false;
+        if (runBtn) {
+          runBtn.textContent = '▶ Run';
+          runBtn.disabled = false;
+        }
+      }
+    };
+
+    window.stopActiveTest = async function() {
+      await fetch('/api/stop', { method: 'POST' }).catch(() => {});
+      liveTerminal.textContent += '\\n[Execution stopped by user]\\n';
+      drawerBadge.textContent = 'STOPPED';
+      drawerBadge.style.background = 'var(--danger)';
+      stopTestBtn.style.display = 'none';
+    };
+
     drawerHeadedCheck.addEventListener('change', () => {
       if (currentActiveRow) updateDrawer(currentActiveRow);
     });
@@ -737,7 +897,6 @@ const html = `<!doctype html>
       showToast('All modules reset to default baseline');
     });
 
-    // Global PIN change -> updates row PINs if they are on default
     globalPinInput.addEventListener('input', () => {
       const newPin = globalPinInput.value.trim();
       MODULES.forEach(m => {
@@ -760,10 +919,7 @@ const html = `<!doctype html>
     const savedTheme = localStorage.getItem('cepv2_theme');
     if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
 
-    // Search filter
     searchInput.addEventListener('input', renderTable);
-
-    // Initial render
     renderTable();
   </script>
 </body>
@@ -771,4 +927,4 @@ const html = `<!doctype html>
 `;
 
 fs.writeFileSync(path.join(REPORT_DIR, 'CLASS_MAP.html'), html, 'utf8');
-console.log(`Successfully built report/CLASS_MAP.html with ${modules.length} simplified module rows.`);
+console.log(`Successfully built report/CLASS_MAP.html with direct execution enabled.`);
