@@ -36,7 +36,7 @@ function setTceServerUrl(url) {
   fs.writeFileSync(`${TCE_SETTINGS_PATH}.bak`, raw);
 
   const droppedCount = settings.profiles.length - 1;
-  settings.profiles = [{ ...settings.profiles[0], path: url }];
+  settings.profiles = [{ ...settings.profiles[0], path: url, onlineMode: '0' }];
   fs.writeFileSync(TCE_SETTINGS_PATH, JSON.stringify(settings, null, 4) + os.EOL);
   return { droppedCount, settingsPath: TCE_SETTINGS_PATH };
 }
