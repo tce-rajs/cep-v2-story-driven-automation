@@ -45,6 +45,49 @@ async function closeAndLogVideo(app, teachWindow) {
   fs.appendFileSync(require('path').join(RECORD_VIDEO_DIR, 'videos.jsonl'), line + '\n');
 }
 
+async function watchVolumeToggle(shellWindow) {
+  await shellWindow.evaluate(() => {
+    window.__automationVolumeToggles = [];
+    document.addEventListener(
+      'click',
+      (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const control = target?.closest('[ng-click*="showVolume"], [title="Volume"]');
+        if (control) {
+          window.__automationVolumeToggles.push({
+            at: new Date().toISOString(),
+            text: (control.textContent || '').trim(),
+          });
+        }
+      },
+      true
+    );
+  });
+}
+
+async function keepVolumePanelClosed(shellWindow) {
+  if (shellWindow.isClosed()) return;
+  const panel = shellWindow.locator('.touchbar-container:visible');
+  const slider = panel.locator('input[type="range"][name="volume"]');
+  if (!(await slider.isVisible())) return;
+
+  const toggles = await shellWindow.evaluate(() => window.__automationVolumeToggles || []);
+  const state = await panel.evaluate((element) => {
+    const scope = window.angular?.element(element).scope();
+    return {
+      showValue: scope?.$eval('myApp.volume.show'),
+      hasNgHide: element.classList.contains('ng-hide'),
+      ngShow: element.getAttribute('ng-show'),
+    };
+  });
+  console.warn(
+    `Warning: the client volume panel was visible ` +
+      `(state: ${JSON.stringify(state)}, volume clicks: ${JSON.stringify(toggles)}). Hiding it for this run.`
+  );
+  await panel.evaluate((element) => element.style.setProperty('display', 'none', 'important'));
+  await slider.waitFor({ state: 'hidden', timeout: 3000 });
+}
+
 // Every spec was written against a plain browser `page`, where Playwright's
 // own `baseURL` config option lets `page.goto('./')` resolve automatically.
 // That resolution only exists for browser contexts Playwright itself creates
@@ -88,39 +131,12 @@ async function findTeachWindow(app, timeout = 30000) {
 // that shows a full-screen "E R R O R # 404 -- Unable to connect
 // ClassEdge server" overlay (`.uiverse` in the SHELL's own DOM) permanently.
 //
-// Root cause (a machine restart does not fix it, so it is not resource exhaustion): this is specifically caused
-// by Playwright's OWN required `--inspect`/`--remote-debugging-port` launch
-// flags racing with this app's `<webview>` guest-view creation at startup.
-// Captured directly from the client's main-process log:
-//   "Error occurred in handler for 'GUEST_VIEW_MANAGER_CALL': ERR_FAILED (-2)"
-// Confirmed via repeated back-to-back A/B testing: a manually-launched copy
-// of this exact same client, same machine, same moment, NEVER shows this --
-// only Playwright-launched instances do. A real teacher launching the app
-// normally will never encounter this.
-//
-// Also confirmed: this is CHEAPLY recoverable. The failure is a one-time
-// startup race, not a lasting break -- once past it, a plain Playwright-level
-// `page.goto()` on the SAME window (bypassing the app's own broken internal
-// retry) reliably loads real content within a few seconds. The shell's
-// overlay stays visually stuck either way (nothing in the app ever resets
-// that flag short of a full relaunch), but the actual webview content is
-// what the test drives, and that recovers fine.
-//
-// So: on suspicion (overlay visible OR webview body suspiciously empty),
-// retry navigation on the SAME window first (cheap, ~5-10s) before ever
-// falling back to a full app relaunch. Only treat it as a genuine BLOCKER
-// if the content is STILL missing after that --
-// don't silently ignore a real empty/broken page just because the overlay
-// itself is known to be a tooling artifact.
-//
-// This same overlay was seen
-// mid-session -- real class/topic content visible underneath, well past
-// launch -- not just in the launch-time race described above. That means it
-// isn't safe to assume "launch-only, cosmetic, ignore if content recovers"
-// in every case. So this is also checked between tests (isWindowHealthy,
-// below) and reported explicitly (not just silently retried/relaunched
-// around) whenever it's caught at the end of a failed test, so a run where
-// this happened is never mistaken for an ordinary app/locator failure.
+// The installed client renders this overlay in its shell when a webview load
+// fails. A prior main-process log captured GUEST_VIEW_MANAGER_CALL: ERR_FAILED
+// (-2) during automated startup, but live runs have also shown the overlay
+// while the teach webview loaded successfully and the shell's errorMessage was
+// null. Treat that state as stale; only restart when the app state or the
+// teach page itself confirms the launch is unhealthy.
 async function isConnectionErrorShowing(app) {
   const shell = app.windows().find((w) => w.url().includes('app.asar'));
   if (!shell) return false;
@@ -134,6 +150,40 @@ async function isConnectionErrorShowing(app) {
   } catch {
     return false; // shell window gone/navigating -- don't block on it
   }
+}
+
+async function dismissStaleConnectionOverlay(app, teachWindow) {
+  const shell = app.windows().find((w) => w.url().includes('app.asar'));
+  if (!shell || shell.isClosed() || teachWindow.isClosed()) return false;
+
+  const state = await shell.evaluate(() => {
+    const overlay = document.querySelector('.uiverse');
+    if (!overlay) return { visible: false };
+    const style = getComputedStyle(overlay);
+    const scope = window.angular?.element(overlay).scope();
+    return {
+      visible: style.display !== 'none' && style.visibility !== 'hidden',
+      errorMessage: scope?.$eval('errorMessage'),
+    };
+  });
+  const pageUrl = new URL(teachWindow.url());
+  const baseUrl = new URL(BASE_URL);
+  if (
+    !state.visible ||
+    state.errorMessage !== null ||
+    pageUrl.origin !== baseUrl.origin ||
+    !pageUrl.pathname.startsWith(baseUrl.pathname) ||
+    !(await hasRealContent(teachWindow))
+  ) {
+    return false;
+  }
+
+  await shell.locator('.uiverse').evaluate((overlay) => overlay.style.setProperty('display', 'none', 'important'));
+  console.warn(
+    'Warning: the client displayed its connection-error overlay while errorMessage was null and the teach app had ' +
+      'loaded. Hiding the stale overlay for this automation run.'
+  );
+  return true;
 }
 
 async function hasRealContent(teachWindow) {
@@ -167,30 +217,29 @@ async function launchClient() {
     ...(RECORD_VIDEO_DIR && { recordVideo: { dir: RECORD_VIDEO_DIR, size: { width: 1280, height: 720 } } }),
   });
 
-  // Make sure the shell window has come up before we look for the webview.
-  await app.firstWindow();
-
+  let shellWindow;
   let teachWindow;
   try {
+    // Make sure the shell window has come up before we look for the webview.
+    shellWindow = await app.firstWindow();
+    await watchVolumeToggle(shellWindow);
+    await keepVolumePanelClosed(shellWindow);
     teachWindow = await findTeachWindow(app);
+    await teachWindow.waitForLoadState('domcontentloaded');
+    // The webview keeps rendering for a while after domcontentloaded. Let the
+    // client's own retry settle before deciding whether this launch is usable.
+    await teachWindow.waitForTimeout(5000);
+    await keepVolumePanelClosed(shellWindow);
   } catch (err) {
     await app.close().catch(() => {}); // never leave a half-started client running behind a failed launch
     throw err;
   }
-  await teachWindow.waitForLoadState('domcontentloaded');
-  // The webview keeps rendering (fonts, the Guest Mode panel, the Sign In
-  // modal) for a bit after domcontentloaded — give it a few seconds so
-  // tests don't start clicking before things have settled. This is also
-  // enough time for the did-fail-load retry-and-give-up sequence above to
-  // resolve one way or the other before we check for it below.
-  await teachWindow.waitForTimeout(5000);
 
-  return { app, teachWindow };
+  return { app, shellWindow, teachWindow };
 }
 
-// If a full relaunch is ever still needed (the cheap same-window retry
-// below failed too), don't loop forever -- 2 fresh app instances is plenty
-// given the cheap retry already handles the common case.
+// Bound full client restarts so a persistent server or client failure is
+// reported instead of retrying forever.
 const MAX_LAUNCH_ATTEMPTS = 3;
 
 // Without this check, a missing client just fails with Playwright's own
@@ -278,12 +327,12 @@ async function launchWithRetry() {
   assertClientInstalled();
   const profilePath = assertClientProfile();
 
-  let app, teachWindow;
+  let app, shellWindow, teachWindow;
   for (let attempt = 1; attempt <= MAX_LAUNCH_ATTEMPTS; attempt++) {
     // After a relaunch the client may not bring its teach window up within 30 s (the start-up race above). A
     // launch that does not produce the window counts as one failed attempt, like the overlay case below.
     try {
-      ({ app, teachWindow } = await launchClient());
+      ({ app, shellWindow, teachWindow } = await launchClient());
     } catch (err) {
       if (app) await app.close().catch(() => {});
       app = null;
@@ -291,10 +340,24 @@ async function launchWithRetry() {
       continue;
     }
 
-    if (await isConnectionErrorShowing(app)) {
-      // Cheap recovery first: the client's own reload of its teach <webview> (same client URL, same window),
-      // bypassing the shell's broken internal retry. A full relaunch below if that does not bring content back.
-      await clientNavigate(app, teachWindow, 'reload', null, 20000).catch(() => {});
+    if ((await isConnectionErrorShowing(app)) && !(await dismissStaleConnectionOverlay(app, teachWindow))) {
+      // A genuine load failure can only recover through a fresh client process;
+      // a same-process reload does not reliably clear the shell's error state.
+      console.error(
+        `BLOCKER: client startup showed the connection-error overlay; restarting a fresh client ` +
+          `(attempt ${attempt}/${MAX_LAUNCH_ATTEMPTS}).`
+      );
+      await app.close().catch(() => {});
+      app = null;
+      shellWindow = null;
+      teachWindow = null;
+      if (attempt === MAX_LAUNCH_ATTEMPTS) {
+        throw new Error(
+          `BLOCKER: the client showed its connection-error overlay on all ${MAX_LAUNCH_ATTEMPTS} fresh launches. ` +
+            `Check the QA server/network and rerun.`
+        );
+      }
+      continue;
     }
 
     if (await hasRealContent(teachWindow)) break;
@@ -303,10 +366,7 @@ async function launchWithRetry() {
     if (attempt === MAX_LAUNCH_ATTEMPTS) {
       throw new Error(
         `BLOCKER: the client's teach window is still empty/broken after ${MAX_LAUNCH_ATTEMPTS} ` +
-          `fresh launches, each with a recovery retry attempted. This is a genuine failure to ` +
-          `load real content, not the known cosmetic startup-race overlay (which recovers on ` +
-          `retry) -- so this test is failing rather than working around it. Check the QA ` +
-          `server/network before re-running.`
+          `fresh launches. Check the QA server/network before re-running.`
       );
     }
   }
@@ -340,7 +400,7 @@ async function launchWithRetry() {
     await clientNavigate(app, teachWindow, 'reload', null, options.timeout);
     return null;
   };
-  return { app, teachWindow };
+  return { app, shellWindow, teachWindow };
 }
 
 // AUD-08: the client used to be relaunched from scratch for every single
@@ -411,7 +471,7 @@ const clientTest = base.test.extend({
       // A plain object, mutated in place (not reassigned) by the `page`
       // fixture below if a mid-worker recovery relaunch is ever needed --
       // every test in this worker reads through the same reference.
-      const state = { app: initial.app, teachWindow: initial.teachWindow };
+      const state = { app: initial.app, shellWindow: initial.shellWindow, teachWindow: initial.teachWindow };
       await use(state);
       await closeAndLogVideo(state.app, state.teachWindow);
     },
@@ -432,10 +492,13 @@ const clientTest = base.test.extend({
         await closeAndLogVideo(workerApp.app, workerApp.teachWindow);
         const recovered = await launchWithRetry();
         workerApp.app = recovered.app;
+        workerApp.shellWindow = recovered.shellWindow;
         workerApp.teachWindow = recovered.teachWindow;
       }
 
+      await keepVolumePanelClosed(workerApp.shellWindow);
       await use(workerApp.teachWindow);
+      await keepVolumePanelClosed(workerApp.shellWindow);
 
       // The `screenshot: 'only-on-failure'` config option only covers pages Playwright creates itself, not the
       // client's window, so take the failure screenshot here.

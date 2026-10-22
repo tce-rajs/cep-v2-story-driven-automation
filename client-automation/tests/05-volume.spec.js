@@ -23,6 +23,18 @@ test.describe('CLIENT-05 Volume control', () => {
     restoreSettingsRaw(backup);
   });
 
+  test('the volume slider is hidden after a cold launch', async () => {
+    test.setTimeout(60000);
+    const { app, shell } = await launchShell();
+    try {
+      const slider = shell.locator('.touchbar-container input[type="range"][name="volume"]');
+      await expect(slider).toHaveCount(1);
+      await expect(slider).toBeHidden();
+    } finally {
+      await app.close();
+    }
+  });
+
   test('opens a slider widget and closes again', async () => {
     test.setTimeout(60000);
     const { app, shell } = await launchShell();
