@@ -1,6 +1,6 @@
 // Runs the CORE suite: the positive and main negative cases of every module (tags @smoke, @functional, @negative,
 // @regression), leaving out the deep cases (@long, @edge, @concurrency, @interruption, @performance).
-// Teach modules run in the desktop client; Plan Mode, Checkpoints and the principal's reports run in the browser.
+// Teach, Plan Mode and Checkpoint modules run in the desktop client; Admin modules run in the browser.
 // The two streams run at the same time, each with its own output folder.
 //
 //   npm run core                 both streams
@@ -12,7 +12,7 @@ const path = require('path');
 
 const CORE = '@smoke|@functional|@negative|@regression';
 const DEEP = '@long|@edge|@concurrency|@interruption|@performance';
-const BROWSER_FOLDERS = ['tests/10-plan-mode', 'tests/21-checkpoints', 'tests/22-admin'];
+const BROWSER_FOLDERS = ['tests/22-admin'];
 const CLIENT_FOLDERS = [
   'tests/01-without-login',
   'tests/03-login',
@@ -22,6 +22,7 @@ const CLIENT_FOLDERS = [
   'tests/07-class-navigation',
   'tests/08-playlist',
   'tests/09-resources',
+  'tests/10-plan-mode',
   'tests/11-players',
   'tests/12-minimap',
   'tests/13-ai-notices',
@@ -29,11 +30,14 @@ const CLIENT_FOLDERS = [
   'tests/15-ai-homework',
   'tests/16-attendance',
   'tests/17-profile',
+  'tests/18-resilience',
+  'tests/19-desktop-client',
   'tests/20-cross-cutting',
+  'tests/21-checkpoints',
 ];
 
 const [stream = 'all', ...extra] = process.argv.slice(2);
-const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+const stamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '-').replace('Z', '');
 const root = path.join(__dirname, '..');
 const fs = require('fs');
 
@@ -63,8 +67,10 @@ const run = (name, folders, env) =>
 
 (async () => {
   const jobs = [];
-  if (stream === 'all' || stream === 'client') jobs.push(run('client', CLIENT_FOLDERS, {}));
-  if (stream === 'all' || stream === 'browser') jobs.push(run('browser', BROWSER_FOLDERS, { RUN_IN_BROWSER: '1' }));
+  if (stream === 'all' || stream === 'client')
+    jobs.push(run('client', CLIENT_FOLDERS, { RUN_IN_BROWSER: '', RUN_IN_CLIENT: '1' }));
+  if (stream === 'all' || stream === 'browser')
+    jobs.push(run('browser', BROWSER_FOLDERS, { RUN_IN_BROWSER: '1', RUN_IN_CLIENT: '' }));
   const results = await Promise.all(jobs);
   console.log(`Core run finished: ${results.map((r) => `${r.name} exit ${r.code}`).join(', ')}`);
   console.log(`Results: test-results/core/${stamp}/  (client.json, browser.json)`);

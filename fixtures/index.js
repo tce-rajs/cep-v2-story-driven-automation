@@ -13,7 +13,7 @@
 
 const { test: base, expect } = require('./electron-app');
 const { App } = require('../pages/app');
-const { pinForModule, getClassMap } = require('../config/moduleClassMap');
+const { pinForModule, pinForWhiteboard, getClassMap } = require('../config/moduleClassMap');
 
 const fs = require('fs');
 const path = require('path');
@@ -43,8 +43,10 @@ const test = base.extend({
     await use(new App(page));
   },
 
-  user: async ({ app, classMap, freshSpace }, use) => {
-    await app.signIn(classMap ? pinForModule(classMap) : process.env.VALID_PIN);
+  user: async ({ app, classMap, freshSpace }, use, testInfo) => {
+    const isWhiteboardTest = /[\\/]tests[\\/]06-whiteboard[\\/]/.test(testInfo.file);
+    const pin = isWhiteboardTest ? pinForWhiteboard() : classMap ? pinForModule(classMap) : process.env.VALID_PIN;
+    await app.signIn(pin);
     if (classMap) {
       await app.nav.applyClassMap(classMap);
       await app.playlist.ensureDrawerVisible();

@@ -298,27 +298,29 @@ class PlayerPage {
     for (let attempt = 0; attempt < 3; attempt++) {
       const stillOpenBefore = await this.closeIcon
         .first()
-        .waitFor({ state: 'visible', timeout: 2000 })
-        .then(() => true)
+        .isVisible()
         .catch(() => false);
       if (!stillOpenBefore) return;
       await this.closeIcon
         .first()
         .click({ force: true, timeout: 5000 })
         .catch(() => {});
-      await this.page.waitForTimeout(1000);
-      const closedNow = !(await this.closeIcon
+      const closed = await this.closeIcon
         .first()
-        .isVisible({ timeout: 1500 })
-        .catch(() => false));
-      if (closedNow) return;
-      // Retry with a plain click before giving up.
-      await this.closeIcon
-        .first()
-        .click({ timeout: 5000 })
-        .catch(() => {});
-      await this.page.waitForTimeout(1000);
+        .waitFor({ state: 'hidden', timeout: 2500 })
+        .then(() => true)
+        .catch(() => false);
+      if (closed) return;
+
+      if (attempt < 2) {
+        await this.closeIcon
+          .first()
+          .click({ timeout: 5000 })
+          .catch(() => {});
+      }
     }
+
+    await this.closeIcon.first().waitFor({ state: 'hidden', timeout: 3000 });
   }
 
   /** What a closed player left on screen: visible close icons, visible player panels or frames, and whether the

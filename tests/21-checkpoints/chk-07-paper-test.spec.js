@@ -8,10 +8,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, CP } = require('./chk-helpers');
+const { CP } = require('./chk-helpers');
 
 test.describe('CHK-07 Run a checkpoint as a paper test', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'checkpoints' });
   test.describe.configure({ timeout: 180000 });
 

@@ -6,7 +6,6 @@
 
 const { test, expect } = require('../../fixtures');
 const {
-  BROWSER_ONLY,
   CP,
   GRADE,
   DIVISION,
@@ -27,7 +26,6 @@ const [overrideTitle, overrideQuestions] = (process.env.CHK06_CHECKPOINT || '').
 const EDGE = overrideTitle ? { title: overrideTitle, questions: overrideQuestions } : CP.edgeCheckpoint;
 
 test.describe('CHK-06 Edge cases and interruptions during a checkpoint', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'checkpoints' });
 
   let nextRoll = 1;

@@ -5,7 +5,8 @@
 //   NN-<module>.webm and .mp4   the uncut video        NN-<module>-frames.png   six frames at a glance
 //   NN-<module>-trace.zip       a Playwright trace (npx playwright show-trace <file>): every step with a screenshot
 //   INDEX.md                    one line per journey: result, length and files
-// Journeys add one stroke on fresh board space at most; nothing is erased or sent. Not part of the normal runs.
+// Journeys add one stroke on fresh board space at most; nothing is erased or sent. The suite runner selects them
+// explicitly; direct Playwright runs remain opt-in.
 
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +22,10 @@ const PIN = process.env.VALID_PIN_2;
 let buildDir = null;
 
 test.describe.configure({ timeout: 300000 });
-test.skip(!process.env.JOURNEYS, 'Reference recordings run only on request: JOURNEYS=1 (see the file header)');
+test.skip(
+  !process.env.JOURNEYS,
+  'Reference recordings require JOURNEYS=1 (the suite runner sets it for its recording group)'
+);
 test.skip(!process.env.RECORD_VIDEO_DIR, 'Set RECORD_VIDEO_DIR (e.g. evidence/tmp) so the client is recorded');
 
 /** Launch a recorded client, run `journey(app)`, then save the video, trace and frames under the build folder. */

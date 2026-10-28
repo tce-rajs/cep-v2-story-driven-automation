@@ -1,9 +1,8 @@
-// Shared set-up for the Plan Mode specs (10-plan-mode). Plan Mode runs in the browser with the Plan Mode account
-// (PLAN_PIN), so the desktop-client runs are never touched; in a client run these specs skip with that reason.
+// Shared set-up for the Plan Mode specs (10-plan-mode). These tests use the desktop-client fixture by default; set
+// RUN_IN_BROWSER=1 to run the same workflows in a browser with the Plan Mode account (PLAN_PIN).
 
 const { expect } = require('../../fixtures');
 
-const BROWSER_ONLY = 'Plan Mode is checked in the browser: run with RUN_IN_BROWSER=1';
 const QUIZ_CLASS = { grade: 'Class 12', division: 'A', subject: 'Physics', chapter: 0, topic: 0 };
 
 /** Sign in with the Plan Mode account on its quiz class and switch to Planning. */
@@ -117,7 +116,6 @@ async function teachChapterNames(app) {
 }
 
 module.exports = {
-  BROWSER_ONLY,
   QUIZ_CLASS,
   RT_CLASS,
   openPlanMode,

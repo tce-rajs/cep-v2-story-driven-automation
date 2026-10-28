@@ -11,7 +11,7 @@ const os = require('os');
 const path = require('path');
 const { test, expect } = require('../../fixtures');
 const { getClassMap } = require('../../config/moduleClassMap');
-const { BROWSER_ONLY, startCheckpoint, endCheckpoint, rosterCounts, openStudentSite } = require('./chk-helpers');
+const { startCheckpoint, endCheckpoint, rosterCounts, openStudentSite } = require('./chk-helpers');
 const { createFreshRevisionTest } = require('./fresh-revision-test');
 
 // Run options (environment): FULL_CLASS_KIND = revision (Compass Revision Test, default) or baseline (a checkpoint
@@ -46,7 +46,6 @@ const tookIt = (x) => !x.error && !x.earlier;
 const flat = (t) => t.replace(/\s+/g, ' ').trim();
 
 test.describe('CHK-13 The whole class takes a test', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: CLASS_KEY });
 
   const card = (user) =>

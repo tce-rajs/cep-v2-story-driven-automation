@@ -10,7 +10,7 @@ const XLSX = require('xlsx');
 const { test, expect } = require('../../fixtures');
 const { App } = require('../../pages/app');
 const { BASE_URL } = require('../../config/env');
-const { BROWSER_ONLY, CP, GRADE, DIVISION, openCheckpoint } = require('./chk-helpers');
+const { CP, GRADE, DIVISION, openCheckpoint } = require('./chk-helpers');
 
 const TABS = ['Principal Dashboard', 'School Usage', 'Content Statistics', 'Assessment for Learning'];
 const BAD_TEXT = /\bundefined\b|\bnull\b|\bNaN\b|\[object Object\]|\{\{/;
@@ -138,7 +138,6 @@ async function principalConcepts(page) {
 }
 
 test.describe('CHK-08 Principal reports are complete and correct', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 240000 });
 
   // ---------------------------------------------------------------- every tab
@@ -232,7 +231,7 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
       await app.plan.dashToggle('Current Users').click();
       await app.page.waitForTimeout(2000);
       const rows = await timelineRows(app.page);
-      expect(rows.length, `Current Users rows: ${rows.join(', ')}`).toBe(t.current);
+      expect(rows, `Current Users rows: ${rows.join(', ')}`).toHaveLength(t.current);
     }
   );
 
@@ -244,7 +243,7 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
     await app.plan.dashToggle('All Users').click();
     await app.page.waitForTimeout(3000);
     const rows = await timelineRows(app.page);
-    expect(rows.length, `All Users rows: ${rows.join(', ')}`).toBe(t.total);
+    expect(rows, `All Users rows: ${rows.join(', ')}`).toHaveLength(t.total);
     expect(
       rows.filter((r) => /^-?$/.test(r)),
       'rows without a name'
@@ -264,7 +263,7 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
       await app.plan.dashToggle('All Rooms').click();
       await app.page.waitForTimeout(2000);
       const rooms = await timelineRows(app.page);
-      expect(rooms.length, `rooms: ${rooms.join(', ')}`).toBe(t.installed);
+      expect(rooms, `rooms: ${rooms.join(', ')}`).toHaveLength(t.installed);
       for (const r of rooms) expect(r, 'room shown as "name - IP"').toMatch(/\S+ - \d+\.\d+\.\d+\.\d+/);
     }
   );
@@ -287,9 +286,9 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
         expect.arrayContaining(['School', 'User Summary', 'Terminal Summary', 'Usage Details'])
       );
       const users = XLSX.utils.sheet_to_json(wb.Sheets['User Summary'], { header: 1 }).slice(1);
-      expect(users.length, 'one User Summary row per user').toBe(t.total);
+      expect(users, 'one User Summary row per user').toHaveLength(t.total);
       const terminals = XLSX.utils.sheet_to_json(wb.Sheets['Terminal Summary'], { header: 1 }).slice(1);
-      expect(terminals.length, 'one Terminal Summary row per installed classroom').toBe(t.installed);
+      expect(terminals, 'one Terminal Summary row per installed classroom').toHaveLength(t.installed);
     }
   );
 
@@ -451,9 +450,9 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
         await app.plan.dashCalendar.getByText('15', { exact: true }).first().click({ force: true });
         await app.page.waitForTimeout(4000);
       }
-      const value = await app.plan.dashDateInput.inputValue();
+      const value = app.plan.dashDateInput;
       if (value !== today) await app.page.screenshot({ path: evidence('dashboard-future-date') });
-      expect(value, 'the date stays on or before today').toBe(today);
+      await expect(value, 'the date stays on or before today').toHaveValue(today);
     }
   );
 
@@ -744,7 +743,7 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
       await expect(app.plan.aflHeaderLine).toContainText('Nursery');
       const subjects = await app.plan.optionsOf(app.plan.aflSubjectSelect);
       expect(subjects, 'Nursery subjects').not.toContain('Political Science');
-      expect(await app.plan.aflClassSelect.inputValue(), 'a class is chosen').not.toBe('');
+      await expect(app.plan.aflClassSelect, 'a class is chosen').not.toHaveValue('');
     }
   );
 
@@ -769,7 +768,7 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
       const sum = Object.values(n.bands).reduce((a, b) => a + b, 0);
       if (sum !== n.learners) await app.page.screenshot({ path: evidence('afl-band-counts-short') });
       expect(sum, `bands ${JSON.stringify(n.bands)} vs ${n.learners} learners`).toBe(n.learners);
-      expect(n.students.length, 'students listed').toBe(n.learners);
+      expect(n.students, 'students listed').toHaveLength(n.learners);
     }
   );
 
@@ -840,7 +839,7 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
       ).toBeVisible();
       await app.plan.aflStudentSearch.fill('');
       await app.page.waitForTimeout(2000);
-      expect((await aflNumbers(app.page)).students.length, 'list restored').toBe(students.length);
+      expect((await aflNumbers(app.page)).students, 'list restored').toHaveLength(students.length);
     }
   );
 
@@ -895,10 +894,10 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
       const startOpen = await first.isVisible();
       await header.click();
       await app.page.waitForTimeout(1500);
-      expect(await first.isVisible(), 'the group toggles').toBe(!startOpen);
+      await expect(first, 'the group toggles').toBeVisible(!startOpen);
       await header.click();
       await app.page.waitForTimeout(1500);
-      expect(await first.isVisible(), 'and toggles back').toBe(startOpen);
+      await expect(first, 'and toggles back').toBeVisible(startOpen);
     }
   );
 
@@ -1008,7 +1007,7 @@ test.describe('CHK-08 Principal reports are complete and correct', () => {
         const n = await aflNumbers(principal.page);
         const info = `teacher: ${attempted[0]}, avg ${avg[1]}%; principal: ${n.learners} learners, overall ${n.overall}%, ${n.students.length} listed`;
         test.info().annotations.push({ type: 'comparison', description: info });
-        expect.soft(n.students.length, `students listed = attempted (${info})`).toBe(Number(attempted[1]));
+        expect.soft(n.students, `students listed = attempted (${info})`).toHaveLength(Number(attempted[1]));
         expect.soft(Math.abs(n.overall - Number(avg[1])), `overall mastery ≈ average (${info})`).toBeLessThanOrEqual(1);
       } finally {
         await context.close();

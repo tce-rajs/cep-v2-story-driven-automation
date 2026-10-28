@@ -4,8 +4,7 @@
 // FLOW-15 — Reports: what happened in class reaches the principal and the admin
 // Source: CEPV2_Stories/00_EndToEndFlows.md
 //
-// These flows run in the browser (RUN_IN_BROWSER=1): Plan Mode, the student test site, the principal's reports and the
-// Admin panel are web pages.
+// The teacher-facing Plan Mode runs in the desktop client. Student, principal and Admin pages use browser contexts.
 // - FLOW-12 and FLOW-14: the Plan Mode account (PLAN_PIN) on Class 12 Physics 1.1. Everything made is titled
 //   "AutoTest …" and removed again (the question, the quiz, the resource, the saved code).
 // - FLOW-13: the main account on 10A Science 3.4 ('compassRevisionTest'). FLOW-13-01 makes a fresh Revision Test for the
@@ -37,7 +36,6 @@ const {
 const { startCheckpoint, endCheckpoint, rosterCounts, openStudentSite } = require('../21-checkpoints/chk-helpers');
 const { createFreshRevisionTest, openRevisionTestCard } = require('../21-checkpoints/fresh-revision-test');
 
-const BROWSER_ONLY = 'Plan Mode, tests and reports are checked in the browser: run with RUN_IN_BROWSER=1';
 const RT_CLASS = getClassMap('compassRevisionTest');
 const GRADE = RT_CLASS.grade;
 const DIVISION = `Division ${RT_CLASS.division}`;
@@ -55,7 +53,6 @@ const writeState = (name, patch) =>
 // ---------------------------------------------------------------------------------------------------------------------
 
 test.describe('FLOW-12 Planning a quiz in Plan Mode and using it in class', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 240000 });
   const F = '12';
   const OPTIONS = ['Alpha', 'Beta', 'Gamma', 'Delta'];
@@ -176,7 +173,7 @@ test.describe('FLOW-12 Planning a quiz in Plan Mode and using it in class', () =
     try {
       await app.player.openResourceCard(card);
       await expect(app.player.quizOptions.first(), 'the question shows its answers').toBeVisible({ timeout: 30000 });
-      expect(await app.player.quizOptions.count(), 'the four answers').toBe(OPTIONS.length);
+      await expect(app.player.quizOptions, 'the four answers').toHaveCount(OPTIONS.length);
       await app.player.answerCurrentQuestion(0);
       await expect(
         app.player.quizCorrectOptions.first(),
@@ -342,7 +339,6 @@ const readPrincipalReportFor = async (app, title, students) => {
 };
 
 test.describe('FLOW-13 A Revision Test or Checkpoint with the class', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'compassRevisionTest' });
   test.describe.configure({ timeout: 360000 });
 
@@ -727,7 +723,6 @@ test.describe('FLOW-13 A Revision Test or Checkpoint with the class', () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 test.describe('FLOW-14 Content Library and Code Editor in Plan Mode', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 240000 });
 
   test.beforeEach(async ({ app }) => {
@@ -866,7 +861,6 @@ async function adminSchoolReport(page, item, marker) {
 }
 
 test.describe('FLOW-15 Reports: what happened in class reaches the principal and the admin', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 180000 });
 
   const openPlanAsPrincipal = async (app) => {

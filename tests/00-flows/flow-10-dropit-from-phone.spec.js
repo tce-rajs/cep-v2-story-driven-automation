@@ -17,13 +17,50 @@ const pairPhone = async (user) => {
   const url = await user.addResource.decodeDropitQrUrl();
   expect(url, 'set-up: the QR code holds a pairing link').toBeTruthy();
   const browser = await chromium.launch();
-  const context = await browser.newContext({ viewport: DropitCompanionPage.viewport });
-  const phone = new DropitCompanionPage(await context.newPage());
-  await phone.open(url);
-  await expect(user.addResource.dropitConnectionStatus, 'set-up: the phone is connected').toHaveText(/connected/i, {
-    timeout: 15000,
-  });
-  return { phone, close: () => browser.close().catch(() => {}) };
+  try {
+    const context = await browser.newContext({ viewport: DropitCompanionPage.viewport });
+    const phone = new DropitCompanionPage(await context.newPage());
+    const phoneErrors = [];
+    phone.page.on('pageerror', (error) => phoneErrors.push(`pageerror: ${error.message}`));
+    phone.page.on('requestfailed', (request) => {
+      phoneErrors.push(
+        `requestfailed: ${new URL(request.url()).origin} ${request.failure()?.errorText || 'unknown error'}`
+      );
+    });
+    phone.page.on('console', (message) => {
+      if (message.type() === 'error')
+        phoneErrors.push(`console: ${message.text().replace(/https?:\/\/\S+/g, '[url]')}`);
+    });
+    await phone.open(url);
+    try {
+      await expect(user.addResource.dropitConnectionStatus, 'set-up: the phone is connected').toHaveText(/connected/i, {
+        timeout: 15000,
+      });
+    } catch (error) {
+      const details = await phone.page.evaluate(() => ({
+        origin: location.origin,
+        title: document.title,
+        readyState: document.readyState,
+        text: document.body?.innerText || '',
+        canvasCount: document.querySelectorAll('canvas').length,
+        bodyChildren: [...document.body.children].map((element) => element.tagName.toLowerCase()),
+      }));
+      console.error(`DropIt phone page did not pair: ${JSON.stringify({ ...details, errors: phoneErrors })}`);
+      await test.info().attach('phone page details', {
+        body: JSON.stringify(details, null, 2),
+        contentType: 'application/json',
+      });
+      await test.info().attach('phone page after pairing attempt', {
+        body: await phone.page.screenshot(),
+        contentType: 'image/png',
+      });
+      throw error;
+    }
+    return { phone, close: () => browser.close().catch(() => {}) };
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
 };
 /** Send `file` from the phone; returns the Playlist's card count before it arrived. */
 const sendFromPhone = async (user, phone, file) => {
@@ -159,12 +196,8 @@ test.describe('FLOW-10 Sending a file from a phone with DropIt', () => {
         await expect(user.addResource.dropitUploadStatus, 'no upload recorded on the panel').not.toHaveText(
           /success|complete|uploaded/i
         );
-        expect(await user.playlist.resourceCards.count(), 'nothing added').toBe(before);
+        await expect(user.playlist.resourceCards, 'nothing added').toHaveCount(before);
         const words = await phoneText(phone);
-        test.skip(
-          !words,
-          'the phone page (Flutter canvas) exposes no readable text; its message is in the attached screenshot'
-        );
         expect(words, 'the phone says the file is refused').toMatch(
           /not (supported|allowed)|invalid|only .*(png|jpg|pdf)|allowed/i
         );

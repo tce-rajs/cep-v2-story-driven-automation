@@ -22,6 +22,7 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "core": "node scripts/run-core.js",
+    "suite": "node scripts/run-suite.js",
     "review:page": "node scripts/build-review-page.js",
     "review:merge": "node scripts/merge-review.js",
     "core:client": "node scripts/run-core.js client",

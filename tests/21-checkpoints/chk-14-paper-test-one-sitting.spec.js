@@ -12,7 +12,6 @@ const os = require('os');
 const path = require('path');
 const XLSX = require('xlsx');
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY } = require('./chk-helpers');
 const { createFreshRevisionTest } = require('./fresh-revision-test');
 
 // A named never-launched Revision Test, or null: each test then makes a fresh one.
@@ -34,7 +33,6 @@ const marksFor = (roll, questions) =>
   Array.from({ length: questions }, (_, q) => (roll <= 10 ? 1 : roll <= 20 ? (q % 2 === 0 ? 1 : 0) : 0));
 
 test.describe('CHK-14 A paper test from start to finish in one sitting', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'compassRevisionTest' });
 
   const openPaperCard = async (user, paper) => {

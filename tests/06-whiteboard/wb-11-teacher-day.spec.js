@@ -13,11 +13,12 @@
 const { test, expect } = require('@playwright/test');
 const { launchWithRetry } = require('../../fixtures/electron-app');
 const { App } = require('../../pages/app');
+const { pinForWhiteboard } = require('../../config/moduleClassMap');
 const { TouchInput } = require('../../pages/touch-input');
 const { layoutHandwriting, lessonText } = require('../../pages/lib/handwriting');
 
 const signInToTopic = async (app) => {
-  await app.signIn(process.env.VALID_PIN);
+  await app.signIn(pinForWhiteboard());
   await app.nav.applyClassMap('longSession');
   await app.toolbar.wbSvg.waitFor({ state: 'visible', timeout: 20000 });
   await app.page.waitForTimeout(3000);

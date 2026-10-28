@@ -4,8 +4,13 @@
 // the very first launch. Force known-good single-profile state here, once, regardless of whatever the last run
 // left behind, rather than trusting every individual test's cleanup to have completed.
 
-const { forceSingleProfile } = require('./fixtures/shell');
+const { backupSettingsRaw, forceSingleProfile, restoreSettingsRaw } = require('./fixtures/shell');
 
 module.exports = async () => {
+  const originalSettings = backupSettingsRaw();
   forceSingleProfile({ title: 'QA-V2', url: 'http://172.18.2.85/teach/' });
+
+  return async () => {
+    restoreSettingsRaw(originalSettings);
+  };
 };

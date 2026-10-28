@@ -6,14 +6,13 @@
 // again from the Playlist at the end of the test.
 
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, openPlanMode, quizCardInTeach, removeQuiz } = require('./plan-helpers');
+const { openPlanMode, quizCardInTeach, removeQuiz } = require('./plan-helpers');
 
 const marker = () => `AutoTest code ${Date.now() % 1000000}`;
 /** The title the app gave saved code (from the save request). */
 const savedTitle = (response) => JSON.parse(response.request().postData() || '{}').title;
 
 test.describe('PLN-08 Code Editor', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 240000 });
 
   test.beforeEach(async ({ app }) => {

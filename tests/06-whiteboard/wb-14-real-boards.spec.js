@@ -1,7 +1,7 @@
 // WB-14 — A board as teachers really write
 // Source: CEPV2_Stories/06_Whiteboard.md
-// Each test writes real-looking content on fresh space of the default class's board (nothing is erased): handwriting
-// measured from the Kalam font (real Indian handwriting) in a separate plain browser page, plus pen-drawn arrows,
+// Each test writes real-looking content on fresh space of the dedicated reference class's board (nothing is erased): handwriting
+// traced from a handwriting font in a separate plain browser page and sent as pen strokes, plus pen-drawn arrows,
 // circles, lines and boxes. It then checks that every stroke it wrote comes back exactly (same outline, same order)
 // after a reload or after signing out and back in.
 // Writing over an opened worksheet is covered by PLR-14-01a/d. WB-14-08 writes one marker on each of 3 x 3 screens
@@ -9,9 +9,10 @@
 
 const { chromium } = require('@playwright/test');
 const { test, expect } = require('../../fixtures');
+const { pinForWhiteboard } = require('../../config/moduleClassMap');
 const { textToStrokes } = require('../../pages/lib/font-strokes');
 
-test.use({ freshSpace: true });
+test.use({ classMap: 'whiteboardReference', freshSpace: true });
 
 // --- Shapes as pen strokes (canvas-relative px) ---
 const line = (a, b) => [a, b];
@@ -39,9 +40,55 @@ const handwriting = async (items) => {
   try {
     const drawing = await (await browser.newContext()).newPage();
     const words = [];
-    for (const { text, x, y, size = 0.45 } of items) {
-      const res = await textToStrokes(drawing, text, { fontSize: 90, maxWidth: 4000 });
-      words.push({ text, strokes: res.strokes.map((s) => s.map((p) => ({ x: x + p.x * size, y: y + p.y * size }))) });
+    for (const {
+      text,
+      x,
+      y,
+      size = 0.45,
+      weight,
+      font,
+      fontSize = 90,
+      maxWidth = 4000,
+      lineHeight = 1.45,
+      continuous,
+      fitWidth,
+      fitHeight,
+    } of items) {
+      const selectedFont = font || (/[\u0900-\u097f]/.test(text) ? 'Kalam' : 'Segoe Print');
+      const selectedWeight = weight === undefined ? (selectedFont === 'Segoe Print' ? 400 : 300) : weight;
+      const traceContinuously = continuous === undefined ? selectedFont === 'Segoe Print' : continuous;
+      const res = await textToStrokes(drawing, text, {
+        font: selectedFont,
+        fontSize,
+        maxWidth,
+        lineHeight,
+        weight: selectedWeight,
+        continuous: traceContinuously,
+      });
+      const bounds = res.strokes.reduce(
+        (box, stroke) => {
+          for (const point of stroke) {
+            box.left = Math.min(box.left, point.x);
+            box.right = Math.max(box.right, point.x);
+            box.top = Math.min(box.top, point.y);
+            box.bottom = Math.max(box.bottom, point.y);
+          }
+          return box;
+        },
+        { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
+      );
+      if (!Number.isFinite(bounds.left)) throw new Error(`Font tracing produced no strokes for "${text}".`);
+      const scaleX = Math.min(size, fitWidth ? fitWidth / (bounds.right - bounds.left) : size);
+      const scaleY = Math.min(size, fitHeight ? fitHeight / (bounds.bottom - bounds.top) : size);
+      words.push({
+        text,
+        strokes: res.strokes.map((s) => s.map((p) => ({ x: x + p.x * scaleX, y: y + p.y * scaleY }))),
+        lineCount: res.lines,
+        bounds: {
+          width: (bounds.right - bounds.left) * scaleX,
+          height: (bounds.bottom - bounds.top) * scaleY,
+        },
+      });
     }
     return words;
   } finally {
@@ -50,10 +97,20 @@ const handwriting = async (items) => {
 };
 
 /** Write `words` with the Pen; returns the outlines (`d`) of the strokes this call added, in board order. */
-const write = async (user, page, words) => {
+const write = async (user, page, words, { step = 3 } = {}) => {
   const before = await user.toolbar.allPaths.count();
-  await user.content.writeHandwriting([{ words }], { step: 3 });
+  await user.content.writeHandwriting([{ words }], { step });
   await page.waitForTimeout(1000);
+  return user.toolbar.allPaths.evaluateAll((els, from) => els.slice(from).map((e) => e.getAttribute('d')), before);
+};
+
+const writePages = async (user, pages, { step = 5 } = {}) => {
+  const before = await user.toolbar.allPaths.count();
+  const expected = pages.reduce((n, p) => n + p.words.reduce((m, w) => m + w.strokes.length, 0), 0);
+  await user.content.writeHandwriting(pages, { step });
+  await expect
+    .poll(() => user.toolbar.allPaths.count(), { message: 'every handwritten stroke was drawn' })
+    .toBe(before + expected);
   return user.toolbar.allPaths.evaluateAll((els, from) => els.slice(from).map((e) => e.getAttribute('d')), before);
 };
 
@@ -66,12 +123,11 @@ const penColour = async (user, n) => {
 
 /** Wait for the autosave, then come back to the board: by reloading, or by signing out and in again. */
 const comeBack = async (user, page, how) => {
-  await user.content.waitForSaved().catch(() => {});
-  await page.waitForTimeout(12000);
+  await user.content.waitForSaved(180000);
   if (how === 'sign-out') {
     await user.userMenu.signOut();
-    await user.signIn();
-    await user.nav.applyClassMap('default');
+    await user.signIn(pinForWhiteboard());
+    await user.nav.applyClassMap('whiteboardReference');
   } else {
     await page.reload();
     await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
@@ -91,25 +147,76 @@ test.describe('WB-14 A board as teachers really write', () => {
   test.describe.configure({ timeout: 300000 });
 
   test(
-    'WB-14-01: a page with a heading, numbered points, arrows between words and circled words is saved and comes back exactly after sign-out and sign-in',
+    'WB-14-01: the electric-charge lesson from the reference board is saved and comes back exactly after sign-out and sign-in',
     { tag: ['@functional'] },
     async ({ user, page }) => {
+      test.setTimeout(600000);
+      await expect(user.nav.currentClassBtn).toContainText('Class 12A | Physics');
+      await expect(user.nav.currentChapterTopicBtn).toContainText(/1\.6\s*\|\s*Electric Field Lines, Electric Flux/);
       const a = await user.content.writingArea();
-      const words = await handwriting([
-        { text: 'Photosynthesis', x: a.x, y: a.y, size: 0.6 },
-        { text: '1. Sunlight', x: a.x, y: a.y + 90 },
-        { text: '2. Water', x: a.x, y: a.y + 150 },
-        { text: 'glucose', x: a.x + 420, y: a.y + 120 },
+      const title = await handwriting([
+        {
+          text: 'Properties of Electric Charge',
+          x: a.x - 30,
+          y: a.y - 30,
+          size: 0.44,
+          weight: 400,
+          font: 'Segoe Print',
+          fontSize: 120,
+          maxWidth: 4000,
+          continuous: true,
+          fitWidth: 760,
+          fitHeight: 80,
+        },
       ]);
-      const shapes = [
-        { text: 'underline', strokes: [line({ x: a.x, y: a.y + 62 }, { x: a.x + 420, y: a.y + 62 })] },
-        { text: 'arrow', strokes: arrow({ x: a.x + 230, y: a.y + 125 }, { x: a.x + 400, y: a.y + 140 }) },
-        { text: 'circle', strokes: [circle({ x: a.x + 490, y: a.y + 145 }, 95, 38)] },
+      await penColour(user, 3);
+      const titleStrokes = await writePages(user, [{ words: title }], { step: 20 });
+      const underline = await write(user, page, [
+        { text: 'underline', strokes: [line({ x: a.x - 30, y: a.y + 45 }, { x: a.x + 720, y: a.y + 45 })] },
+      ]);
+
+      const notes = [
+        '1. Charge is of two kinds, positive and negative. Like charges',
+        'repel each other and unlike charges attract. 2. Charge is',
+        'conserved. It is never created or destroyed; it only moves from',
+        'one body to another. 3. Charge is quantised. Every charge is a',
+        'whole number multiple of the charge on one electron. 4.',
+        'Charge is additive. The total charge of a body is the sum of',
+        'all the charges on it. When we rub a glass rod with silk,',
+        'electrons move from the glass to the silk, so the rod becomes',
+        'positive, and the silk becomes negative.',
       ];
-      const written = await write(user, page, [...words, ...shapes]);
-      expect(written.length, 'set-up: the page was written').toBeGreaterThan(20);
+      const body = await handwriting([
+        {
+          text: notes.join('\n'),
+          x: a.x - 42,
+          y: a.y + 68,
+          size: 0.45,
+          weight: 400,
+          font: 'Segoe Print',
+          fontSize: 120,
+          maxWidth: 4000,
+          lineHeight: 1.05,
+          continuous: true,
+          fitWidth: a.width + 22,
+          fitHeight: a.height - 88,
+        },
+      ]);
+      expect(body[0].lineCount, 'the note line breaks match the reference layout').toBe(notes.length);
+      expect(body[0].bounds.width, 'the handwritten notes fit within the board width').toBeLessThanOrEqual(
+        a.width + 22
+      );
+      expect(body[0].bounds.height, 'the handwritten notes fit below the title').toBeLessThanOrEqual(a.height - 88);
+      await penColour(user, 0);
+      const bodyStrokes = await writePages(user, [{ words: body }], { step: 20 });
+      const written = [...titleStrokes, ...underline, ...bodyStrokes];
+      expect(written.length, 'set-up: the reference lesson was written').toBeGreaterThan(100);
+      await test.info().attach('reference-board-pen-writing', {
+        body: await page.screenshot(),
+        contentType: 'image/png',
+      });
       await comeBack(user, page, 'sign-out');
-      await expectAllBack(user, written, 'the page');
+      await expectAllBack(user, written, 'the reference lesson');
     }
   );
 

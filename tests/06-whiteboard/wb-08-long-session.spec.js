@@ -18,7 +18,7 @@ const { getClassMap } = require('../../config/moduleClassMap');
 const { BASE_URL } = require('../../config/env');
 const { App } = require('../../pages/app');
 const { layoutHandwriting, lessonText } = require('../../pages/lib/handwriting');
-const { pinForModule } = require('../../config/moduleClassMap');
+const { pinForWhiteboard } = require('../../config/moduleClassMap');
 
 const strokeCount = (pages) => pages.reduce((n, p) => n + p.words.reduce((m, w) => m + w.strokes.length, 0), 0);
 const avg = (xs) => Math.round(xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length));
@@ -89,7 +89,7 @@ const writeAcrossSignOuts = async (user, pages, area) => {
   let lastBoard = await user.content.pathGeometry();
   const resume = async () => {
     const at = Date.now();
-    await user.signIn(pinForModule('toolbarGeneral'));
+    await user.signIn(pinForWhiteboard());
     await user.nav.applyClassMap('toolbarGeneral');
     await user.toolbar.wbSvg.waitFor({ state: 'visible', timeout: 20000 });
     await expect
@@ -367,7 +367,7 @@ const readSavedBoard = async (reader) => {
       .then(() => true)
       .catch(() => false))
   )
-    await reader.signIn(pinForModule('toolbarGeneral'));
+    await reader.signIn(pinForWhiteboard());
   await reader.nav.applyClassMap('toolbarGeneral');
   await reader.toolbar.wbSvg.waitFor({ state: 'visible', timeout: 20000 });
   await reader.page.waitForTimeout(3000);

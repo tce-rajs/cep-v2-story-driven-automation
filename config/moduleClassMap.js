@@ -54,6 +54,17 @@ const MODULE_CLASS_MAP = {
     topicIndex: 0,
     notes: 'General-purpose class on the second account.',
   },
+  whiteboardReference: {
+    label: 'Whiteboard reference lesson (dedicated account)',
+    account: 'VALID_PIN_2',
+    grade: 'Class 12',
+    division: 'A',
+    subject: 'Physics',
+    chapterIndex: 0,
+    topicIndex: 5,
+    notes:
+      'WB-14 reference lesson: “Properties of Electric Charge” on Class 12A Physics, live topic 1.6 (Electric Field Lines, Electric Flux).',
+  },
   navigationBoundary: {
     label: 'Navigation -- boundary/first-last-chapter checks',
     account: 'VALID_PIN',
@@ -403,4 +414,14 @@ function pinForModule(moduleKey) {
   return process.env[entry.account] || process.env.VALID_PIN;
 }
 
-module.exports = { MODULE_CLASS_MAP, getClassMap, applyClassMap, pinForModule };
+function pinForWhiteboard() {
+  const pin = process.env.WHITEBOARD_PIN || process.env.VALID_PIN_2;
+  if (!pin) throw new Error('Whiteboard tests need a separate teacher account: set WHITEBOARD_PIN or VALID_PIN_2.');
+  if (pin === process.env.VALID_PIN)
+    throw new Error(
+      'Whiteboard tests must use an account different from VALID_PIN; set WHITEBOARD_PIN or VALID_PIN_2.'
+    );
+  return pin;
+}
+
+module.exports = { MODULE_CLASS_MAP, getClassMap, applyClassMap, pinForModule, pinForWhiteboard };

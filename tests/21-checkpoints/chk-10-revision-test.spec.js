@@ -11,7 +11,7 @@ const os = require('os');
 const path = require('path');
 const { test, expect } = require('../../fixtures');
 const { getClassMap } = require('../../config/moduleClassMap');
-const { BROWSER_ONLY, startCheckpoint, endCheckpoint, rosterCounts, openStudentSite } = require('./chk-helpers');
+const { startCheckpoint, endCheckpoint, rosterCounts, openStudentSite } = require('./chk-helpers');
 const { createFreshRevisionTest } = require('./fresh-revision-test');
 
 const RT_CLASS = getClassMap('compassRevisionTest');
@@ -35,7 +35,6 @@ const saveStudent = (s) =>
   });
 
 test.describe('CHK-10 Run a Revision Test with the class', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'compassRevisionTest' });
   test.describe.configure({ timeout: 360000 });
 

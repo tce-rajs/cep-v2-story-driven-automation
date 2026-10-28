@@ -1,15 +1,43 @@
-// Shared steps for the checkpoint specs (21-checkpoints). The teacher side runs in the browser with the main account
-// on the 'checkpoints' class map entry; students use the student test site in their own browser contexts.
+// Shared steps for the checkpoint specs (21-checkpoints). The teacher side uses the desktop-client fixture by default
+// with the main account on the 'checkpoints' class map entry; students use the student test site in their own browser
+// contexts. Set RUN_IN_BROWSER=1 to run the teacher side in a browser.
 
 const { expect } = require('../../fixtures');
 const { getClassMap } = require('../../config/moduleClassMap');
 const { StudentTestPage } = require('../../pages/student-test.page');
+const { App } = require('../../pages/app');
+const { BASE_URL } = require('../../config/env');
+const { autoName, openPlanModeOnRevisionTopic } = require('../10-plan-mode/plan-helpers');
 
-const BROWSER_ONLY =
-  'Checkpoints are checked in the browser (teacher, students and principal): run with RUN_IN_BROWSER=1';
 const CP = getClassMap('checkpoints');
 const GRADE = CP.grade; // "Class 10"
 const DIVISION = `Division ${CP.division}`; // "Division A"
+
+/** Create a fresh Baseline Test for the Checkpoint class without launching or submitting it. */
+async function createCheckpointBaselineTest(browser) {
+  const context = await browser.newContext({ baseURL: BASE_URL });
+  try {
+    const app = new App(await context.newPage());
+    await openPlanModeOnRevisionTopic(app);
+    await app.plan.openSection('Check Point');
+    await app.plan.filterCheckPoint(GRADE, CP.subject);
+    await expect(app.plan.createTestBtn, 'set-up: Create Test is offered for the Checkpoint class').toBeEnabled({
+      timeout: 15000,
+    });
+
+    const title = autoName('BT CHK');
+    const saved = await app.plan.createBaselineTest(title, 1);
+    expect(saved.ok(), `set-up: the server accepts the Baseline Test (HTTP ${saved.status()})`).toBe(true);
+    await app.plan.checkPointSearch.fill(title);
+    await expect(
+      app.page.getByText(title, { exact: true }).first(),
+      `set-up: "${title}" is listed in Check Point`
+    ).toBeVisible({ timeout: 15000 });
+    return title;
+  } finally {
+    await context.close();
+  }
+}
 
 /** The checkpoint the tests use by default: the class map's checkpointTitle. */
 const DEFAULT_CHECKPOINT = { title: CP.checkpointTitle };
@@ -160,10 +188,10 @@ async function openStudentSite(browser) {
 }
 
 module.exports = {
-  BROWSER_ONLY,
   CP,
   GRADE,
   DIVISION,
+  createCheckpointBaselineTest,
   DEFAULT_CHECKPOINT,
   checkpointCard,
   openCheckpoint,

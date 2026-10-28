@@ -54,5 +54,7 @@ for (const file of files) {
   );
 }
 lines.push('', '## Gaps to fill', '', ...gaps.map((g) => `- ${g}`));
-fs.writeFileSync(path.join(ROOT, 'report', 'stories', 'STORY_COVERAGE.md'), lines.join('\n') + '\n');
+const output = path.join(ROOT, 'report', 'stories', 'STORY_COVERAGE.md');
+fs.mkdirSync(path.dirname(output), { recursive: true });
+fs.writeFileSync(output, lines.join('\n') + '\n');
 console.log(`stories checked; ${gaps.length} gaps -> report/STORY_COVERAGE.md`);

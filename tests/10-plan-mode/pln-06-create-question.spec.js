@@ -6,12 +6,11 @@
 // (PLN-04-01 relies on that).
 
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, openPlanMode, autoName } = require('./plan-helpers');
+const { openPlanMode, autoName } = require('./plan-helpers');
 
 const OPTIONS = ['Alpha', 'Beta', 'Gamma', 'Delta'];
 
 test.describe('PLN-06 Create a question', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 180000 });
 
   test.beforeEach(async ({ app }) => {

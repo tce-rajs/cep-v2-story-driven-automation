@@ -13,7 +13,7 @@ const { test, expect } = require('../../fixtures');
 const { BASE_URL } = require('../../config/env');
 
 const { App } = require('../../pages/app');
-const { getClassMap } = require('../../config/moduleClassMap');
+const { getClassMap, pinForWhiteboard } = require('../../config/moduleClassMap');
 
 // The desktop client cannot open a second tab (CDP: "Target.createTarget: Not supported"), so the "second tab" of the
 // concurrency scenarios is a separate browser session (own storage) signed in to the same account.
@@ -164,7 +164,7 @@ test.describe('WB-06 Annotation', () => {
     const beforeImages = await user.content.imageFingerprint();
 
     await user.userMenu.signOut();
-    await user.signIn();
+    await user.signIn(pinForWhiteboard());
     await goTo(user, TOPIC_A); // whether login itself returns here is NAV-05, not this case
 
     expect(await user.content.snapshot()).toEqual(before);
@@ -345,7 +345,9 @@ test.describe('WB-06 Annotation', () => {
       const second = new App(tab2);
       try {
         await tab2.goto('./');
-        await second.login.avatar.waitFor({ state: 'visible', timeout: 20000 }).catch(async () => second.signIn());
+        await second.login.avatar
+          .waitFor({ state: 'visible', timeout: 20000 })
+          .catch(async () => second.signIn(pinForWhiteboard()));
         await second.toolbar.waitForBoardToSettle();
         await second.content.panBelowExistingWriting(); // the second tab writes below existing content too
 
@@ -389,7 +391,9 @@ test.describe('WB-06 Annotation', () => {
       const second = new App(tab2);
       try {
         await tab2.goto('./');
-        await second.login.avatar.waitFor({ state: 'visible', timeout: 20000 }).catch(async () => second.signIn());
+        await second.login.avatar
+          .waitFor({ state: 'visible', timeout: 20000 })
+          .catch(async () => second.signIn(pinForWhiteboard()));
         await second.toolbar.waitForBoardToSettle();
         await second.content.panBelowExistingWriting(); // the second tab writes below existing content too
 

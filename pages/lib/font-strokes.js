@@ -3,18 +3,22 @@
 // lines into polylines, simplifies and smooths them. The result is what a pen would trace: single lines, not outlines.
 // Moved here from the long-writing scripts (used for the Marathi essays on the Ultra server).
 //
-// textToStrokes(page, text, { fontSize, maxWidth, lineHeight, weight }) -> { strokes: [{ x, y }[]], width, height, ... }
+// textToStrokes(page, text, { fontSize, maxWidth, lineHeight, weight, font, continuous }) ->
+// { strokes: [{ x, y }[]], width, height, ... }
 // in px, origin top-left. `page` is only a drawing surface for measuring the font -- give it a plain browser page of its
-// own (it is replaced with a canvas), never the app window under test. It must be able to load Google Fonts.
+// own (it is replaced with a canvas), never the app window under test. Non-local fonts load through Google Fonts.
+
+const localFonts = new Set(['Ink Free', 'Segoe Print', 'Segoe Script']);
 
 async function textToStrokes(
   page,
   text,
-  { fontSize = 90, maxWidth = 2200, lineHeight = 1.45, weight = 300, font = 'Kalam' } = {}
+  { fontSize = 90, maxWidth = 2200, lineHeight = 1.45, weight = 300, font = 'Kalam', continuous = false } = {}
 ) {
-  await page.setContent(
-    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${font.replace(/ /g, '+')}:wght@300;400;700&display=block"><canvas id="c"></canvas>`
-  );
+  const fontStylesheet = localFonts.has(font)
+    ? ''
+    : `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${font.replace(/ /g, '+')}:wght@300;400;700&display=block">`;
+  await page.setContent(`${fontStylesheet}<canvas id="c"></canvas>`);
   await page.evaluate(
     async ({ font, weight, fontSize }) => {
       await document.fonts.load(`${weight} ${fontSize}px "${font}"`, 'Aआ');
@@ -23,22 +27,24 @@ async function textToStrokes(
     { font, weight, fontSize }
   );
   return page.evaluate(
-    ({ text, fontSize, maxWidth, lineHeight, weight, font }) => {
+    ({ text, fontSize, maxWidth, lineHeight, weight, font, continuous }) => {
       const cvs = document.getElementById('c');
       const ctx = cvs.getContext('2d');
       const fontSpec = `${weight} ${fontSize}px "${font}"`;
       ctx.font = fontSpec;
-      // Word-wrap.
+      // Preserve explicit line breaks while wrapping any overlong line.
       const lines = [];
-      let line = '';
-      for (const w of text.split(/\s+/)) {
-        const t = line ? `${line} ${w}` : w;
-        if (ctx.measureText(t).width > maxWidth && line) {
-          lines.push(line);
-          line = w;
-        } else line = t;
+      for (const paragraph of text.split(/\r?\n/)) {
+        let line = '';
+        for (const w of paragraph.trim().split(/\s+/).filter(Boolean)) {
+          const t = line ? `${line} ${w}` : w;
+          if (ctx.measureText(t).width > maxWidth && line) {
+            lines.push(line);
+            line = w;
+          } else line = t;
+        }
+        lines.push(line);
       }
-      if (line) lines.push(line);
       const lh = fontSize * lineHeight;
       const W = Math.ceil(maxWidth + fontSize);
       const H = Math.ceil(lines.length * lh + fontSize);
@@ -102,50 +108,119 @@ async function textToStrokes(
       ];
       const on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && g[idx(x, y)] === 1;
       const deg = (x, y) => N8.filter(([dx, dy]) => on(x + dx, y + dy)).length;
-      const seen = new Uint8Array(W * H);
-      const strokes = [];
-      const walk = (sx, sy) => {
-        const pts = [[sx, sy]];
-        seen[idx(sx, sy)] = 1;
-        let [x, y] = [sx, sy];
-        let dir = null;
-        for (;;) {
-          let best = null;
-          let bestScore = -9;
-          for (const [dx, dy] of N8) {
+      const continuousStrokes = () => {
+        const componentSeen = new Uint8Array(W * H);
+        const edgeSeen = new Uint8Array(W * H * 8);
+        const opposite = [4, 5, 6, 7, 0, 1, 2, 3];
+        const neighbors = (id) => {
+          const x = id % W;
+          const y = Math.floor(id / W);
+          return N8.flatMap(([dx, dy], direction) => {
             const nx = x + dx;
             const ny = y + dy;
-            if (!on(nx, ny) || seen[idx(nx, ny)]) continue;
-            const score = dir ? dx * dir[0] + dy * dir[1] : 0; // keep going the same way through junctions
-            if (score > bestScore) {
-              bestScore = score;
-              best = [nx, ny, dx, dy];
+            if (!on(nx, ny)) return [];
+            if (dx && dy && (on(x + dx, y) || on(x, y + dy))) return [];
+            return [[idx(nx, ny), direction]];
+          });
+        };
+        const result = [];
+        for (let y = 1; y < H - 1; y++) {
+          for (let x = 1; x < W - 1; x++) {
+            const startId = idx(x, y);
+            if (!g[startId] || componentSeen[startId]) continue;
+            const component = [];
+            const queue = [startId];
+            componentSeen[startId] = 1;
+            for (let q = 0; q < queue.length; q++) {
+              const id = queue[q];
+              component.push(id);
+              for (const [nextId] of neighbors(id)) {
+                if (componentSeen[nextId]) continue;
+                componentSeen[nextId] = 1;
+                queue.push(nextId);
+              }
             }
+            const endpoints = component.filter((id) => neighbors(id).length === 1);
+            const start = (endpoints.length ? endpoints : component).reduce((left, right) => {
+              const lx = left % W;
+              const rx = right % W;
+              return rx < lx || (rx === lx && right < left) ? right : left;
+            });
+            const point = (id) => [id % W, Math.floor(id / W)];
+            const path = [point(start)];
+            const stack = [{ id: start, neighbors: neighbors(start), next: 0 }];
+            while (stack.length) {
+              const frame = stack[stack.length - 1];
+              let edge;
+              while (frame.next < frame.neighbors.length) {
+                const candidate = frame.neighbors[frame.next++];
+                if (!edgeSeen[frame.id * 8 + candidate[1]]) {
+                  edge = candidate;
+                  break;
+                }
+              }
+              if (!edge) {
+                stack.pop();
+                if (stack.length) path.push(point(stack[stack.length - 1].id));
+                continue;
+              }
+              const [nextId, direction] = edge;
+              edgeSeen[frame.id * 8 + direction] = 1;
+              edgeSeen[nextId * 8 + opposite[direction]] = 1;
+              path.push(point(nextId));
+              stack.push({ id: nextId, neighbors: neighbors(nextId), next: 0 });
+            }
+            result.push(path);
           }
-          if (!best) break;
-          [x, y] = best;
-          dir = [best[2], best[3]];
-          seen[idx(x, y)] = 1;
-          pts.push([x, y]);
         }
-        // Reconnect to an already-drawn junction pixel at either end, so branches meet their stem.
-        for (const end of [0, 1]) {
-          const [ex, ey] = end ? pts[pts.length - 1] : pts[0];
-          const hit = N8.map(([dx, dy]) => [ex + dx, ey + dy]).find(
-            ([nx, ny]) => on(nx, ny) && seen[idx(nx, ny)] && !pts.some((q) => q[0] === nx && q[1] === ny)
-          );
-          if (hit) end ? pts.push(hit) : pts.unshift(hit);
-        }
-        return pts;
+        return result;
       };
-      // Endpoints first (natural stroke starts), then whatever is left (closed loops like o).
-      const cols = [];
-      for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (g[idx(x, y)]) cols.push([x, y]);
-      for (const pass of [1, 2]) {
-        for (const [x, y] of cols) {
-          if (seen[idx(x, y)]) continue;
-          if (pass === 1 && deg(x, y) !== 1) continue;
-          strokes.push(walk(x, y));
+      const strokes = [];
+      if (!continuous) {
+        const seen = new Uint8Array(W * H);
+        const walk = (sx, sy) => {
+          const pts = [[sx, sy]];
+          seen[idx(sx, sy)] = 1;
+          let [x, y] = [sx, sy];
+          let dir = null;
+          for (;;) {
+            let best = null;
+            let bestScore = -9;
+            for (const [dx, dy] of N8) {
+              const nx = x + dx;
+              const ny = y + dy;
+              if (!on(nx, ny) || seen[idx(nx, ny)]) continue;
+              const score = dir ? dx * dir[0] + dy * dir[1] : 0; // keep going the same way through junctions
+              if (score > bestScore) {
+                bestScore = score;
+                best = [nx, ny, dx, dy];
+              }
+            }
+            if (!best) break;
+            [x, y] = best;
+            dir = [best[2], best[3]];
+            seen[idx(x, y)] = 1;
+            pts.push([x, y]);
+          }
+          // Reconnect to an already-drawn junction pixel at either end, so branches meet their stem.
+          for (const end of [0, 1]) {
+            const [ex, ey] = end ? pts[pts.length - 1] : pts[0];
+            const hit = N8.map(([dx, dy]) => [ex + dx, ey + dy]).find(
+              ([nx, ny]) => on(nx, ny) && seen[idx(nx, ny)] && !pts.some((q) => q[0] === nx && q[1] === ny)
+            );
+            if (hit) end ? pts.push(hit) : pts.unshift(hit);
+          }
+          return pts;
+        };
+        // Endpoints first (natural stroke starts), then whatever is left (closed loops like o).
+        const cols = [];
+        for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (g[idx(x, y)]) cols.push([x, y]);
+        for (const pass of [1, 2]) {
+          for (const [x, y] of cols) {
+            if (seen[idx(x, y)]) continue;
+            if (pass === 1 && deg(x, y) !== 1) continue;
+            strokes.push(walk(x, y));
+          }
         }
       }
 
@@ -183,6 +258,20 @@ async function textToStrokes(
       const len = (pts) =>
         pts.reduce((s, p, i) => (i ? s + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0);
       const minLen = fontSize * 0.06;
+      const compress = (pts) => {
+        if (pts.length < 3) return pts;
+        const out = [pts[0]];
+        for (let i = 1; i < pts.length - 1; i++) {
+          const a = out[out.length - 1];
+          const b = pts[i];
+          const c = pts[i + 1];
+          const ab = [b[0] - a[0], b[1] - a[1]];
+          const bc = [c[0] - b[0], c[1] - b[1]];
+          if (ab[0] * bc[1] !== ab[1] * bc[0] || ab[0] * bc[0] + ab[1] * bc[1] <= 0) out.push(b);
+        }
+        out.push(pts[pts.length - 1]);
+        return out;
+      };
 
       // Join pieces whose ends touch (within 2 px) into one pen stroke: the skeleton splits a letter wherever lines
       // cross, but a hand draws through those points without lifting the pen. Endpoints are found via a grid.
@@ -233,17 +322,26 @@ async function textToStrokes(
         }
         return alive.filter((_, i) => !dead.has(i));
       };
-      const result = chain(strokes)
-        .map((s) => chaikin(chaikin(rdp(s, 0.9))))
+      const traced = continuous ? continuousStrokes() : chain(strokes);
+      const result = traced
+        .map((s) => (continuous ? chaikin(compress(s)) : chaikin(chaikin(rdp(s, 0.9)))))
         .filter((s) => len(s) >= minLen || s.length <= 3) // drop skeleton spurs, keep dots
         .map((s) => (s.length === 1 ? [s[0], [s[0][0] + 1, s[0][1] + 1]] : s))
         .map((s) => s.map(([x, y]) => ({ x, y })));
       // Write in reading order: line by line, left to right.
       const lineOf = (s) => Math.floor(Math.min(...s.map((p) => p.y)) / lh + 0.2);
-      result.sort((a, b) => lineOf(a) - lineOf(b) || Math.min(...a.map((p) => p.x)) - Math.min(...b.map((p) => p.x)));
+      const boundsOf = (s) => ({
+        left: Math.min(...s.map((p) => p.x)),
+        right: Math.max(...s.map((p) => p.x)),
+      });
+      const centerX = (s) => {
+        const bounds = boundsOf(s);
+        return (bounds.left + bounds.right) / 2;
+      };
+      result.sort((a, b) => lineOf(a) - lineOf(b) || centerX(a) - centerX(b) || len(b) - len(a));
       return { strokes: result, width: W, height: H, lines: lines.length, lineTexts: lines };
     },
-    { text, fontSize, maxWidth, lineHeight, weight, font }
+    { text, fontSize, maxWidth, lineHeight, weight, font, continuous }
   );
 }
 

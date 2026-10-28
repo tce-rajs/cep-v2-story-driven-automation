@@ -90,6 +90,7 @@ class NavigationPage {
       )
         return;
     }
+    await nextSignal.first().waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -108,14 +109,12 @@ class NavigationPage {
     // it while the chooser is closed.
     const steps = async () => {
       await this._openUntil(this.currentClassBtn, this.allMyClassesTab);
-      // The modal re-renders for a moment right after opening -- clicking through it too fast hits
-      // "element detached, retrying" churn.
-      await this.page.waitForTimeout(800);
       await this.allMyClassesTab.click({ timeout: 15000 });
+      await this.gradeButton(grade).first().waitFor({ state: 'visible', timeout: 15000 });
       await this.gradeButton(grade).first().click({ timeout: 15000 });
-      await this.page.waitForTimeout(300);
+      await this.divisionButton(division).first().waitFor({ state: 'visible', timeout: 15000 });
       await this.divisionButton(division).first().click({ timeout: 15000 });
-      await this.page.waitForTimeout(300);
+      await this.subjectButton(subject).first().waitFor({ state: 'visible', timeout: 15000 });
       await this.subjectButton(subject).first().click({ timeout: 15000 });
     };
     for (let attempt = 1; ; attempt++) {
@@ -133,7 +132,7 @@ class NavigationPage {
     // The chooser slides shut after a switch, and a second switch started during
     // that animation saw the closing tab as "open", skipped opening it, and timed out when the tab disappeared. Wait
     // until it has really closed, so the next switch (a spec's own beforeEach after the fixture's) starts clean.
-    await this.allMyClassesTab.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+    await this.allMyClassesTab.waitFor({ state: 'hidden', timeout: 10000 });
   }
 
   async openChaptersPopup() {
@@ -162,9 +161,7 @@ class NavigationPage {
     // The popup button TOGGLES, so only click it when the popup is not already open (a caller such as showTopicsOf
     // leaves it open).
     await this._openUntil(this.currentChapterTopicBtn, this.chapterItems.first());
-    await this.page.waitForTimeout(500);
     await chapterLocator().click({ timeout: 10000 });
-    await this.page.waitForTimeout(500);
 
     const listed = () =>
       this.topicItems
@@ -194,7 +191,6 @@ class NavigationPage {
         }
       }
     }
-    await this.page.waitForTimeout(500);
     await this._closeChaptersPopupIfOpen();
   }
 
@@ -225,8 +221,8 @@ class NavigationPage {
       .isVisible()
       .catch(() => false);
     if (stillOpen) {
-      await this.currentChapterTopicBtn.click({ timeout: 5000 }).catch(() => {});
-      await this.page.waitForTimeout(500);
+      await this.currentChapterTopicBtn.click({ timeout: 5000 });
+      await this.chapterItems.first().waitFor({ state: 'hidden', timeout: 5000 });
     }
   }
 
@@ -247,7 +243,7 @@ class NavigationPage {
     // defaulting back to Recent Classes -- explicitly re-select the
     // Recent Classes tab before counting rather than trusting the default.
     await this.openClassPopup();
-    await this.recentClassesTab.click({ timeout: 5000 }).catch(() => {});
+    await this.recentClassesTab.click({ timeout: 5000 });
     await this.page.waitForTimeout(300);
     let count = await this.recentClassButtons.count();
     await this.currentClassBtn.click(); // close
@@ -256,7 +252,7 @@ class NavigationPage {
 
     await this.resetToClass('Class 9', 'A', 'Hindi Language');
     await this.openClassPopup();
-    await this.recentClassesTab.click({ timeout: 5000 }).catch(() => {});
+    await this.recentClassesTab.click({ timeout: 5000 });
     await this.page.waitForTimeout(300);
     count = await this.recentClassButtons.count();
     await this.currentClassBtn.click(); // close

@@ -5,15 +5,8 @@
 // account has (10A Science): they create "AutoTest RT …" / "AutoTest BT …" there. Neither kind can be deleted in the
 // app, so each run leaves one of each. The tests share the title they created through a small file.
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, RT_CLASS, openPlanMode, openPlanModeOnRevisionTopic, autoName } = require('./plan-helpers');
-
-const STATE = path.join(os.tmpdir(), 'pln-04-05-created.json');
-const readState = () => (fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : {});
-const writeState = (patch) => fs.writeFileSync(STATE, JSON.stringify({ ...readState(), ...patch }, null, 2));
+const { RT_CLASS, openPlanMode, openPlanModeOnRevisionTopic, autoName } = require('./plan-helpers');
 
 /** The Check Point card (the smallest block around the title) of an assessment, as text. */
 const checkPointCardText = (page, title) =>
@@ -27,7 +20,6 @@ const checkPointCardText = (page, title) =>
     });
 
 test.describe('PLN-04 Create a Revision Test', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 240000 });
 
   test(
@@ -64,14 +56,12 @@ test.describe('PLN-04 Create a Revision Test', () => {
     'PLN-04-03: a Revision Test can be created from ticked single-choice questions',
     { tag: ['@smoke', '@functional'] },
     async ({ app }) => {
-      fs.rmSync(STATE, { force: true });
       await openPlanModeOnRevisionTopic(app);
       const title = autoName('RT');
       const saved = await app.plan.createRevisionTest(title, 2);
       expect(saved.ok(), `the server accepts the Revision Test (HTTP ${saved.status()})`).toBe(true);
       const body = await saved.json().catch(() => ({}));
       expect(body.status, 'the test is created, ready to launch').toBe('CREATED');
-      writeState({ revisionTest: title });
     }
   );
 
@@ -79,9 +69,12 @@ test.describe('PLN-04 Create a Revision Test', () => {
     'PLN-04-04: a created Revision Test is listed in Check Point as a Revision Assessment',
     { tag: ['@functional'] },
     async ({ app, page }) => {
-      const title = readState().revisionTest;
-      test.skip(!title, 'Needs the Revision Test created in PLN-04-03');
       await openPlanModeOnRevisionTopic(app);
+      const title = autoName('RT');
+      const saved = await app.plan.createRevisionTest(title, 2);
+      expect(saved.ok(), `the server accepts the Revision Test (HTTP ${saved.status()})`).toBe(true);
+      const body = await saved.json().catch(() => ({}));
+      expect(body.status, 'the test is created, ready to launch').toBe('CREATED');
       await app.plan.openSection('Check Point');
       await app.plan.filterCheckPoint(RT_CLASS.grade, RT_CLASS.subject);
       await app.plan.checkPointSearch.fill(title);
@@ -96,8 +89,12 @@ test.describe('PLN-04 Create a Revision Test', () => {
     'PLN-04-05: a created Revision Test appears in Teach Mode under Compass → Revision Tests for that topic',
     { tag: ['@functional'] },
     async ({ app }) => {
-      const title = readState().revisionTest;
-      test.skip(!title, 'Needs the Revision Test created in PLN-04-03');
+      await openPlanModeOnRevisionTopic(app);
+      const title = autoName('RT');
+      const saved = await app.plan.createRevisionTest(title, 2);
+      expect(saved.ok(), `the server accepts the Revision Test (HTTP ${saved.status()})`).toBe(true);
+      const body = await saved.json().catch(() => ({}));
+      expect(body.status, 'the test is created, ready to launch').toBe('CREATED');
       await app.guest.open();
       await app.signIn(process.env.VALID_PIN);
       await app.nav.resetToClass(RT_CLASS.grade, RT_CLASS.division, RT_CLASS.subject);
@@ -114,8 +111,6 @@ test.describe('PLN-04 Create a Revision Test', () => {
 });
 
 test.describe('PLN-05 Check Point (Assessment for Learning)', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
-
   test.beforeEach(async ({ app }) => {
     await openPlanMode(app);
     await app.plan.openSection('Check Point');
@@ -128,7 +123,7 @@ test.describe('PLN-05 Check Point (Assessment for Learning)', () => {
     'PLN-05-01: Check Point opens on "Assessment for Learning (AfL)" with its filters',
     { tag: ['@smoke', '@functional'] },
     async ({ app }) => {
-      expect(await app.plan.checkPointSelects.count(), 'academic year, class, section, subject, status and type').toBe(
+      await expect(app.plan.checkPointSelects, 'academic year, class, section, subject, status and type').toHaveCount(
         6
       );
       await expect(app.plan.checkPointSearch, 'the search box').toBeVisible();
@@ -181,14 +176,12 @@ test.describe('PLN-05 Check Point (Assessment for Learning)', () => {
 
 // Class 10 Science (main account) has a baseline chapter: a Baseline Test can be made there.
 test.describe('PLN-05 Check Point: a Baseline Test for a subject with a baseline chapter', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 240000 });
 
   test(
     'PLN-05-07: a Baseline Test can be created for a subject that has a baseline chapter',
     { tag: ['@functional'] },
     async ({ app, page }) => {
-      writeState({ baselineTest: null });
       await openPlanModeOnRevisionTopic(app);
       await app.plan.openSection('Check Point');
       await app.plan.filterCheckPoint(RT_CLASS.grade, RT_CLASS.subject);
@@ -198,7 +191,6 @@ test.describe('PLN-05 Check Point: a Baseline Test for a subject with a baseline
       const title = autoName('BT');
       const saved = await app.plan.createBaselineTest(title, 1);
       expect(saved.ok(), `the server accepts the Baseline Test (HTTP ${saved.status()})`).toBe(true);
-      writeState({ baselineTest: title });
       await app.plan.checkPointSearch.fill(title);
       await expect(page.getByText(title, { exact: true }).first(), `"${title}" is listed in Check Point`).toBeVisible({
         timeout: 15000,
@@ -211,8 +203,15 @@ test.describe('PLN-05 Check Point: a Baseline Test for a subject with a baseline
     'PLN-05-08: a Baseline Test created in Plan Mode appears in Teach Mode for that class',
     { tag: ['@functional'] },
     async ({ app }) => {
-      const title = readState().baselineTest;
-      test.skip(!title, 'Needs the Baseline Test created in PLN-05-07');
+      await openPlanModeOnRevisionTopic(app);
+      await app.plan.openSection('Check Point');
+      await app.plan.filterCheckPoint(RT_CLASS.grade, RT_CLASS.subject);
+      await expect(app.plan.createTestBtn, 'set-up: Create Test is offered for Class 10 Science').toBeEnabled({
+        timeout: 15000,
+      });
+      const title = autoName('BT');
+      const saved = await app.plan.createBaselineTest(title, 1);
+      expect(saved.ok(), `the server accepts the Baseline Test (HTTP ${saved.status()})`).toBe(true);
       // Baseline Tests are listed in the Playlist of the subject's "Baseline Test" topic (10A Science 1.1).
       await app.guest.open();
       await app.signIn(process.env.VALID_PIN);

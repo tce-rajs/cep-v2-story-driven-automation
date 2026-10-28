@@ -324,7 +324,7 @@ account then crashes again at every sign-in because it reopens the last topic (C
 - AC4: Writing over an opened PDF or image stays on it after closing and reopening (covered by PLR-14)
 - AC5: A long board can be navigated with the Minimap
 
-1. WB-14-01 — To check a page with a heading, numbered points, arrows between words and circled words is saved and comes back exactly after sign-out and sign-in
+1. WB-14-01 — To check the “Properties of Electric Charge” lesson on Class 12A Physics topic 1.6, with a purple underlined heading and white numbered notes, is saved and comes back exactly after sign-out and sign-in
 2. WB-14-02 — To check a word crossed out and rewritten beside it is saved as written (both the crossing-out and the new word)
 3. WB-14-03 — To check highlighting a line with a second colour over existing writing is saved in the right order (highlight under or over, as drawn)
 4. WB-14-04 — To check fractions, powers (x²), subscripts (H₂O), units and a small hand-drawn table are saved exactly

@@ -2,10 +2,9 @@
 // Source: CEPV2_Stories/10_PlanMode.md
 
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, openPlanMode } = require('./plan-helpers');
+const { openPlanMode } = require('./plan-helpers');
 
 test.describe('PLN-01 Open Plan Mode and move around it', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   // Sign-in, class reset and the switch to Planning alone can take over a minute on a busy server.
   test.describe.configure({ timeout: 180000 });
 

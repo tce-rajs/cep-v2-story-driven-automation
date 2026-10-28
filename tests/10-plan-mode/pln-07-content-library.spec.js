@@ -7,12 +7,11 @@
 
 const { test, expect } = require('../../fixtures');
 const { PNG_FILE, TEXT_FILE } = require('../../pages/add-resource.page');
-const { BROWSER_ONLY, openPlanMode, autoName, teachChapterNames } = require('./plan-helpers');
+const { openPlanMode, autoName, teachChapterNames } = require('./plan-helpers');
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 test.describe('PLN-07 Content Library', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 300000 });
 
   test.beforeEach(async ({ app }) => {
@@ -135,7 +134,7 @@ test.describe('PLN-07 Content Library', () => {
       const count = Number(((await topicRow.innerText()).match(/(\d+)\s+Resources?/i) || [])[1]);
       expect(count, `the topic "${topicName}" says how many resources it has`).toBeGreaterThan(0);
       await expect(app.plan.resourceRows.first(), 'its resources are shown').toBeVisible({ timeout: 10000 });
-      expect(await app.plan.resourceRows.count(), 'every resource of the topic is listed').toBe(count);
+      await expect(app.plan.resourceRows, 'every resource of the topic is listed').toHaveCount(count);
     }
   );
 
@@ -185,7 +184,7 @@ test.describe('PLN-07 Content Library', () => {
       await app.plan.newNameInput.fill('   ');
       await app.plan.addChapterBtn.click({ force: true });
       await page.waitForTimeout(2000);
-      expect(posts.length, 'nothing is saved for a name of spaces').toBe(0);
+      expect(posts, 'nothing is saved for a name of spaces').toHaveLength(0);
     }
   );
 

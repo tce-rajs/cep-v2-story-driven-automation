@@ -11,7 +11,6 @@ const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './tests',
   globalSetup: require.resolve('./global-setup.js'),
-  globalTeardown: require.resolve('./global-setup.js'),
   // Every test here reads/writes the one shared, external tce_settings.json and launches real Electron
   // processes -- same "one shared mutable resource" reasoning as the root suite's workers: 1.
   fullyParallel: false,

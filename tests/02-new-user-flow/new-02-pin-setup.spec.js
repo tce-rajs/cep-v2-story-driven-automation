@@ -74,7 +74,9 @@ test.describe('NEW-02 PIN setup on first successful password login', () => {
       const other = pin.slice(0, -1) + String((Number(pin.slice(-1)) + 1) % 10);
       await app.newUser.confirmPin(other);
       await expect(
-        app.page.getByText(/(does not|doesn't|do not|don't) match|mismatch|not the same|incorrect|invalid/i).first(),
+        app.page
+          .getByText(/(did not|didn't|does not|doesn't|do not|don't) match|mismatch|not the same|incorrect|invalid/i)
+          .first(),
         'a message says the two PINs differ'
       ).toBeVisible({ timeout: 10000 });
       await expect(app.login.avatar, 'the mismatched PIN did not get through').toBeHidden();

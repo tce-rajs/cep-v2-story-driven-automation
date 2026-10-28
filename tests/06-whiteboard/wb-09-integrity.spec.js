@@ -9,7 +9,7 @@
 
 const { test, expect } = require('../../fixtures');
 const { layoutHandwriting, lessonText } = require('../../pages/lib/handwriting');
-const { pinForModule } = require('../../config/moduleClassMap');
+const { pinForWhiteboard } = require('../../config/moduleClassMap');
 const { expectOnScratchBoard, emptyScratchBoard } = require('../05-toolbar/scratch-board');
 
 const reload = async (user) => {
@@ -174,7 +174,7 @@ test.describe('WB-09 Whiteboard data integrity', () => {
       // No wait for "Whiteboard Saved!": sign out straight away, inside the countdown, then come back.
       await user.userMenu.signOut();
       await user.page.waitForTimeout(3000);
-      await user.signIn(pinForModule('toolbarGeneral'));
+      await user.signIn(pinForWhiteboard());
       await user.login.avatar.waitFor({ state: 'visible', timeout: 30000 });
       await user.nav.applyClassMap('toolbarGeneral');
       await user.toolbar.waitForBoardToSettle();

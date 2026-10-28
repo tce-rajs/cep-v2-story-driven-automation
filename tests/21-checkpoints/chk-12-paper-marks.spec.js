@@ -10,7 +10,7 @@ const os = require('os');
 const path = require('path');
 const XLSX = require('xlsx');
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, CP, GRADE, DIVISION } = require('./chk-helpers');
+const { CP, GRADE, DIVISION } = require('./chk-helpers');
 
 const PAPER = CP.paperCheckpoint;
 const WORK = path.join(os.tmpdir(), 'chk-12-paper-marks');
@@ -27,7 +27,6 @@ const FIRST_MARK_COL = 2;
 const PLAN = [{ right: 'all' }, { right: 10 }, { right: 0 }, { right: 5 }];
 
 test.describe('CHK-12 Upload paper-test marks', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'checkpoints' });
   test.describe.configure({ timeout: 240000 });
 

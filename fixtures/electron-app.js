@@ -145,7 +145,9 @@ async function isConnectionErrorShowing(app) {
       const panel = document.querySelector('.uiverse');
       if (!panel) return false;
       const style = getComputedStyle(panel);
-      return style.display !== 'none' && style.visibility !== 'hidden';
+      const scope = window.angular?.element(panel).scope();
+      const errorMessage = scope?.$eval('errorMessage');
+      return errorMessage != null || (style.display !== 'none' && style.visibility !== 'hidden');
     });
   } catch {
     return false; // shell window gone/navigating -- don't block on it
@@ -531,10 +533,9 @@ const clientTest = base.test.extend({
   ],
 });
 
-// RUN_IN_BROWSER=1 skips the desktop client and uses Playwright's own browser page instead
-// (baseURL, viewport and headed/headless all come from playwright.config.js), so the same
-// specs can be watched in a normal browser window. Default is still the desktop client.
-const test = process.env.RUN_IN_BROWSER ? base.test : clientTest;
+// RUN_IN_BROWSER=1 uses Playwright's browser page. RUN_IN_CLIENT=1 keeps the Electron client
+// even when a test group also sets RUN_IN_BROWSER to satisfy browser-capable test guards.
+const test = process.env.RUN_IN_BROWSER && !process.env.RUN_IN_CLIENT ? base.test : clientTest;
 
 // Exported for tests/03-login's client-reopen regression case, which needs raw control over closing and
 // relaunching a whole separate app instance (not just reusing the worker's shared window) -- desktop-client-

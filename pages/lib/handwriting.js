@@ -356,6 +356,265 @@ const GLYPHS = {
       ],
     ],
   },
+  ':': {
+    w: 0.45,
+    main: null,
+    extra: [
+      [
+        [0.2, -0.75],
+        [0.23, -0.7],
+      ],
+      [
+        [0.2, -0.05],
+        [0.23, 0],
+      ],
+    ],
+  },
+  ';': {
+    w: 0.45,
+    main: null,
+    extra: [
+      [
+        [0.2, -0.75],
+        [0.23, -0.7],
+      ],
+      [
+        [0.22, -0.05],
+        [0.12, 0.3],
+      ],
+    ],
+  },
+  '!': {
+    w: 0.45,
+    main: [
+      [0.22, -1.8],
+      [0.22, -0.45],
+    ],
+    extra: [
+      [
+        [0.22, -0.05],
+        [0.25, 0],
+      ],
+    ],
+  },
+  '?': {
+    w: 0.8,
+    main: [
+      [0.05, -1.4],
+      [0.2, -1.75],
+      [0.55, -1.8],
+      [0.78, -1.55],
+      [0.7, -1.2],
+      [0.4, -0.85],
+      [0.4, -0.45],
+    ],
+    extra: [
+      [
+        [0.4, -0.05],
+        [0.43, 0],
+      ],
+    ],
+  },
+  "'": {
+    w: 0.35,
+    main: [
+      [0.18, -1.8],
+      [0.12, -1.45],
+    ],
+  },
+  '"': {
+    w: 0.6,
+    main: null,
+    extra: [
+      [
+        [0.12, -1.8],
+        [0.08, -1.45],
+      ],
+      [
+        [0.42, -1.8],
+        [0.38, -1.45],
+      ],
+    ],
+  },
+  '-': {
+    w: 0.65,
+    main: [
+      [0.05, -0.55],
+      [0.6, -0.55],
+    ],
+  },
+  '+': {
+    w: 0.8,
+    main: [
+      [0.05, -0.6],
+      [0.75, -0.6],
+    ],
+    extra: [
+      [
+        [0.4, -1],
+        [0.4, -0.2],
+      ],
+    ],
+  },
+  '=': {
+    w: 0.8,
+    main: [
+      [0.05, -0.75],
+      [0.75, -0.75],
+    ],
+    extra: [
+      [
+        [0.05, -0.35],
+        [0.75, -0.35],
+      ],
+    ],
+  },
+  '/': {
+    w: 0.7,
+    main: [
+      [0.05, 0.1],
+      [0.65, -1.8],
+    ],
+  },
+  '(': {
+    w: 0.5,
+    main: [
+      [0.42, -1.8],
+      [0.15, -1.1],
+      [0.12, -0.5],
+      [0.42, 0.1],
+    ],
+  },
+  ')': {
+    w: 0.5,
+    main: [
+      [0.08, -1.8],
+      [0.38, -1.1],
+      [0.4, -0.5],
+      [0.08, 0.1],
+    ],
+  },
+  0: {
+    w: 1,
+    main: [
+      [0.5, -1.8],
+      [0.15, -1.45],
+      [0.12, -0.45],
+      [0.5, 0],
+      [0.88, -0.45],
+      [0.85, -1.45],
+      [0.5, -1.8],
+    ],
+  },
+  1: {
+    w: 0.65,
+    main: [
+      [0.05, -1.4],
+      [0.4, -1.8],
+      [0.4, 0],
+    ],
+  },
+  2: {
+    w: 0.95,
+    main: [
+      [0.08, -1.4],
+      [0.28, -1.8],
+      [0.7, -1.8],
+      [0.9, -1.45],
+      [0.78, -1.05],
+      [0.1, 0],
+      [0.92, 0],
+    ],
+  },
+  3: {
+    w: 0.95,
+    main: [
+      [0.08, -1.6],
+      [0.42, -1.8],
+      [0.82, -1.55],
+      [0.5, -0.95],
+      [0.8, -0.85],
+      [0.9, -0.42],
+      [0.62, 0],
+      [0.1, -0.12],
+    ],
+  },
+  4: {
+    w: 1,
+    main: [
+      [0.68, 0],
+      [0.68, -1.8],
+      [0.05, -0.55],
+      [0.95, -0.55],
+    ],
+  },
+  5: {
+    w: 0.95,
+    main: [
+      [0.85, -1.8],
+      [0.18, -1.8],
+      [0.12, -0.95],
+      [0.55, -1.02],
+      [0.88, -0.72],
+      [0.84, -0.25],
+      [0.5, 0],
+      [0.08, -0.12],
+    ],
+  },
+  6: {
+    w: 0.95,
+    main: [
+      [0.8, -1.75],
+      [0.45, -1.8],
+      [0.15, -1.2],
+      [0.12, -0.45],
+      [0.45, 0],
+      [0.82, -0.3],
+      [0.85, -0.72],
+      [0.55, -1],
+      [0.15, -0.72],
+    ],
+  },
+  7: {
+    w: 0.95,
+    main: [
+      [0.05, -1.8],
+      [0.92, -1.8],
+      [0.35, 0],
+    ],
+  },
+  8: {
+    w: 0.95,
+    main: [
+      [0.5, -0.9],
+      [0.18, -1.2],
+      [0.2, -1.6],
+      [0.5, -1.8],
+      [0.82, -1.55],
+      [0.78, -1.15],
+      [0.5, -0.9],
+      [0.16, -0.55],
+      [0.18, -0.18],
+      [0.5, 0],
+      [0.82, -0.2],
+      [0.8, -0.58],
+      [0.5, -0.9],
+    ],
+  },
+  9: {
+    w: 0.95,
+    main: [
+      [0.82, -0.95],
+      [0.5, -0.78],
+      [0.16, -1.05],
+      [0.18, -1.5],
+      [0.5, -1.8],
+      [0.82, -1.5],
+      [0.82, -0.55],
+      [0.52, 0],
+      [0.18, -0.08],
+    ],
+  },
 };
 
 /** Points along an elliptical arc (angles in degrees; 0 = right, 90 = down, -90 = up, since y grows downwards). */
@@ -680,13 +939,22 @@ function rng(seed) {
 function layoutHandwriting(
   text,
   area,
-  { xHeight = 14, lineGap = 3.4, seed = 7, smooth = false, slant = 0, sizeVar = 0, letterGap = 0.15, caps = false } = {}
+  {
+    xHeight = 14,
+    lineGap = 3.4,
+    seed = 7,
+    smooth = true,
+    slant = 0.14,
+    sizeVar = 0.035,
+    letterGap = 0.15,
+    caps = false,
+  } = {}
 ) {
-  // caps: write upper-case letters as print capitals (CAPS) instead of lower case.
+  // caps: print every letter in capitals. Otherwise preserve capital letters from the input.
   // smooth: curves through each letter's points instead of straight lines between them (rounder, less machine-like).
   // slant: forward lean of the letters (0.15-0.2 looks like a real hand). sizeVar: word-to-word size change (0.05 = +-5%).
   // letterGap: space between letters, in letter units (0.25-0.3 keeps larger writing from running together).
-  // All default to the old behaviour, so existing layouts (and the tests built on them) are unchanged.
+  // Smooth, slightly slanted writing is the default; set smooth:false, slant:0 and sizeVar:0 for stable test fixtures.
   const rand = rng(seed);
   let unit = xHeight; // one letter unit in px
   const lineHeight = xHeight * lineGap;
@@ -702,7 +970,14 @@ function layoutHandwriting(
   lineStart();
 
   for (const raw of text.split(/\s+/).filter(Boolean)) {
-    const word = caps ? raw.replace(/[^A-Za-z.,]/g, '') : raw.toLowerCase().replace(/[^a-z.,]/g, '');
+    const normalized = raw.replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/[–—−]/g, '-');
+    const allowed = /^[A-Za-z0-9.,!?;:'"()+\-=/]+$/;
+    if (!allowed.test(normalized)) {
+      throw new Error(
+        `Unsupported character in handwritten text "${raw}". Supported characters are Latin letters, digits and basic punctuation.`
+      );
+    }
+    const word = caps ? normalized.toUpperCase() : normalized;
     if (!word) continue;
     if (sizeVar) unit = xHeight * (1 + (rand() - 0.5) * 2 * sizeVar);
     const glyph = (ch) => CAPS[ch] || GLYPHS[ch] || GLYPHS[ch.toLowerCase()];
@@ -727,7 +1002,7 @@ function layoutHandwriting(
     let joined = [];
     let ox = penX;
     for (const ch of word) {
-      const cap = caps && CAPS[ch];
+      const cap = (caps || ch !== ch.toLowerCase()) && CAPS[ch];
       if (cap) {
         // A capital is printed on its own: lift the pen before it, draw its strokes, start the next letter fresh.
         if (joined.length) {
@@ -770,7 +1045,7 @@ function layoutHandwriting(
 
 /** A Catmull-Rom curve through `pts` (8 points per segment): the pen passes through every letter point but bends
  * between them the way a hand does, instead of turning sharp corners. */
-function catmullRom(pts, perSegment = 8) {
+function catmullRom(pts, perSegment = 3) {
   // Short strokes (2-3 points: a cross, a capital's straight bar or corner) stay straight so their corners stay crisp.
   if (pts.length < 4) return pts;
   const p = [pts[0], ...pts, pts[pts.length - 1]];

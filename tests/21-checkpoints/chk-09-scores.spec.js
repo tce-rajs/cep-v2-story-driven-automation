@@ -10,7 +10,6 @@ const os = require('os');
 const path = require('path');
 const { test, expect } = require('../../fixtures');
 const {
-  BROWSER_ONLY,
   CP,
   GRADE,
   DIVISION,
@@ -29,7 +28,6 @@ const saveStudent = (s) => {
 };
 
 test.describe('CHK-09 Scores are correct everywhere', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'checkpoints' });
   test.describe.configure({ timeout: 360000 });
 

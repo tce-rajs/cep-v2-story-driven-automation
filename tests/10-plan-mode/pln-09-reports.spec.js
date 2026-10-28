@@ -4,10 +4,8 @@
 // The empty report is the Assessment for Learning report of a grade with no assessments (Nursery).
 
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY } = require('./plan-helpers');
 
 test.describe('PLN-09 Reports & Usage (principal)', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 180000 });
 
   /** Sign in with `pin` and open Plan Mode. */

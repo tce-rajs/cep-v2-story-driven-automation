@@ -45,6 +45,10 @@ test.describe('NEW-03 Welcome screen and first-time class selection', () => {
     await app.newUser.chooseClassBtn.first().click();
     await expect(app.nav.gradeButtons.first(), 'the class chooser opened').toBeVisible({ timeout: 10000 });
   };
+  const closeChooser = async (app) => {
+    await app.newUser.chooseClassBtn.first().click();
+    await expect(app.nav.gradeButtons.first(), 'the class chooser closed').toBeHidden({ timeout: 10000 });
+  };
 
   test(
     'NEW-03-01: the first login after setup shows a welcome message with a "Choose Class" option centred on the page',
@@ -74,8 +78,7 @@ test.describe('NEW-03 Welcome screen and first-time class selection', () => {
 
       // Open the class chooser, then leave WITHOUT choosing: close it, then sign out.
       await openChooser(app);
-      await app.page.keyboard.press('Escape');
-      await app.page.waitForTimeout(1000);
+      await closeChooser(app);
       await app.userMenu.signOut();
 
       await app.signIn(pin);
@@ -93,8 +96,7 @@ test.describe('NEW-03 Welcome screen and first-time class selection', () => {
       await app.signIn(pin);
       await skipIfClassAlreadyChosen(app);
       await openChooser(app);
-      await app.page.keyboard.press('Escape');
-      await expect(app.nav.gradeButtons.first(), 'the class chooser closed').toBeHidden({ timeout: 10000 });
+      await closeChooser(app);
       await expect(app.nav.currentClassBtn, 'no class was opened').toBeHidden();
       await expect(app.newUser.chooseClassBtn.first(), 'the Choose Class prompt is shown again').toBeVisible();
     }

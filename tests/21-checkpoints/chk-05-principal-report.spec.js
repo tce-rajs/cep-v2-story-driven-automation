@@ -4,12 +4,11 @@
 // 'checkpoints' class (Class 10A Science) and checkpoint, which students take in chk-01-04-checkpoint-flow.spec.js.
 
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, CP, GRADE, DIVISION } = require('./chk-helpers');
+const { CP, GRADE, DIVISION, createCheckpointBaselineTest } = require('./chk-helpers');
 
 const GRADE_ORDER = ['Nursery', 'Junior KG', 'Senior KG', ...Array.from({ length: 12 }, (_, i) => `Class ${i + 1}`)];
 
 test.describe('CHK-05 Principal views the results', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 180000 });
 
   /** Sign in as the principal and open Plan Mode. */
@@ -90,11 +89,16 @@ test.describe('CHK-05 Principal views the results', () => {
     }
   );
 
-  test("CHK-05-05: Baseline lists the chosen class's checkpoints", { tag: ['@functional'] }, async ({ app }) => {
-    await openBaselineReport(app);
-    const assessments = await app.plan.optionsOf(app.plan.aflAssessmentSelect);
-    expect(assessments, `the checkpoint "${CP.checkpointTitle}" is listed`).toContain(CP.checkpointTitle);
-  });
+  test(
+    "CHK-05-05: Baseline lists the chosen class's checkpoints",
+    { tag: ['@functional'] },
+    async ({ app, browser }) => {
+      const baselineTitle = await createCheckpointBaselineTest(browser);
+      await openBaselineReport(app);
+      const assessments = await app.plan.optionsOf(app.plan.aflAssessmentSelect);
+      expect(assessments, `the created Baseline Test "${baselineTitle}" is listed`).toContain(baselineTitle);
+    }
+  );
 
   test(
     "CHK-05-06: a checkpoint's report shows overall mastery, concept mastery and students by performance band",

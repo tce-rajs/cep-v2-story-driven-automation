@@ -7,7 +7,6 @@
 
 const { test, expect } = require('../../fixtures');
 const {
-  BROWSER_ONLY,
   CP,
   GRADE,
   DIVISION,
@@ -23,7 +22,6 @@ const {
 test.describe.configure({ timeout: 240000 });
 
 test.describe('CHK Checkpoint from launch to end', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'checkpoints' });
 
   let nextRoll = 1;

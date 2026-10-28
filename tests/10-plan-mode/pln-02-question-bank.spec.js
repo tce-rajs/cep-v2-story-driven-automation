@@ -2,11 +2,9 @@
 // Source: CEPV2_Stories/10_PlanMode.md
 
 const { test, expect } = require('../../fixtures');
-const { BROWSER_ONLY, openPlanMode } = require('./plan-helpers');
+const { openPlanMode } = require('./plan-helpers');
 
 test.describe('PLN-02 Question Bank', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
-
   test.beforeEach(async ({ app }) => {
     await openPlanMode(app);
     await app.plan.openSection('Question Bank');
@@ -50,7 +48,7 @@ test.describe('PLN-02 Question Bank', () => {
       const options = await app.plan.topicSelect.evaluate((s) => [...s.options].map((o) => o.text));
       await app.plan.choose(app.plan.topicSelect, options[options.length > 2 ? 2 : 1]);
       await page.waitForTimeout(2000);
-      expect(await page.locator('body').innerText(), 'a different list').not.toBe(before);
+      await expect(page.locator('body'), 'a different list').not.toHaveText(before);
     }
   );
 

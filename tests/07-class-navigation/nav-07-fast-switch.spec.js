@@ -3,10 +3,7 @@
 // Data: 'playersDefault' (second account: Class 12A Computer Science 14.1 and Class 11A Accountancy). NAV-07-02 uploads
 // one resource and removes it again.
 
-const path = require('path');
 const { test, expect } = require('../../fixtures');
-
-const NEAR_LIMIT_VIDEO = path.join(__dirname, '..', '..', 'test-data', 'positive', 'near-limit-9.6MB.mp4');
 
 test.describe('NAV-07 Fast class switching', () => {
   test.use({ classMap: 'playersDefault' });
@@ -63,28 +60,58 @@ test.describe('NAV-07 Fast class switching', () => {
     { tag: ['@negative', '@regression'] },
     async ({ user, page }) => {
       test.setTimeout(300000);
-      const fs = require('fs');
-      test.skip(!fs.existsSync(NEAR_LIMIT_VIDEO), 'run `node scripts/make-test-data.js` first');
       const ar = user.addResource;
       const title = `AutoTest-switch-upload-${Date.now()}`;
-      await ar.openAction('create');
-      await ar.createForm.waitFor({ state: 'visible', timeout: 10000 });
-      await ar.titleInput.fill(title);
-      await ar.fileInput.setInputFiles(NEAR_LIMIT_VIDEO);
-      await ar.submitBtn.click();
-      // Straight away, while the 9.6 MB upload is still going: switch to another class.
-      await user.nav.resetToClass('Class 11', 'A', 'Accountancy');
-      await page.waitForTimeout(20000);
-      await user.playlist.ensureDrawerVisible();
-      await expect(
-        user.playlist.resourceCards.filter({ hasText: title }),
-        'the upload did not land in the class the teacher switched to'
-      ).toHaveCount(0);
+      const uploadRoute = /content\/package/;
+      let releaseUpload;
+      const uploadHeld = new Promise((resolve) => {
+        releaseUpload = resolve;
+      });
+      let signalUploadStarted;
+      let uploadWasStarted = false;
+      const uploadStarted = new Promise((resolve) => {
+        signalUploadStarted = resolve;
+      });
+      await page.route(uploadRoute, async (route) => {
+        if (route.request().method() === 'POST') {
+          uploadWasStarted = true;
+          signalUploadStarted();
+          await uploadHeld;
+        }
+        await route.continue();
+      });
+      let uploadResponse;
 
-      await user.nav.applyClassMap('playersDefault');
-      await user.playlist.ensureDrawerVisible();
       const mine = user.playlist.resourceCards.filter({ hasText: title });
       try {
+        await ar.openAction('create');
+        await ar.createForm.waitFor({ state: 'visible', timeout: 10000 });
+        await ar.titleInput.fill(title);
+        await ar.fileInput.setInputFiles({
+          name: 'upload-in-progress.txt',
+          mimeType: 'text/plain',
+          buffer: Buffer.from('A small valid file used to exercise an upload in progress.'),
+        });
+        uploadResponse = page.waitForResponse(
+          (response) => response.request().method() === 'POST' && /content\/package/.test(response.url()),
+          { timeout: 300000 }
+        );
+        await ar.submitBtn.click();
+        await uploadStarted;
+
+        // Hold the valid upload at the network boundary while the teacher switches classes.
+        await user.nav.resetToClass('Class 11', 'A', 'Accountancy');
+        releaseUpload();
+        const response = await uploadResponse;
+        expect(response.ok(), `the resource upload succeeds (HTTP ${response.status()})`).toBe(true);
+        await user.playlist.ensureDrawerVisible();
+        await expect(
+          user.playlist.resourceCards.filter({ hasText: title }),
+          'the upload did not land in the class the teacher switched to'
+        ).toHaveCount(0);
+
+        await user.nav.applyClassMap('playersDefault');
+        await user.playlist.ensureDrawerVisible();
         await expect(mine, 'the upload is in the topic it was made in (or the teacher was told it failed)').toHaveCount(
           1,
           {
@@ -92,6 +119,14 @@ test.describe('NAV-07 Fast class switching', () => {
           }
         );
       } finally {
+        releaseUpload();
+        if (uploadResponse) {
+          if (uploadWasStarted) await uploadResponse.catch(() => {});
+          else uploadResponse.catch(() => {});
+        }
+        await page.unroute(uploadRoute);
+        await user.nav.applyClassMap('playersDefault').catch(() => {});
+        await user.playlist.ensureDrawerVisible().catch(() => {});
         if ((await mine.count()) > 0) await user.playlist.removeOwnedAsset(mine).catch(() => {});
       }
     }

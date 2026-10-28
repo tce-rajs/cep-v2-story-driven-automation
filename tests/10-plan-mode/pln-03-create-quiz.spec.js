@@ -3,18 +3,9 @@
 // Every quiz a test creates is titled "AutoTest quiz …" and removed from the Teach Mode Playlist at the end of the test.
 
 const { test, expect } = require('../../fixtures');
-const {
-  BROWSER_ONLY,
-  openPlanMode,
-  startQuiz,
-  createQuiz,
-  quizCardInTeach,
-  removeQuiz,
-  autoTitle,
-} = require('./plan-helpers');
+const { openPlanMode, startQuiz, createQuiz, quizCardInTeach, removeQuiz, autoTitle } = require('./plan-helpers');
 
 test.describe('PLN-03 Create a quiz from the question bank', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.describe.configure({ timeout: 300000 });
 
   test.beforeEach(async ({ app }) => {
@@ -26,7 +17,7 @@ test.describe('PLN-03 Create a quiz from the question bank', () => {
     { tag: ['@smoke', '@functional'] },
     async ({ app }) => {
       await startQuiz(app, 0);
-      expect(await app.plan.selectionCheckboxes.count(), 'one checkbox per question').toBe(
+      await expect(app.plan.selectionCheckboxes, 'one checkbox per question').toHaveCount(
         await app.plan.questionTypeLabels.count()
       );
     }
@@ -141,8 +132,8 @@ test.describe('PLN-03 Create a quiz from the question bank', () => {
       await expect(app.plan.quizTitleInput, 'set-up: the quiz form is open').toBeVisible({ timeout: 10000 });
       const ticked = [
         ...new Set(
+          // The checkbox sits beside .question-card, inside the card view that holds both.
           (
-            // The checkbox sits beside .question-card, inside the card view that holds both.
             await page
               .locator('tce-qb-question-card-view')
               .filter({ has: page.locator('input[type=checkbox]:checked') })
@@ -163,7 +154,7 @@ test.describe('PLN-03 Create a quiz from the question bank', () => {
         await expect(card, 'set-up: the quiz is in the Playlist').toHaveCount(1, { timeout: 20000 });
         await app.player.openResourceCard(card);
         await expect(app.player.quizQuestionNumbers.first(), 'the quiz opens').toBeVisible({ timeout: 30000 });
-        expect(await app.player.quizQuestionNumbers.count(), 'two questions, as ticked').toBe(2);
+        await expect(app.player.quizQuestionNumbers, 'two questions, as ticked').toHaveCount(2);
         // Walk the quiz with its "next" control and collect the question shown each time.
         const shown = [];
         for (let q = 0; q < 2; q++) {

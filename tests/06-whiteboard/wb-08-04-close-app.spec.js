@@ -9,12 +9,13 @@
 const { test, expect } = require('@playwright/test');
 const { launchWithRetry } = require('../../fixtures/electron-app');
 const { App } = require('../../pages/app');
+const { pinForWhiteboard } = require('../../config/moduleClassMap');
 const { layoutHandwriting, lessonText } = require('../../pages/lib/handwriting');
 
 const openSignedIn = async () => {
   const client = await launchWithRetry();
   const app = new App(client.teachWindow);
-  await app.signIn(process.env.VALID_PIN);
+  await app.signIn(pinForWhiteboard());
   await app.nav.applyClassMap('toolbarGeneral');
   await app.toolbar.waitForBoardToSettle();
   return { client, app };

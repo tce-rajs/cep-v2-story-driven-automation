@@ -13,16 +13,16 @@ async function zoomIn(user, clicks) {
 
 test.describe('MM-03 Move around the board from the Minimap', () => {
   test.afterEach(async ({ app }) => {
-    await app.minimap.resetBtn.click({ force: true, timeout: 3000 }).catch(() => {});
-    await app.minimap.close().catch(() => {});
+    if (await app.minimap.isOpen()) {
+      await app.minimap.resetBtn.click({ force: true, timeout: 3000 });
+      await app.minimap.close();
+    }
   });
 
   test(
     'MM-03-01: clicking a point inside the Minimap pans the main canvas to it',
     { tag: ['@functional'] },
     async ({ user }) => {
-      // Recorded as a note when it happens, so the test stays about "clicking pans the board" without going red on the
-      // intermittent part.
       await user.toolbar.penStroke({ x: 500, y: 400 }, { x: 700, y: 460 });
       await zoomIn(user, 2);
       await user.minimap.open(user.toolbar);
@@ -37,20 +37,6 @@ test.describe('MM-03 Move around the board from the Minimap', () => {
         Math.hypot(rect.x + rect.width / 2 - width * target.x, rect.y + rect.height / 2 - height * target.y);
       const distanceBefore = distance(rectBefore);
       await user.minimap.clickAt(target.x, target.y);
-      const moved = async () => distance((await user.minimap.readCanvas()).rect) < distanceBefore - 2;
-      if (
-        !(await expect
-          .poll(moved, { timeout: 3000 })
-          .toBe(true)
-          .then(() => true)
-          .catch(() => false))
-      ) {
-        test.info().annotations.push({
-          type: 'issue',
-          description: 'The first click inside the Minimap was ignored; a second click was needed.',
-        });
-        await user.minimap.clickAt(target.x, target.y);
-      }
       await expect
         .poll(async () => distance((await user.minimap.readCanvas()).rect), {
           message: 'viewport rectangle moved towards the clicked point',

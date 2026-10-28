@@ -9,6 +9,10 @@ const { TEXT_FILE } = require('../../pages/add-resource.page');
 test.describe('PLR-03 Complete a worksheet (PDF)', () => {
   test.use({ classMap: 'playersDefault' });
 
+  test.afterEach(async ({ app }) => {
+    await app.player.closePlayer();
+  });
+
   const openWorksheet = async (user) => {
     await expect(user.player.worksheetCards.first()).toBeAttached({ timeout: 10000 });
     await user.player.openResourceCard(user.player.worksheetCards);

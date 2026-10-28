@@ -11,7 +11,6 @@ const os = require('os');
 const path = require('path');
 const { test, expect } = require('../../fixtures');
 const {
-  BROWSER_ONLY,
   CP,
   GRADE,
   DIVISION,
@@ -56,7 +55,6 @@ const bodyText = async (page) =>
   ).replace(/\s+/g, ' ');
 
 test.describe('CHK-11 The checkpoint time runs out', () => {
-  test.skip(!process.env.RUN_IN_BROWSER, BROWSER_ONLY);
   test.use({ classMap: 'checkpoints' });
   test.describe.configure({ timeout: 360000 });
 

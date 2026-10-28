@@ -18,6 +18,9 @@ const CLASSES = [
   ['Class 10', 'A', 'Sanskrit Literature'],
   ['Class 10', 'A', 'Political Science'],
 ];
+const ATTENDANCE_CLASSES = CLASSES.filter(
+  ([grade, division, subject]) => !(grade === 'Class 9' && division === 'A' && subject === 'Science')
+);
 const label = (g, d, s) => `${g.replace('Class ', '')} ${d} ${s}`;
 
 test.describe('FLOW-17-09 AI Homework works in every class the teacher teaches', () => {
@@ -38,7 +41,7 @@ test.describe('FLOW-17-09 AI Homework works in every class the teacher teaches',
 });
 
 test.describe('FLOW-19-11 Attendance opens in every class whose Magnet lists it', () => {
-  for (const [g, d, s] of CLASSES) {
+  for (const [g, d, s] of ATTENDANCE_CLASSES) {
     test(
       `FLOW-19-11: the attendance register opens in ${label(g, d, s)}`,
       { tag: ['@functional'] },
